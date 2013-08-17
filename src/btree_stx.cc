@@ -28,7 +28,7 @@ static int query(int value) {
   return (it == b.end()) ? 0 : *it;
 }
 
-static void results(double insert_time, double query_time) {
-  printf("btree_stx_insert_time: %9.6lf, btree_stx_query_time: %9.6lf, ",
-    insert_time, query_time);
+static void results(double insert_time, double query_time, int checksum) {
+  printf("btree_stx_insert_time: %9.6lf, btree_stx_query_time: %9.6lf, btree_stx_csum: %d, ",
+    insert_time, query_time, checksum);
 }

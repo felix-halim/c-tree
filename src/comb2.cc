@@ -1,12 +1,14 @@
 #include <cstdio>
 #include <cassert>
-#include "comb.h"
+#include "comb2.h"
 
 #ifdef NOUP
   #include "test_noup.h"
 #else
   #include "test_lfhv.h"
 #endif
+
+using namespace comb;
 
 // Comb<int, std::less<int>, true, 3200, 125, 50> c;
 Comb<int> c;
@@ -31,6 +33,6 @@ static int query(int value) {
 }
 
 static void results(double insert_time, double query_time, int checksum) {
-  printf("comb_insert_time: %9.6lf, comb_query_time: %9.6lf, comb_csum: %d, ",
+  printf("comb2_insert_time: %9.6lf, comb2_query_time: %9.6lf, comb2_csum: %d, ",
     insert_time, query_time, checksum);
 }

@@ -17,7 +17,7 @@ static int query(int value) {
   return (it == arr + N) ? 0 : *it;
 }
 
-static void results(double insert_time, double query_time) {
-  printf("sort_insert_time: %9.6lf, sort_query_time: %9.6lf, ",
-    insert_time, query_time);
+static void results(double insert_time, double query_time, int checksum) {
+  printf("sort_insert_time: %9.6lf, sort_query_time: %9.6lf, sort_csum: %d, ",
+    insert_time, query_time, checksum);
 }

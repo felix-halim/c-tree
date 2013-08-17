@@ -29,7 +29,7 @@ static int query(int value) {
   return (it == b.end()) ? 0 : *it;
 }
 
-static void results(double insert_time, double query_time) {
-  printf("btree_google_insert_time: %9.6lf, btree_google_query_time: %9.6lf, ",
-    insert_time, query_time);
+static void results(double insert_time, double query_time, int checksum) {
+  printf("btree_google_insert_time: %9.6lf, btree_google_query_time: %9.6lf, btree_google_csum: %d, ",
+    insert_time, query_time, checksum);
 }
