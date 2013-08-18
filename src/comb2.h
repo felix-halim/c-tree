@@ -140,7 +140,7 @@ template <typename T,
   int DECRACK_AT  = 32>
 
 class Comb {
-  static_assert(DECRACK_AT * 2 < CRACK_AT, "insufficient gap for crack decrack");
+  static_assert(DECRACK_AT * 2 <= CRACK_AT, "insufficient gap for crack decrack");
   typedef Bucket<T, MAX_SIZE, CRACK_AT, DECRACK_AT> Bucket_t;
 
   Random rng;   // The random number generator.
@@ -552,41 +552,50 @@ static T* doLowerCrack(T *lo, T *hi, T *pivot, CMP &cmp) {
 }
 
 template<typename T, typename CMP>
-static T* partition(T *lo, T *hi, T *&pivot, bool upperCrack, CMP &cmp) {
+static T* partition(T *lo, T *hi, T *pivot, bool upperCrack, CMP &cmp) {
   assert(lo <= pivot && pivot <= hi);
   if (upperCrack) {
     std::iter_swap(lo, pivot);
     // fprintf(stderr, "upperCrack %d, %d\n", *lo, hi - lo);
-    pivot = lo;
-    return doUpperCrack(lo + 1, hi, lo, cmp);
+    T* ret = doUpperCrack(lo + 1, hi, lo, cmp);
+    std::iter_swap(ret, lo);
+    return ret;
   }
   std::iter_swap(hi, pivot);
-  pivot = hi;
-  return doLowerCrack(lo, hi - 1, hi, cmp);
+  T* ret = doLowerCrack(lo, hi - 1, hi, cmp);
+  std::iter_swap(ret, hi);
+  return ret;
 }
 
 // Partitions roughly in the middle satisfying the DECRACK_AT.
 template<typename T, typename CMP>
-static T* middle_partition(T *L, T *R, CMP &cmp, Random &rng) {
+static T* rough_middle_partition2(T *L, T *R, int min_gap, CMP &cmp, Random &rng) {
   T *lo = L;
   T *hi = R - 1;
   T *H = L + (R - L) / 2;
+  assert(R - L >= min_gap * 2);
   while (lo < hi) {
     T* pivot = lo + rng.nextInt(hi - lo + 1);
     // fprintf(stderr, "lo = %d(%d), hi = %d(%d), pivot = %d(%d)\n", lo - L, *lo, hi - L, *hi, pivot - L, *pivot);
-    bool upperCrack = true;
-    T* pos = partition(lo, hi, pivot, upperCrack, cmp);
-    // fprintf(stderr, "pos = %d(%d)\n", pos - L, *pos);
-    if (pos > hi) {
-      pos = partition(lo, hi, pivot, upperCrack = false, cmp);
-      if (pos == lo) break;
+    pivot = partition(lo, hi, pivot, false, cmp);
+
+    if (pivot - L >= min_gap) return pivot;
+    if (R - pivot >= min_gap) return pivot;
+
+    // fprintf(stderr, "pivot = %d(%d)\n", pivot - L, *pivot);
+    if (pivot == lo) {
+      pivot = partition(lo, hi, pivot, true, cmp);
+      if (pivot > H) break;
+      if (pivot <= H) lo = pivot;
+      else hi = pivot - 1;
+      continue;
     } else {
-      assert(pos > lo);
+      assert(pivot > lo);
     }
-    if (pos < H) lo = pos;
-    else if (pos > H) hi = pos - 1;
-    else if (upperCrack) lo = pos;
+    if (pivot < H) lo = pivot + 1;
+    else if (pivot > H) hi = pivot - 1;
     else {
+      assert(false);
       assert(hi == pivot);
       std::iter_swap(H, pivot);
       break;
@@ -599,6 +608,78 @@ static T* middle_partition(T *L, T *R, CMP &cmp, Random &rng) {
   return H;
 }
 
+// Partitions roughly in the middle satisfying the DECRACK_AT.
+template<typename T, typename CMP>
+static T* rough_middle_partition(T *L, T *R, int min_gap, CMP &cmp, Random &rng) {
+  T *arr = L;
+  int idx[10000];
+  int N = R - L, H = N / 2;
+  int lo = 0, hi = N, ret = -1;
+  assert(N >= min_gap * 2);
+  while (true) {
+    int n = hi - lo;
+    // fprintf(stderr, "%d %d, min_gap = %d, gap left = %d, %d\n", lo, hi, min_gap, lo, N - hi);
+    assert(n > 0);
+    T* p = arr + lo + rng.nextInt(n);
+    T pval = *p;
+    if (lo >= min_gap && N - hi >= min_gap) {
+      // Normal Crack
+      ret = partition(arr + lo, arr + hi, p, false, cmp) - arr;
+      // fprintf(stderr, "normal crac = %d, pos = %d < %d < %d\n", *p, lo, ret, hi);
+
+      // for (int i = lo; i < hi; i++) {
+      //   fprintf(stderr, "%d = %d\n", i, arr[i]);
+      // }
+      break;
+    }
+    // Fusion!
+    int ilo = 0, ihi = n;
+    for (int i = lo, _n = lo + n; i < _n; i++) {
+      idx[ilo] = idx[ihi] = i;
+      ilo += !cmp(arr[i], *p);
+      ihi +=  cmp(arr[i], *p);
+    }
+    int nswap = std::min(ilo, ihi - n);
+    for (int i = 0; i < nswap; i++) {
+      int j = ihi - i - 1;
+      // fprintf(stderr, "swapping %d (%d) <>  %d (%d), pivot = %d\n", arr[idx[i]], idx[i], arr[idx[j]], idx[j], pval);
+      if (idx[i] >= idx[j]) { nswap = i; break; }
+      swap(arr[idx[i]], arr[idx[j]]);
+    }
+    int j = ihi - nswap;
+    assert(j >= 0);
+    int next = std::min(idx[nswap], idx[j]);
+    // fprintf(stderr, "n = %d, nswap = %d, %d %d, ilo = %d, ihi = %d, next = %d, pivot = %d\n",
+    //   n, nswap, idx[nswap], idx[n + nswap], ilo, ihi - n, next, p - arr);
+    if (nswap == 0) {
+      std::iter_swap(p, arr + next);
+      ret = next;
+      break;
+    }
+    // for (int i = 0; i < N; i++) fprintf(stderr, "[%d]%d ", i, arr[i]);
+    // fprintf(stderr, "\n" );
+    if (next <= H) {
+      lo = next;
+    } else {
+      hi = next;
+    }
+  }
+  assert(ret != -1);
+  // fprintf(stderr, "ret = %d\n", ret);
+  // for (int i = 0; i < N; i++) fprintf(stderr, "[%d]%d ", i, arr[i]);
+
+  // for (int i = 0; i <= ret; i++) {
+  //   fprintf(stderr, "\ni = %d, L = %d <= %d", i, arr[i], arr[ret]);
+  //   assert(arr[i] <= arr[ret]);
+  // }
+  // for (int i = ret; i < N; i++) {
+  //   fprintf(stderr, "\ni = %d, R = %d >= %d", i, arr[i], arr[ret]);
+  //   assert(arr[i] >= arr[ret]);
+  // }
+  // fprintf(stderr, "\n\n");
+  return L + ret;
+}
+
 BUCKET_TPLC(int)::get_piece_by_value(T const &v, int &L, int &R, CMP &cmp, Random &rng) {
   flush_pending_inserts(cmp);
   // assert(check(D[0],false,D[0],false, cmp));
@@ -607,8 +688,8 @@ BUCKET_TPLC(int)::get_piece_by_value(T const &v, int &L, int &R, CMP &cmp, Rando
   L = (i == 0) ? 0 : C[i - 1];          // Left crack boundary.
   R = (i == nC) ? size() : C[i];        // Right crack boundary.
   while (R - L > CRACK_AT) {            // Narrow down the piece using DDR.
-    int M = middle_partition(D + L + (i ? 1 : 0), D + R, cmp, rng) - D;
-    assert(abs((L + R) / 2 - M) <= 1);
+    int M = rough_middle_partition(D + L + (i ? 1 : 0), D + R, DECRACK_AT, cmp, rng) - D;
+    // assert(abs((L + R) / 2 - M) <= 1);
     add_cracker_index(i, M);
     // fprintf(stderr,"CRACKING %d %d, [%d %d]\n", M, D[M], L, R);
     if (cmp(v, D[M])) R = M; else L = M, i++;  // Adjust the cracker index i.
@@ -626,8 +707,8 @@ BUCKET_TPLC(int)::get_piece_by_index(int idx, int &L, int &R, CMP &cmp, Random &
   L = i==0? 0 : C[i-1];          // the left crack
   R = i==nC? size() : C[i];          // the right crack
   while (R-L > CRACK_AT){          // narrow down the piece using DDR
-    int M = middle_partition(D + L + (i ? 1 : 0), D + R, cmp, rng) - D;
-    assert(abs((L + R) / 2 - M) <= 1);
+    int M = rough_middle_partition(D + L + (i ? 1 : 0), D + R, DECRACK_AT, cmp, rng) - D;
+    // assert(abs((L + R) / 2 - M) <= 1);
     add_cracker_index(i,M);
     if (idx < M) R=M; else L=M, i++;  // adjust the cracker index
   }
