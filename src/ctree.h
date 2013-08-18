@@ -76,6 +76,18 @@ class Bucket {
     return nb;
   }
 
+  void optimize() {
+    if (is_leaf()) {
+      assert(P);
+      sort(D, D + N);
+      P = 0;
+    } else {
+      for (int i = 0; i <= N; i++) {
+        C[i]->optimize();
+      }
+    }
+  }
+
   void debug(int depth) {
     for (int i = 0; i < depth; i++) fprintf(stderr, "  ");
     fprintf(stderr, "N = %d (%d%s), ", N, P, is_leaf() ? ", leaf" : "");
@@ -128,6 +140,10 @@ class CTree {
     // fprintf(stderr, "b");
     assert(!it.second);
     // root->debug(0);
+  }
+
+  void optimize() {
+    root->optimize();
   }
 
   pair<int, Bucket*> insert(Bucket *&b, Bucket *p, int value, int depth) {

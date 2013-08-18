@@ -40,8 +40,8 @@ printf "];\n\nvar LFHV = [\n" >> $out
 for (( q=1; q<=$Q; q*=10 ))
 do
 	printf "\t{ n: 100000000, q: $q, " >> $out
-	bin/update_comb 100000000 $q >> $out
-	bin/update_comb2 100000000 $q >> $out
+	# bin/update_comb 100000000 $q >> $out
+	# bin/update_comb2 100000000 $q >> $out
 	# bin/update_btree_stx 100000000 $q >> $out
 	# bin/update_btree_google 100000000 $q >> $out
 	printf " },\n" >> $out

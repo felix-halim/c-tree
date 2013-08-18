@@ -17,8 +17,8 @@ CTree c;
 static void init(int *arr, int N) {
   for (int i = 0; i < N; i++) {
     c.insert(arr[i]);
-    if (!(i & (i + 1))) fprintf(stderr, ".");
   }
+  c.optimize();
 }
 
 static void insert(int value) {
