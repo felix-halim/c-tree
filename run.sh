@@ -2,6 +2,7 @@
 # g++ -std=c++11 -Isrc -O3 src/comb_tests.cc && ./a.out
 
 STD=c++0x
+N=100000000
 Q=100000000
 out=results.js
 
@@ -23,15 +24,15 @@ g++ -O3 -std=$STD -DNOUP -o bin/btree_google -Isrc src/btree_google.cc
 
 printf "var NOUP = [\n" > $out
 
-for (( q=100000000; q<=$Q; q*=10 ))
+for (( q=1; q<=$Q; q*=10 ))
 do
-	printf "\t{ n: 100000000, q: $q, " >> $out
-	# bin/comb 100000000 $q >> $out
-	bin/ctree 100000000 $q >> $out
-	# bin/comb2 100000000 $q >> $out
-	# bin/sort 100000000 $q >> $out
-	# bin/btree_stx 100000000 $q >> $out
-	# bin/btree_google 100000000 $q >> $out
+	printf "\t{ n: $N, q: $q, " >> $out
+	bin/comb $N $q >> $out
+	bin/ctree $N $q >> $out
+	bin/comb2 $N $q >> $out
+	bin/sort $N $q >> $out
+	bin/btree_stx $N $q >> $out
+	bin/btree_google $N $q >> $out
 	printf " },\n" >> $out
 done
 
@@ -39,11 +40,11 @@ printf "];\n\nvar LFHV = [\n" >> $out
 
 for (( q=1; q<=$Q; q*=10 ))
 do
-	printf "\t{ n: 100000000, q: $q, " >> $out
-	# bin/update_comb 100000000 $q >> $out
-	# bin/update_comb2 100000000 $q >> $out
-	# bin/update_btree_stx 100000000 $q >> $out
-	# bin/update_btree_google 100000000 $q >> $out
+	printf "\t{ n: $N, q: $q, " >> $out
+	# bin/update_comb $N $q >> $out
+	# bin/update_comb2 $N $q >> $out
+	# bin/update_btree_stx $N $q >> $out
+	# bin/update_btree_google $N $q >> $out
 	printf " },\n" >> $out
 done
 

@@ -19,6 +19,7 @@ static void init(int *arr, int N) {
     c.insert(arr[i]);
   }
   c.optimize();
+  // c.debug();
 }
 
 static void insert(int value) {
@@ -32,7 +33,9 @@ static void erase(int value) {
 
 static int query(int value) {
   auto it = c.lower_bound(value);
-  return it.first ? it.second : 0;
+  int ret = it.first ? it.second : 0;
+  // fprintf(stderr, "%d (%d)\n", ret, value);
+  return ret;
 }
 
 static void results(double insert_time, double query_time, int checksum) {

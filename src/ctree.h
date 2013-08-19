@@ -9,7 +9,7 @@ using namespace std;
 
 namespace ctree {
 
-#define BSIZE 256 // Must be divisible by two.
+#define BSIZE 64 // Must be divisible by two.
 // #define BSIZE 4 // Must be divisible by two.
 
 class Bucket {
@@ -229,9 +229,14 @@ class CTree {
       if (b->P) {
         sort(b->D, b->D + b->N);
         b->P = 0;
+        assert(0);
       }
     }
-    int pos = std::lower_bound(b->D, b->D + b->N, value) - b->D;
+    int pos = 0;
+    while (pos < b->N && b->D[pos] < value) pos++;
+    // std::lower_bound(b->D, b->D + b->N, value) - b->D;
+    // if (value == -241563813) fprintf(stderr, "D[0] = %d, vlaue = %d\n", b->D[0], value);
+
     // fprintf(stderr, "pos = %d, p = %d, is_leaf = %d\n", pos, b->P, b->is_leaf());
     if (b->D[pos] == value) return make_pair(true, value);
     if (b->is_leaf()) {
@@ -240,8 +245,8 @@ class CTree {
       auto ret = lower_bound(b->C[pos], value);
       if (ret.first) {
         return ret;
-      } else if (pos + 1 < b->N) {
-        return make_pair(true, b->D[pos + 1]);
+      } else if (pos < b->N) {
+        return make_pair(true, b->D[pos]);
       }
       return ret;
     }

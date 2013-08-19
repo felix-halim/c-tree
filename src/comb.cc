@@ -27,7 +27,9 @@ static void erase(int value) {
 
 static int query(int value) {
   int val = 0;
-  return c.lower_bound(value).next(val) ? val : 0;
+  int ret = c.lower_bound(value).next(val) ? val : 0;
+  // fprintf(stderr, "%d (%d)\n", ret, value);
+  return ret;
 }
 
 static void results(double insert_time, double query_time, int checksum) {
