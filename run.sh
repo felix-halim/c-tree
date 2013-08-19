@@ -27,11 +27,11 @@ for (( q=100000000; q<=$Q; q*=10 ))
 do
 	printf "\t{ n: 100000000, q: $q, " >> $out
 	# bin/comb 100000000 $q >> $out
-	bin/ctree 100000000 $q >> $out
+	# bin/ctree 100000000 $q >> $out
 	# bin/comb2 100000000 $q >> $out
 	# bin/sort 100000000 $q >> $out
 	# bin/btree_stx 100000000 $q >> $out
-	# bin/btree_google 100000000 $q >> $out
+	bin/btree_google 100000000 $q >> $out
 	printf " },\n" >> $out
 done
 

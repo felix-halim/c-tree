@@ -1122,6 +1122,224 @@ COMB_TPL(void)::destroy_root(int ridx) {
     }
   }
 
+
+
+
+
+
+
+
+
+
+
+
+public:
+  T* getp(int i) { assert(i>=0 && i<N); return &D[i]; }
+  void bulk_insert(T const *v, int sidx, int length){
+    assert(N==0);
+    for (int j = 0; j < length; j++) {
+      D[N++] = v[sidx++];
+    }
+  }
+
+
+
+
+
+  int index_of(T const &v, CMP &cmp) const {
+    for (int i=0; i<N; i++) if (equal(D[i],v,cmp)) return i;
+    return -1;
+  }
+
+
+
+};
+
+
+
+
+
+
+  void bit_update(int idx, int val){
+    assert(idx>=0 && idx < root_size());
+    for (idx++; idx <= root_size(); ){
+      bit[idx-1] += val;
+      idx += (idx & -idx);
+    }
+  }
+
+  int bit_sum(int idx){
+    if (idx<0) return 0;
+    assert(idx>=0 && idx<root_size());
+    int sum = 0; idx++;
+    while (idx > 0){
+      sum += bit[idx-1];
+      idx -= (idx & -idx);
+    }
+    return sum;
+  }
+
+
+
+
+
+
+  T* get_bucket_element_ptr(int bidx, int idx) {
+    assert(bidx >= 0 && bidx < num_of_buckets());
+    assert(idx < MAX_SIZE);
+    assert(idx >= 0 && idx < B[bidx].size());
+    return B[bidx].getp(idx);
+  }
+
+public:
+
+
+  void load(T const *v, int n) {
+    int i = 0;
+    while (i + MAX_SIZE <= n) {
+      assert(B[Pe[0]].free() == MAX_SIZE);
+      B[Pe[0]].bulk_insert(v, i, MAX_SIZE);
+      i += MAX_SIZE;
+      int bidx = new_bidx();
+      B[Pe[0]].next(bidx);
+      Pe[0] = bidx;
+    }
+    while (i < n) {
+      B[Pe[0]].insert(v[i++]);
+    }
+  }
+
+  void bit_init(){
+    assert(USE_POS);
+    memset(bit,0,sizeof(int)*root_size());
+    for (int i=0; i<root_size(); i++) bit_update(i,size(i));
+  }
+
+  void eager_insert(T const &v, bool use_pos = true){
+    int ridx = find_ridx(v);
+    assert(Pb[ridx]!=-1);
+    if (ridx == 0 && (B[Pb[0]].size() == 0 || cmp(v, R[0]))) R[0] = v;
+    assert(Pe[ridx]!=-1);
+    int cnt = 0;
+    while (!B[Pe[ridx]].free()){
+      split_chain(ridx);
+      if (!cmp(v, R[ridx+1])) ridx++;  // readjust root idx
+      cnt++;
+    }
+    assert(ridx+1>=root_size() || cmp(v, R[ridx+1]));
+    B[Pe[ridx]].insert(v);
+    if (USE_POS && use_pos){
+      if (cnt) bit_init();
+      else {
+        assert(ridx>=0 && ridx<root_size());
+        bit_update(ridx,1);
+      }
+    }
+  }
+
+  int size(){
+    int ret = 0;
+    for (int i=0; i<root_size(); i++)
+      for (int idx = Pb[i]; idx!=-1; idx=B[idx].next())
+        ret += B[idx].size();
+    return ret;
+  }
+
+  int exists(T const &v, bool print=false){
+    int cnt = 0;
+    for (int i=0; i<root_size(); i++)
+      for (int idx = Pb[i]; idx!=-1; idx=B[idx].next()){
+        int at = B[idx].index_of(v,cmp);
+        if (at != -1){
+          if (print) fprintf(stderr,"v=%d, Exists at ridx = %d/%d, idx=%d/%d, at=%d/%d, next=%d\n",
+            v, i,root_size(), idx,num_of_buckets(), at,B[idx].size(),B[idx].next());
+          B[idx].debug("ignore",0,0);
+          cnt++;
+        }
+      }
+    return cnt;
+  }
+
+  bool nth(int idx, T &res){
+    static_assert(USE_POS, "nth must set USE_POS");
+    int lo=1, hi=root_size()-1, ridx=0;
+    while (lo<=hi){
+      int mid = lo + ((hi-lo)>>1);
+      if (bit_sum(mid-1) > idx){
+        hi = mid-1;
+      } else {
+        ridx = mid;
+        lo = mid+1;
+      }
+    }
+    if (B[Pb[ridx]].next() != -1){
+      split_chain(ridx);  // randomly split the chain into two
+      bit_init();      // TODO: improve!
+      return nth(idx, res);
+    }
+    int bnth = idx - bit_sum(ridx-1);
+    if (bnth >= B[Pb[ridx]].size()) return false;
+    res = B[Pb[ridx]].nth(bnth, cmp, rng);
+    return true;
+  }
+
+  int rank(T const &v){
+    assert(USE_POS);
+    int ridx = find_ridx(v);
+    if (ridx == 0 && B[Pb[ridx]].size()==0) return 0;
+    //int cnt = 
+    break_chain(ridx,v);
+    int i,L,R,idx = B[Pb[ridx]].crack(v,i,L,R,true,cmp,rng);
+    if (ridx == 0) return idx;
+    return bit_sum(ridx - 1) + idx;
+  }
+
+  iterator begin(){
+    return iterator(this, 1, 0, 0);
+  }
+
+
+  // erase from [v1, v2)
+  void erase(T const &v1, T const &v2){
+    if (cmp(v2, v1)) throw RangeError();
+    int i1 = find_ridx(v1);
+    int i2 = find_ridx(v2);
+    break_chain(i2,v2);
+    break_chain(i1,v1);
+
+    // TODO: destroy B from i1 to i2-1
+    if (USE_POS) bit_init();
+  }
+
+  int count(T const &v1, T const &v2){
+    assert(!cmp(v2,v1));
+    iterator it1 = lower_bound(v1);
+    iterator it2 = lower_bound(v2);
+    return count(it1,it2);
+  }
+
+  int rank(iterator it){
+    if (it.ridx==0) return it.idx;
+    return bit_sum(it.ridx - 1) + it.idx;
+  }
+
+  int count(iterator it1, iterator it2){
+    if (USE_POS) return rank(it2) - rank(it1);
+    assert(B[Pb[it1.ridx]].next() == -1);
+    assert(B[Pb[it2.ridx]].next() == -1);
+    if (it1.ridx == it2.ridx){
+      assert(it1.bidx == it2.bidx);
+      return it2.idx - it1.idx;
+    }
+    assert(it1.ridx < it2.ridx);
+    int ret = B[it1.bidx].size() - it1.idx;
+    for (int i=it1.ridx+1; i<it2.ridx; i++) ret += size(i);
+    return ret + it2.idx;
+  }
+
+  void erase(iterator it1, iterator it2){ throw RangeError(); }
+
+};
 */
 
 

@@ -15,7 +15,7 @@ namespace ctree {
 class Bucket {
  public:
   int D[BSIZE];
-  Bucket **C;      // Children (for internal nodes only).
+  Bucket *C[BSIZE + 1];      // Children (for internal nodes only).
   Bucket *chain;  // Chained buckets (for leaf nodes only).
   int P;          // Pending insert (for leaf nodes only).
   int N;
@@ -24,8 +24,8 @@ class Bucket {
   Bucket(bool leaf) {
     N = P = 0;
     chain = NULL;
-    C = NULL;
-    if (!leaf) C = new Bucket*[BSIZE + 1];
+    // C = NULL;
+    // if (!leaf) C = new Bucket*[BSIZE + 1];
   }
 
   bool is_full() { return N == BSIZE; }
@@ -224,6 +224,18 @@ class CTree {
     return ret;
   }
 
+  int* lower_bound(int *s, int *e, int key) {
+    while (s != e) {
+      int *mid = s + (e - s) / 2;
+      if (*mid < key) {
+        s = mid + 1;
+      } else {
+        e = mid;
+      }
+    }
+    return s;
+  }
+
   pair<bool,int> lower_bound(Bucket *b, int value) {
     if (b->is_leaf()) {
       if (b->P) {
@@ -231,7 +243,7 @@ class CTree {
         b->P = 0;
       }
     }
-    int pos = std::lower_bound(b->D, b->D + b->N, value) - b->D;
+    int pos = lower_bound(b->D, b->D + b->N, value) - b->D;
     // fprintf(stderr, "pos = %d, p = %d, is_leaf = %d\n", pos, b->P, b->is_leaf());
     if (b->D[pos] == value) return make_pair(true, value);
     if (b->is_leaf()) {
