@@ -2,9 +2,9 @@
 #include <cassert>
 #include "test_noup.h"
 
-static int *arr, N;
+int *arr, N;
 
-static void init(int *iarr, int iN) {
+void init(int *iarr, int iN) {
   N = iN;
   arr = new int[N];
   for (int i = 0; i < N; i++)
@@ -12,12 +12,12 @@ static void init(int *iarr, int iN) {
   sort(arr, arr + N);
 }
 
-static int query(int value) {
+int query(int value) {
   auto it = lower_bound(arr, arr + N, value);
   return (it == arr + N) ? 0 : *it;
 }
 
-static void results(double insert_time, double query_time, int checksum) {
+void results(double insert_time, double query_time, int checksum) {
   printf("sort_insert_time: %9.6lf, sort_query_time: %9.6lf, sort_csum: %d, ",
     insert_time, query_time, checksum);
 }

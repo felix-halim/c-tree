@@ -55,7 +55,6 @@ vector<pair<string,function<void()>>> tests {
 
   { "comb correctness", [] {
     return;
-    int val;
     Random rng;
     CTree c;
     multiset<int> mset;
@@ -97,7 +96,7 @@ vector<pair<string,function<void()>>> tests {
     });
 
     double query_time = time_it([&] {
-      int csum = 0, val;
+      int csum = 0;
       REP(i, 10000) {
         auto it = c.lower_bound(10);
         csum = csum * 13 + it.second;

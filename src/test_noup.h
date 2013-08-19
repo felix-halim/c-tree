@@ -23,12 +23,13 @@ map<int,int> checksum {
   { 100000, -1927822250 },
   { 1000000, 880684722 },
   { 10000000, -645327377 },
-  { 100000000, -1608406088 },
+  { 100000000, 1814544708 },
+  { 1000000000, 1636094096 },
 };
 
-static void init(int *arr, int N);  // Initializes the initial values of N integers.
-static int query(int value);        // Query for lower bound, returns 0 if not found.
-static void results(double insert_time, double query_time, int checksum);
+void init(int *arr, int N);  // Initializes the initial values of N integers.
+int query(int value);        // Query for lower bound, returns 0 if not found.
+void results(double insert_time, double query_time, int checksum);
 
 int main(int argc, char *argv[]) {
   int N = atoi(argv[1]);
