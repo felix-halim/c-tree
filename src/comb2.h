@@ -621,7 +621,7 @@ static T* rough_middle_partition(T *L, T *R, int min_gap, CMP &cmp, Random &rng)
     // fprintf(stderr, "%d %d, min_gap = %d, gap left = %d, %d\n", lo, hi, min_gap, lo, N - hi);
     assert(n > 0);
     T* p = arr + lo + rng.nextInt(n);
-    T pval = *p;
+    // T pval = *p;
     if (lo >= min_gap && N - hi >= min_gap) {
       // Normal Crack
       ret = partition(arr + lo, arr + hi, p, false, cmp) - arr;

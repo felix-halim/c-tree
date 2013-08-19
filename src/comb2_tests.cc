@@ -257,7 +257,7 @@ vector<pair<string,function<void()>>> tests {
       int csum = 0, val;
       REP(i, 10000) {
         auto it = c.lower_bound(10);
-        csum = csum * 13 + val;
+        if (it.next(val)) csum = csum * 13 + val;
       }
       fprintf(stderr, "csum = %d\n", csum);
     });

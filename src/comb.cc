@@ -11,28 +11,29 @@
 // Comb<int, std::less<int>, true, 3200, 125, 50> c;
 Comb<int> c;
 
-static void init(int *arr, int N) {
+void init(int *arr, int N) {
   for (int i = 0; i < N; i++)
     c.insert(arr[i]);
 }
 
-static void insert(int value) {
+void insert(int value) {
   c.insert(value);
 }
 
-static void erase(int value) {
+void erase(int value) {
+  // fprintf(stderr, "erase %d\n", value);
   bool ok = c.erase(value);
   assert(ok);
 }
 
-static int query(int value) {
+int query(int value) {
   int val = 0;
   int ret = c.lower_bound(value).next(val) ? val : 0;
   // fprintf(stderr, "%d (%d)\n", ret, value);
   return ret;
 }
 
-static void results(double insert_time, double query_time, int checksum) {
+void results(double insert_time, double query_time, int checksum) {
   printf("comb_insert_time: %9.6lf, comb_query_time: %9.6lf, comb_csum: %d, ",
     insert_time, query_time, checksum);
 }

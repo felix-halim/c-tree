@@ -26,11 +26,11 @@ map<int,int> checksum {
   { 100000000, -769439752 },
 };
 
-static void init(int *arr, int N);  // Initializes the initial values of N integers.
-static void insert(int value);      // Inserts the value.
-static int query(int value);        // Query for lower bound, returns 0 if not found.
-static void erase(int value);       // Deletes the value. The value guaranteed to exists.
-static void results(double insert_time, double query_time, int checksum);
+void init(int *arr, int N);  // Initializes the initial values of N integers.
+void insert(int value);      // Inserts the value.
+int query(int value);        // Query for lower bound, returns 0 if not found.
+void erase(int value);       // Deletes the value. The value guaranteed to exists.
+void results(double insert_time, double query_time, int checksum);
 
 int main(int argc, char *argv[]) {
   int N = atoi(argv[1]);

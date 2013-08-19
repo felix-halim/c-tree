@@ -10,25 +10,25 @@
 
 stx::btree_multiset<int> b;
 
-static void init(int *arr, int N) {
+void init(int *arr, int N) {
   b.insert(arr, arr + N);
 }
 
-static void insert(int value) {
+void insert(int value) {
   b.insert(value);
 }
 
-static void erase(int value) {
+void erase(int value) {
   bool ok = b.erase(value);
   assert(ok);
 }
 
-static int query(int value) {
+int query(int value) {
   auto it = b.lower_bound(value);
   return (it == b.end()) ? 0 : *it;
 }
 
-static void results(double insert_time, double query_time, int checksum) {
+void results(double insert_time, double query_time, int checksum) {
   printf("btree_stx_insert_time: %9.6lf, btree_stx_query_time: %9.6lf, btree_stx_csum: %d, ",
     insert_time, query_time, checksum);
 }
