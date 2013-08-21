@@ -105,7 +105,7 @@ LeafBucket::LeafBucket() {
 
 void LeafBucket::leaf_insert(int value) {
   assert(is_leaf());
-  assert(N < BSIZE);
+  assert(N >= 0 && N < BSIZE);
   pending_insert++;
   D[N++] = value;
   // assert(check());
@@ -148,7 +148,6 @@ pair<bool,int> LeafBucket::leaf_lower_bound(int value) {
   while (pos < N && D[pos] < value) pos++;
   // std::lower_bound(D, D + N, value) - D;
 
-  if (D[pos] == value) return make_pair(true, value);
   return (pos == N) ? make_pair(false, 0) : make_pair(true, D[pos]);
 }
 
@@ -223,7 +222,7 @@ class CTree {
   int depth;
 
   CTree() {
-    root = new Bucket();
+    root = new LeafBucket();
     depth = 0;
   }
 
