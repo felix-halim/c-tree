@@ -18,7 +18,6 @@ void init(int *arr, int N) {
   for (int i = 0; i < N; i++) {
     c.insert(arr[i]);
   }
-  c.optimize();
   // c.debug();
 }
 

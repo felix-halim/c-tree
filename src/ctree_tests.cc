@@ -31,15 +31,15 @@ double time_it(Func f) {
 
 vector<pair<string,function<void()>>> tests {
 
-  { "comb small", [] {
+  { "ctree small", [] {
     Random rng;
-    constexpr int N = 100000000;
+    constexpr int N = 10000;
     int *arr = new int[N];
-    REP(i, N) arr[i] = rng.nextInt();
+    REP(i, N) arr[i] = rng.nextInt(10000);
 
     CTree c;
     REP(i, N) c.insert(arr[i]);
-    // c.debug();
+    c.debug();
 
     random_shuffle(arr, arr + N);
     int csum = 0;
@@ -53,7 +53,7 @@ vector<pair<string,function<void()>>> tests {
     fprintf(stderr, "csum = %d\n", csum);
   }},
 
-  { "comb correctness", [] {
+  { "ctree correctness", [] {
     return;
     Random rng;
     CTree c;
@@ -87,7 +87,7 @@ vector<pair<string,function<void()>>> tests {
     printf(" ");
   }},
 
-  { "comb", [] {
+  { "ctree", [] {
     Random rng;
     CTree c;
     double insert_time = time_it([&] {
