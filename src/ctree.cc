@@ -41,5 +41,5 @@ int query(int value) {
 void results(double insert_time, double query_time, int checksum) {
   printf("ctree_insert_time: %9.6lf, ctree_query_time: %9.6lf, ctree_csum: %d, ",
     insert_time, query_time, checksum);
-  fprintf(stderr, "made = %d\n", c.depth);
+  // fprintf(stderr, "made = %d\n", c.depth);
 }
