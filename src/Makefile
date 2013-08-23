@@ -2,6 +2,7 @@ CXX      = g++
 ODIR     = ../bin
 DEPFILE  = .depends
 CXXFLAGS = -O3 -g -std=c++0x# -stdlib=libc++
+# CXXFLAGS = -O0 -g -pg -std=c++0x# -stdlib=libc++
 FLAGS    = -I.
 
 all: \

@@ -11,7 +11,7 @@ using namespace std;
 
 namespace ctree {
 
-#define BSIZE 128 // Must be divisible by two.
+#define BSIZE 60 // Must be divisible by two.
 // #define BSIZE 20 // Must be divisible by two.
 
 class Bucket {
@@ -38,7 +38,7 @@ class LeafBucket : public Bucket {
   LeafBucket* next_bucket() { return next; }
   int data(int i) { assert(i >= 0 && i < N); return D[i]; }
   void leaf_insert(int v);
-  template<typename Func> void leaf_split(Func f);
+  void leaf_split(int &pivot, LeafBucket *&nb);
   void leaf_optimize();
   int promote_last();
   int lower_pos(int value);
@@ -177,9 +177,8 @@ void _add(LeafBucket *&b, LeafBucket *nb) {
   else b->add_chain(nb);
 }
 
-template<typename Func>
-void LeafBucket::leaf_split(Func f) {
-  if (!next) return;
+void LeafBucket::leaf_split(int &pivot, LeafBucket *&nb) {
+  assert(next);
 
   // fprintf(stderr, "split N = %d\n", N);
   // Reservoir sampling (http://en.wikipedia.org/wiki/Reservoir_sampling).
@@ -191,7 +190,6 @@ void LeafBucket::leaf_split(Func f) {
     D[j] = D[--N];
   }
   assert(N >= 0);
-  // fprintf(stderr, "split2 N = %d\n", N);
 
   LeafBucket *Lb, *Rb;
   queue<LeafBucket*> q;
@@ -207,13 +205,14 @@ void LeafBucket::leaf_split(Func f) {
       swap(R[j], Lb->D[k]);
     }
   }
+  // fprintf(stderr, "split2 N = %d\n", q.size());
 
   for (int i = 0; i < 11; i++) {
     // fprintf(stderr, "R[%d] = %d\n", i, R[i]);
   }
 
   std::nth_element(R, R + 5, R + 11);
-  int pivot = R[5];
+  pivot = R[5];
   R[5] = R[10];
   for (int i = 0; i < 10; i++) {
     D[N++] = R[i];
@@ -299,7 +298,8 @@ void LeafBucket::leaf_split(Func f) {
     delete Rb;
   }
 
-  f(pivot, chain[1]);
+  assert(chain[1]);
+  nb = chain[1];
 }
 
 int LeafBucket::promote_last() {
@@ -314,9 +314,9 @@ void LeafBucket::leaf_optimize() {
 }
 
 int LeafBucket::lower_pos(int value) {
+  return std::lower_bound(D, D + N, value) - D;
   int pos = 0;
   while (pos < N && D[pos] < value) pos++;
-  // std::lower_bound(D, D + N, value) - D;
   return pos;
 }
 
@@ -408,38 +408,33 @@ class CTree {
     return true;
   }
 
+  pair<InternalBucket*, int> parents[10];
+
   pair<bool, int> lower_bound(int value) {
     // fprintf(stderr, "lower_bound %d\n", value);
     int i = 0;
     Bucket *b = root;
-    pair<InternalBucket*, int> parents[10];
     // if (!root->is_leaf()) parents[i++] = make_pair((InternalBucket*) root, ((InternalBucket*) root)->child_pos(value));
       // fprintf(stderr, "leaf_split iii = %d\n", i);
-    while (!b->is_leaf() || ((LeafBucket*) b)->next_bucket()) {
+    while (true) {
       // fprintf(stderr, "leaf_split ii = %d\n", i);
-      for (; !b->is_leaf(); i++) {
+      if (!b->is_leaf()) {
         assert(i < 10);
         parents[i] = make_pair((InternalBucket*) b, ((InternalBucket*) b)->lower_pos(value));
         // fprintf(stderr, "child pos %d <= %d\n", parents[i].second, parents[i].first->size());
         if (parents[i].second < parents[i].first->size() && parents[i].first->data(parents[i].second) == value)
           return make_pair(true, value);
         b = parents[i].first->child(parents[i].second);
-      }
-
-      // fprintf(stderr, "leaf_split i = %d\n", i);
-      ((InternalBucket*) b)->leaf_split([&] (int promotedValue, LeafBucket *nb) { // Split if the bucket has chain.
+        i++;
+      } else if (((LeafBucket*) b)->next_bucket()) {
+        int promotedValue = -1;
+        LeafBucket *nb = NULL;
+        ((InternalBucket*) b)->leaf_split(promotedValue, nb);
+        assert(nb);
         while (true) {
-          if (i == 0) {
-            // fprintf(stderr, "NEW ROOT\n");
-           b = root = new InternalBucket(promotedValue, b, nb); break; }
-
-          i--;
-
-          b = parents[i].first;
-          if (!b->is_full()) {
-            // fprintf(stderr, "PARENT INSERT\n");
-            ((InternalBucket*) b)->internal_insert(promotedValue, nb); break; }
-
+          if (i == 0) {b = root = new InternalBucket(promotedValue, b, nb); break; }
+          b = parents[--i].first;
+          if (!b->is_full()) { ((InternalBucket*) b)->internal_insert(promotedValue, nb); break; }
           InternalBucket *inb = ((InternalBucket*) b)->internal_split();
           int promotedValueInternal = ((InternalBucket*) b)->internal_promote_last();
           if (promotedValue >= promotedValueInternal) {
@@ -450,8 +445,9 @@ class CTree {
           promotedValue = promotedValueInternal;
           nb = inb;
         }
-      });
-
+      } else {
+        break;
+      }
       // debug();
     }
 
