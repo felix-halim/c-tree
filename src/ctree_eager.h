@@ -3,9 +3,11 @@
 
 #include <cstdio>
 #include <cassert>
+#include <chrono>
 #include <algorithm>
 
 using namespace std;
+using namespace chrono;
 
 int nLeaves, nCap, nInternals;
 
@@ -16,7 +18,6 @@ double time_it(Func f) {
   auto t1 = high_resolution_clock::now();
   return duration_cast<microseconds>(t1 - t0).count() * 1e-6;
 }
-
 
 namespace ctree {
 
