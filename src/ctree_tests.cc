@@ -21,14 +21,6 @@ using namespace chrono;
     abort();            \
   }
 
-template<typename Func>
-double time_it(Func f) {
-  auto t0 = high_resolution_clock::now();
-  f();
-  auto t1 = high_resolution_clock::now();
-  return duration_cast<microseconds>(t1 - t0).count() * 1e-6;
-}
-
 vector<pair<string,function<void()>>> tests {
 
   { "ctree small", [] {
