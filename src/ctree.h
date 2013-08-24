@@ -32,6 +32,7 @@ class Bucket {
   int N, cap;
 
  public:
+  int get_cap() { return cap; }
   int size() { return N; }
   bool is_full() { return size() == cap; }
   bool is_leaf() { return pending_insert >= 0; }
@@ -48,6 +49,7 @@ class LeafBucket : public Bucket {
  public:
   ~LeafBucket();
   LeafBucket(int cap);
+  void init(int cap);
   LeafBucket* next_bucket() { return next; }
   int data(int i) { assert(i >= 0 && i < N); return D[i]; }
   void leaf_insert(int v);
@@ -80,7 +82,30 @@ class InternalBucket : public LeafBucket {
 
 
 
+vector<LeafBucket*> free_leaves[30];
 
+LeafBucket* new_leaf(int cap) {
+  for (int i = 2; ; i++) {
+    if ((1 << i) == cap) {
+      if (free_leaves[i].empty()) {
+        free_leaves[i].push_back(new LeafBucket(cap));
+      }
+      LeafBucket* leaf = free_leaves[i].back();
+      leaf->init(cap);
+      free_leaves[i].pop_back();
+      return leaf;
+    }
+  }
+}
+
+void delete_leaf(LeafBucket *b) {
+  for (int i = 2; ; i++) {
+    if ((1 << i) == b->get_cap()) {
+      free_leaves[i].push_back(b);
+      break;
+    }
+  }
+}
 
 void Bucket::optimize() {
   if (is_leaf()) {
@@ -134,6 +159,11 @@ bool Bucket::check() {
 LeafBucket::LeafBucket(int cap) {
   this->cap = cap;
   D = new int[cap];
+  init(cap);
+}
+
+void LeafBucket::init(int cap) {
+  assert(this->cap == cap);
   N = 0;
   pending_insert = 0;
   next = tail = NULL;
@@ -154,8 +184,12 @@ void LeafBucket::leaf_insert(int value) {
   if (!is_full()) {
     D[N++] = value;
   } else {
-    if (!tail || tail->is_full())
-      add_chain(new LeafBucket(std::min((tail ? tail->cap : cap) * 2, MAX_BSIZE)));
+    if (!tail) {
+      assert(cap == BSIZE);
+      add_chain(new_leaf(BSIZE));
+    } else if (tail->is_full()) {
+      add_chain(new_leaf(std::min(tail->cap * 2, MAX_BSIZE)));
+    }
     tail->D[tail->N++] = value;
     tail->pending_insert++;
   }
@@ -235,7 +269,7 @@ void LeafBucket::leaf_split(vector<pair<int, LeafBucket*>> &ret) {
       for (int i = 0; i < b->N; i++)
         D[N++] = b->D[i];
     } else {
-      assert(b->cap > cap);
+      // assert(b->cap == cap);
 
       // Ensure both have at least 5 elements.
       assert(N >= 5 || b->N >= 5);
@@ -270,7 +304,7 @@ void LeafBucket::leaf_split(vector<pair<int, LeafBucket*>> &ret) {
       D[N++] = R[3];
       b->D[b->N++] = R[4];
 
-      LeafBucket *nb = transfer_to(new LeafBucket(BSIZE), pivot);
+      LeafBucket *nb = transfer_to(new_leaf(BSIZE), pivot);
       b->transfer_to(nb, pivot);
       for (int i = 0; i < b->N; i++) {
         leaf_insert(b->D[i]);
@@ -278,7 +312,7 @@ void LeafBucket::leaf_split(vector<pair<int, LeafBucket*>> &ret) {
       ret.push_back(make_pair(pivot, nb));
     }
 
-    delete b;
+    delete_leaf(b);
 
   } else {
     // fprintf(stderr, "split N = %d\n", N);
@@ -322,7 +356,7 @@ void LeafBucket::leaf_split(vector<pair<int, LeafBucket*>> &ret) {
 
     // debug(10);
 
-    LeafBucket *chain[2] { this, new LeafBucket(BSIZE) };
+    LeafBucket *chain[2] { this, new_leaf(BSIZE) };
 
     // Split the first bucket (this bucket).
     for (int i = 0; i < N; i++) {
@@ -370,8 +404,8 @@ void LeafBucket::leaf_split(vector<pair<int, LeafBucket*>> &ret) {
     assert(!Nb);
 
     // fprintf(stderr, "splited\n");
-    if (Lb) Lb->distribute_values(pivot, chain), delete Lb;
-    if (Rb) Rb->distribute_values(pivot, chain), delete Rb;
+    if (Lb) Lb->distribute_values(pivot, chain), delete_leaf(Lb);
+    if (Rb) Rb->distribute_values(pivot, chain), delete_leaf(Rb);
     ret.push_back(make_pair(pivot, chain[1]));
   }
 }
@@ -468,7 +502,7 @@ class CTree {
  public:
 
   CTree() {
-    root = new LeafBucket(BSIZE);
+    root = new_leaf(BSIZE);
   }
 
   void debug() {
@@ -501,19 +535,19 @@ class CTree {
     while (true) {
       // fprintf(stderr, "leaf_split ii = %d\n", i);
       if (!b->is_leaf()) {
-        t1 += time_it([&] {
+        // t1 += time_it([&] {
           assert(i < 10);
           parents[i] = make_pair((InternalBucket*) b, ((InternalBucket*) b)->lower_pos(value));
           // fprintf(stderr, "child pos %d <= %d\n", parents[i].second, parents[i].first->size());
           b = parents[i].first->child(parents[i].second);
           i++;
-        });
+        // });
 
         if (parents[i-1].second < parents[i-1].first->size() && parents[i-1].first->data(parents[i-1].second) == value)
           return make_pair(true, value);
 
       } else if (((LeafBucket*) b)->next_bucket()) {
-        t2 += time_it([&] {
+        // t2 += time_it([&] {
           ((InternalBucket*) b)->leaf_split(nbs);
           while (!nbs.empty()) {
             if (i == 0) {
@@ -541,7 +575,7 @@ class CTree {
             nbs.clear();
             nbs.push_back(make_pair(promotedValueInternal, inb));
           }
-        });
+        // });
       } else {
         break;
       }
@@ -549,7 +583,7 @@ class CTree {
     }
 
     pair<bool, int> ret;
-    t3 += time_it([&] {
+    // t3 += time_it([&] {
       ret = ((LeafBucket*) b)->leaf_lower_bound(value);
       while (!ret.first && i > 0) {
         auto &p = parents[--i];
@@ -559,7 +593,7 @@ class CTree {
           break;
         }
       }
-    });
+    // });
     // fprintf(stderr, "awww %d %d\n", ret.first, ret.second);
       // debug();
     return ret;
