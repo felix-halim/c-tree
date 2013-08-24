@@ -11,6 +11,8 @@ using namespace chrono;
 
 int nLeaves, nCap, nInternals;
 
+namespace ctree {
+
 template<typename Func>
 double time_it(Func f) {
   auto t0 = high_resolution_clock::now();
@@ -18,8 +20,6 @@ double time_it(Func f) {
   auto t1 = high_resolution_clock::now();
   return duration_cast<microseconds>(t1 - t0).count() * 1e-6;
 }
-
-namespace ctree {
 
 #define BSIZE 60 // Must be divisible by two.
 // #define BSIZE 4 // Must be divisible by two.
