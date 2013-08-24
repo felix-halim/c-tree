@@ -19,7 +19,7 @@ noup)
 batch)
 
 	S=3
-	for (( Q = 1; Q <= 1000000000; Q++ ))
+	for (( Q = 1; Q <= 1000000000; Q*=10 ))
 	do
 		./run.sh noup comb $Q | tee -a $out; sleep $S
 		./run.sh noup ctree $Q | tee -a $out; sleep $S
