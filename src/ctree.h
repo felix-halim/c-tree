@@ -501,6 +501,8 @@ class CTree {
 
  public:
 
+  const char *version = "no delete bucket";
+
   CTree() {
     root = new_leaf(BSIZE);
   }

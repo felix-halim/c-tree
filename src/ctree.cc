@@ -38,12 +38,6 @@ int query(int value) {
 }
 
 void results(double insert_time, double query_time, int checksum) {
-  printf("ctree_insert_time: %9.6lf, ctree_query_time: %9.6lf, ctree_csum: %d, ",
-    insert_time, query_time, checksum);
-  fprintf(stderr, "t1 = %.6lf\n", c.t1);
-  fprintf(stderr, "t2 = %.6lf\n", c.t2);
-  fprintf(stderr, "t3 = %.6lf\n", c.t3);
-  fprintf(stderr, "nLeaves = %d, nDes = %d\n", nLeaves, nDes);
-  fprintf(stderr, "nCap = %d\n", nCap);
-  fprintf(stderr, "nInternals = %d\n", nInternals);
+  printf("%.6lf,%.6lf,%d,", insert_time, query_time, checksum);
+  printf("\"%s\",%d,%d,%d,%.6lf,%.6lf,%.6lf\n", c.version, nLeaves, nCap, nInternals, c.t1, c.t2, c.t3);
 }

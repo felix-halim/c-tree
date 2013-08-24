@@ -33,9 +33,5 @@ int query(int value) {
 }
 
 void results(double insert_time, double query_time, int checksum) {
-  printf("comb2_insert_time: %9.6lf, comb2_query_time: %9.6lf, comb2_csum: %d, ",
-    insert_time, query_time, checksum);
-  // fprintf(stderr, "crack_time = %8.4lf, ", crack_time);
-  // fprintf(stderr, "sort_time = %8.4lf, ", sort_time);
-  // fprintf(stderr, "lower_time = %8.4lf\n", lower_time);
+  printf("%.6lf,%.6lf,%d\n", insert_time, query_time, checksum);
 }

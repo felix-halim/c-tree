@@ -29,6 +29,5 @@ int query(int value) {
 }
 
 void results(double insert_time, double query_time, int checksum) {
-  printf("btree_google_insert_time: %9.6lf, btree_google_query_time: %9.6lf, btree_google_csum: %d, ",
-    insert_time, query_time, checksum);
+  printf("%.6lf,%.6lf,%d\n", insert_time, query_time, checksum);
 }

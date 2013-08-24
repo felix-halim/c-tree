@@ -29,6 +29,5 @@ int query(int value) {
 }
 
 void results(double insert_time, double query_time, int checksum) {
-  printf("btree_stx_insert_time: %9.6lf, btree_stx_query_time: %9.6lf, btree_stx_csum: %d, ",
-    insert_time, query_time, checksum);
+  printf("%.6lf,%.6lf,%d\n", insert_time, query_time, checksum);
 }

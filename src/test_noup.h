@@ -1,5 +1,6 @@
 #include <chrono>
 #include <map>
+#include <cstring>
 #include <algorithm>
 #include "random.h"
 
@@ -32,8 +33,15 @@ int query(int value);        // Query for lower bound, returns 0 if not found.
 void results(double insert_time, double query_time, int checksum);
 
 int main(int argc, char *argv[]) {
-  int N = atoi(argv[1]);
-  int Q = atoi(argv[2]);
+  char *hostname = argv[1];
+  int N = atoi(argv[2]);
+  int Q = atoi(argv[3]);
+  char *prog = argv[0];
+  while (true) {
+    char *p = strstr(prog, "/");
+    if (p) prog = p + 1; else break;
+  }
+  printf("\"%s\",\"%s\",%d,%d,", hostname, prog, N, Q);
 
   Random r(140384);
   int *iarr = new int[N];
@@ -49,6 +57,7 @@ int main(int argc, char *argv[]) {
   });
 
   results(insert_time, query_time, csum);
+
   assert(N != 100000000 || !checksum.count(Q) || checksum[Q] == csum);
   return 0;
 }
