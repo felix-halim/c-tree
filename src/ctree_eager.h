@@ -7,6 +7,17 @@
 
 using namespace std;
 
+int nLeaves, nCap, nInternals;
+
+template<typename Func>
+double time_it(Func f) {
+  auto t0 = high_resolution_clock::now();
+  f();
+  auto t1 = high_resolution_clock::now();
+  return duration_cast<microseconds>(t1 - t0).count() * 1e-6;
+}
+
+
 namespace ctree {
 
 #define BSIZE 60 // Must be divisible by two.
@@ -101,6 +112,8 @@ bool Bucket::check() {
 LeafBucket::LeafBucket() {
   N = 0;
   pending_insert = 0;
+  nLeaves++;
+  nCap += BSIZE;
 }
 
 void LeafBucket::leaf_insert(int value) {
@@ -141,7 +154,6 @@ pair<bool,int> LeafBucket::leaf_lower_bound(int value) {
   if (pending_insert > 0) {
     sort(D, D + N);
     pending_insert = 0;
-    assert(0);
   }
 
   int pos = 0;
@@ -153,9 +165,11 @@ pair<bool,int> LeafBucket::leaf_lower_bound(int value) {
 
 InternalBucket::InternalBucket() {
   pending_insert = -1;
+  nInternals++;
 }
 
 InternalBucket::InternalBucket(int promotedValue, Bucket *left, Bucket *right) {
+  nInternals++;
   pending_insert = -1;
   D[0] = promotedValue;
   C[0] = left;
@@ -220,6 +234,9 @@ class CTree {
 
  public:
   int depth;
+  const char* version = "eager";
+
+  double t1, t2, t3;
 
   CTree() {
     root = new LeafBucket();
@@ -306,9 +323,13 @@ class CTree {
 
   pair<bool,int> lower_bound(int value) {
     // fprintf(stderr, "lower_bound %d\n", value);
-    return root->is_leaf()
+    pair<bool, int> ret;
+    // t3 += time_it([&] {
+     ret = root->is_leaf()
       ? ((LeafBucket*) root)->leaf_lower_bound(value)
       : ((InternalBucket*) root)->internal_lower_bound(value);
+    // });
+    return ret;
   }
 };
 

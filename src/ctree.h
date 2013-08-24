@@ -14,7 +14,7 @@ using namespace chrono;
 namespace ctree {
 
 #define BSIZE 64        // Must be power of two.
-#define MAX_BSIZE 4096  // Must be power of two.
+#define MAX_BSIZE 64  // Must be power of two.
 
 template<typename Func>
 double time_it(Func f) {
@@ -317,9 +317,14 @@ void LeafBucket::leaf_split(vector<pair<int, LeafBucket*>> &ret) {
   } else {
     // fprintf(stderr, "split N = %d\n", N);
     // Reservoir sampling (http://en.wikipedia.org/wiki/Reservoir_sampling).
+    assert(N + tail->N >= 11);
+    while (N < 11) {
+      D[N++] = tail->D[--tail->N];
+    }
     int R[11];
     Random rng(140384); // TODO: use randomized seed.
     for (int i = 0; i < 11; i++) {
+      assert(N > 0);
       int j = rng.nextInt(N);
       R[i] = D[j];
       D[j] = D[--N];
@@ -331,8 +336,10 @@ void LeafBucket::leaf_split(vector<pair<int, LeafBucket*>> &ret) {
     // Replace elements with gradually decreasing probability.
     for (int i = 1; Nb->next; i++) {
       Nb = Nb->next;
+      assert(i > 0);
       int j = rng.nextInt(i);
       if (j < 11) {
+        assert(Nb->N > 0);
         int k = rng.nextInt(Nb->N);
         // fprintf(stderr, "swap %d  <>  %d,   %d %d\n", R[j], Nb->D[k], j, k);
         swap(R[j], Nb->D[k]);
@@ -501,7 +508,7 @@ class CTree {
 
  public:
 
-  const char *version = "no delete bucket";
+  const char *version = "BSIZE bucket";
 
   CTree() {
     root = new_leaf(BSIZE);
@@ -539,7 +546,8 @@ class CTree {
       if (!b->is_leaf()) {
         // t1 += time_it([&] {
           assert(i < 10);
-          parents[i] = make_pair((InternalBucket*) b, ((InternalBucket*) b)->lower_pos(value));
+          parents[i].first = (InternalBucket*) b;
+          parents[i].second = ((InternalBucket*) b)->lower_pos(value);
           // fprintf(stderr, "child pos %d <= %d\n", parents[i].second, parents[i].first->size());
           b = parents[i].first->child(parents[i].second);
           i++;

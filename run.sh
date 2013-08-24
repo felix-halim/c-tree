@@ -16,6 +16,7 @@ noup)
 	bin/$2_noup `hostname` $N $Q
 	;;
 
+
 batch)
 
 	S=3
@@ -29,6 +30,14 @@ batch)
 		./run.sh noup btree_stx $Q | tee -a $out; sleep $S
 	done
 	;;
+
+
+fhnet)
+
+	scp index.html felixhalim@felix-halim.net:~/public_html/research/ctree
+	scp results.csv felixhalim@felix-halim.net:~/public_html/research/ctree/results.csv
+	;;
+
 
 bench)
 
