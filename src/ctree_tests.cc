@@ -33,13 +33,35 @@ vector<pair<string,function<void()>>> tests {
 
   { "ctree small", [] {
     Random rng;
-    constexpr int N = 10000;
+    constexpr int N = 70;
     int *arr = new int[N];
-    REP(i, N) arr[i] = rng.nextInt(10000);
+    REP(i, N) arr[i] = rng.nextInt(100);
 
     CTree c;
     REP(i, N) c.insert(arr[i]);
-    c.debug();
+    // c.debug();
+
+    random_shuffle(arr, arr + N);
+    int csum = 0;
+    REP(i, N) {
+      auto it = c.lower_bound(arr[i]);
+      // fprintf(stderr, "find %d, res = %d, %d\n", arr[i], it.first, it.second);
+      ASSERT_TRUE(it.first);
+      ASSERT_TRUE(it.second == arr[i]);
+      csum = csum * 13 + it.second;
+    }
+    fprintf(stderr, "csum = %d\n", csum);
+  }},
+
+  { "ctree medium", [] {
+    Random rng;
+    constexpr int N = 100;
+    int *arr = new int[N];
+    REP(i, N) arr[i] = rng.nextInt(300);
+
+    CTree c;
+    REP(i, N) c.insert(arr[i]);
+    // c.debug();
 
     random_shuffle(arr, arr + N);
     int csum = 0;

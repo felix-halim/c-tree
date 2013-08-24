@@ -4,6 +4,8 @@ Q=1
 
 case $1 in
 
+test) make -C src "../bin/$2_tests" && bin/$2_tests;;
+
 noup)
 
 	if [[ -n $3 ]]; then
