@@ -1,4 +1,4 @@
-hostname,algorithm,N,Q,insert_time,query_time,checksum,infos
+timestamp,hostname,algorithm,N,Q,insert_time,query_time,checksum,infos
 "risci8.ddns.comp.nus.edu.sg","comb_noup",100000000,1,0.810479,0.351810,-295581051
 "risci8.ddns.comp.nus.edu.sg","ctree_noup",100000000,1,0.511983,0.308139,-295581051,"no delete bucket",48980,200212224,1,0.000000,0.000000,0.000000
 "risci8.ddns.comp.nus.edu.sg","comb2_noup",100000000,1,0.821711,0.537297,-295581051

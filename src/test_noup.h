@@ -41,7 +41,7 @@ int main(int argc, char *argv[]) {
     char *p = strstr(prog, "/");
     if (p) prog = p + 1; else break;
   }
-  printf("\"%s\",\"%s\",%d,%d,", hostname, prog, N, Q);
+  printf("%lu,\"%s\",\"%s\",%d,%d,", system_clock::to_time_t(system_clock::now()), hostname, prog, N, Q);
 
   Random r(140384);
   int *iarr = new int[N];
