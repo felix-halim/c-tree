@@ -13,8 +13,8 @@ using namespace chrono;
 
 namespace ctree {
 
-#define BSIZE 64        // Must be power of two.
-#define MAX_BSIZE 64  // Must be power of two.
+#define BSIZE 4096        // Must be power of two.
+#define MAX_BSIZE 4096  // Must be power of two.
 
 template<typename Func>
 double time_it(Func f) {
@@ -508,7 +508,7 @@ class CTree {
 
  public:
 
-  const char *version = "BSIZE bucket";
+  const char *version = "4096 bucket";
 
   CTree() {
     root = new_leaf(BSIZE);

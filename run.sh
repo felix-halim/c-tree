@@ -24,7 +24,7 @@ batch)
 	do
 	#	./run.sh noup comb $Q | tee -a $out; sleep $S
 		./run.sh noup ctree $Q | tee -a $out; sleep $S
-		./run.sh noup ctree_eager $Q | tee -a $out; sleep $S
+	#	./run.sh noup ctree_eager $Q | tee -a $out; sleep $S
 	#	./run.sh noup comb2 $Q | tee -a $out; sleep $S
 	#	./run.sh noup btree_google $Q | tee -a $out; sleep $S
 	#	./run.sh noup sort $Q | tee -a $out; sleep $S
