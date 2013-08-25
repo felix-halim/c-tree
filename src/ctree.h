@@ -14,7 +14,7 @@ using namespace chrono;
 
 namespace ctree {
 
-#define INTERNAL_BSIZE 128   // Must be power of two.
+#define INTERNAL_BSIZE 60   // Must be power of two.
 #define MAX_LEAF_BSIZE 2048     // Must be power of two.
 #define MAX_INDEX 64
 #define CRACK_AT 64
@@ -307,7 +307,7 @@ void LeafBucket::leaf_split(vector<pair<int, LeafBucket*>> &ret) {
 
     delete_leaf(b);
 
-  } else if (!next->next->next) {
+  } else if (!next->next->next && false) {
     LeafBucket *b1 = detach_and_get_next();
     LeafBucket *b2 = b1->detach_and_get_next(); b2->detach_and_get_next();
 
