@@ -52,9 +52,7 @@ int main(int argc, char *argv[]) {
   double insert_time = time_it([&] { init(iarr, N); });
   double query_time = time_it([&] {
     for (int i = 0; i < Q; i++) {
-      int res = query(r.nextInt());
-      csum = csum * 13 + res;
-      fprintf(stderr, "%d %d\n", res, csum);
+      csum = csum * 13 + query(r.nextInt());
       if (i % 1000 == 0) {
         for (int j = 0; j < 1000; j++) {
           int k = ((r.nextInt() % N) + N) % N;
