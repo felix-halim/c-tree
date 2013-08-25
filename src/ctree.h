@@ -90,7 +90,6 @@ class InternalBucket : public LeafBucket {
 vector<LeafBucket*> free_leaves[30];
 
 LeafBucket* new_leaf(int cap) {
-  return new LeafBucket(cap);
   for (int i = 2; ; i++) {
     if ((1 << i) == cap) {
       if (free_leaves[i].empty()) {
@@ -105,8 +104,6 @@ LeafBucket* new_leaf(int cap) {
 }
 
 void delete_leaf(LeafBucket *b) {
-  delete b;
-  return;
   for (int i = 2; ; i++) {
     if ((1 << i) == b->get_cap()) {
       free_leaves[i].push_back(b);
@@ -272,52 +269,40 @@ void LeafBucket::leaf_split(vector<pair<int, LeafBucket*>> &ret) {
 
   if (!next->next) {
     LeafBucket *b = detach_and_get_next(); b->detach_and_get_next();
+    int T[INTERNAL_BSIZE];
+    for (int i = 0; i < N; i++)
+      T[i] = D[i];
 
-    if (N + b->N <= INTERNAL_BSIZE) {
-      for (int i = 0; i < b->N; i++)
-        D[N++] = b->D[i];
-    } else {
-      // assert(b->cap == cap);
-
-      // Ensure both have at least 5 elements.
-      assert(N >= 5 || b->N >= 5);
-      while (N < 5) D[N++] = b->D[--b->N];
-      assert(N >= 5 || b->N >= 5);
-      while (b->N < 5) b->D[b->N++] = D[--N];
-      assert(N >= 5 && b->N >= 5);
-
-      int R[5];
-      Random rng(140384); // TODO: use randomized seed.
-      for (int i = 0; i < 3; i++) {
-        assert(N > 0);
-        int j = rng.nextInt(N);
-        R[i] = D[j];
-        D[j] = D[--N];
+    int nT = N, nB = b->N, i = 0, j = 0;
+    N = b->N = 0;
+    sort(T, T + nT);
+    sort(b->D, b->D + nB);
+    while (N < INTERNAL_BSIZE && i < nT && j < nB) {
+      if (T[i] <= b->D[j]) {
+        D[N++] = T[i++];
+      } else {
+        D[N++] = b->D[j++];
       }
-      for (int i = 0; i < 2; i++) {
-        assert(b->N > 0);
-        int j = rng.nextInt(b->N);
-        R[i + 3] = b->D[j];
-        b->D[j] = b->D[--b->N];
-      }
+    }
+    while (N < INTERNAL_BSIZE && i < nT) D[N++] = T[i++];
+    while (N < INTERNAL_BSIZE && j < nB) D[N++] = b->D[j++];
+    pending_insert = 0;
 
-      for (int i = 0; i < 5; i++) {
-        // fprintf(stderr, "R[%d] = %d\n", i, R[i]);
+    LeafBucket *pnb = this;
+    while (i < nT || j < nB) {
+      LeafBucket *nb = new_leaf(INTERNAL_BSIZE);
+      while (nb->N < INTERNAL_BSIZE && i < nT && j < nB) {
+        if (T[i] <= b->D[j]) {
+          nb->D[nb->N++] = T[i++];
+        } else {
+          nb->D[nb->N++] = b->D[j++];
+        }
       }
-
-      std::nth_element(R, R + 2, R + 5);
-      int pivot = R[2];
-      D[N++] = R[0];
-      D[N++] = R[1];
-      D[N++] = R[3];
-      b->D[b->N++] = R[4];
-
-      LeafBucket *nb = transfer_to(new_leaf(INTERNAL_BSIZE), pivot);
-      b->transfer_to(nb, pivot);
-      for (int i = 0; i < b->N; i++) {
-        leaf_insert(b->D[i]);
-      }
-      ret.push_back(make_pair(pivot, nb));
+      while (nb->N < INTERNAL_BSIZE && j < nB) nb->D[nb->N++] = b->D[j++];
+      while (nb->N < INTERNAL_BSIZE && i < nT) nb->D[nb->N++] = T[i++];
+      nb->pending_insert = 0;
+      ret.push_back(make_pair(pnb->D[--pnb->N], nb));
+      pnb = nb;
     }
 
     delete_leaf(b);
@@ -519,6 +504,7 @@ class CTree {
     root = new_leaf(INTERNAL_BSIZE);
   }
 
+  void optimize() { root->optimize(); }
   void debug() {
     root->debug(0);
     // fprintf(stderr, "\n");

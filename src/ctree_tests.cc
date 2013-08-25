@@ -53,7 +53,8 @@ vector<pair<string,function<void()>>> tests {
 
     CTree c;
     REP(i, N) c.insert(arr[i]);
-    // c.debug();
+    c.optimize();
+    c.debug();
 
     random_shuffle(arr, arr + N);
     int csum = 0;
