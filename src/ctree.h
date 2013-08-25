@@ -369,50 +369,45 @@ static T* partition(T *lo, T *hi, T *pivot, bool upperCrack) {
   return ret;
 }
 
-// Partitions roughly in the middle satisfying the DECRACK_AT.
-template<typename T, typename CMP>
-static T* rough_middle_partition2(T *L, T *R, int min_gap) {
-  T *lo = L;
-  T *hi = R - 1;
-  T *H = L + (R - L) / 2;
-  assert(R - L >= min_gap * 2);
-  while (lo < hi) {
-    T* pivot = lo + rng.nextInt(hi - lo + 1);
-    // fprintf(stderr, "lo = %d(%d), hi = %d(%d), pivot = %d(%d)\n", lo - L, *lo, hi - L, *hi, pivot - L, *pivot);
-    pivot = partition(lo, hi, pivot, false);
-
-    if (pivot - L >= min_gap) return pivot;
-    if (R - pivot >= min_gap) return pivot;
-
-    // fprintf(stderr, "pivot = %d(%d)\n", pivot - L, *pivot);
-    if (pivot == lo) {
-      pivot = partition(lo, hi, pivot, true);
-      if (pivot > H) break;
-      if (pivot <= H) lo = pivot;
-      else hi = pivot - 1;
-      continue;
-    } else {
-      assert(pivot > lo);
-    }
-    if (pivot < H) lo = pivot + 1;
-    else if (pivot > H) hi = pivot - 1;
-    else {
-      assert(false);
-      assert(hi == pivot);
-      std::iter_swap(H, pivot);
-      break;
-    }
+template<typename T>
+T* partition(T *F, T *L, T const &v){
+  while (true){
+    while (true)
+      if (F == L) return F;
+      else if ((*F < v)) ++F;
+      else break;
+    --L;
+    while (true)
+      if (F == L) return F;
+      else if (!bool((*L < v))) --L;
+      else break;
+    std::iter_swap(F, L);
+    ++F;
   }
-  // int ret = H - L;
-  // while (L < H) assert(*L++ <= *H);
-  // R--;
-  // while (H < R) assert(*H <= *R--);
-  return H;
+  assert(false);
 }
+
+// partitions roughly in the middle satisfying the DECRACK_AT
+template<typename T>
+T* rough_middle_partition(T *L, T *R) {
+  assert(R-L >= CRACK_AT);
+  int ntry = 10;
+  for (T *i=L, *j=R, *p; ntry--; ){
+    std::iter_swap(j-1, i + rng.nextInt(j-i));
+    std::iter_swap(j-1, p = partition(i, j-1, *(j-1)));
+    if (p-L <= DECRACK_AT) i = p;
+    else if (R-p <= DECRACK_AT) j = p;
+    else return p;
+  }
+  T *M = L+((R-L)>>1);
+  std::nth_element(L, M, R);
+  return M;
+}
+
 
 // Partitions roughly in the middle satisfying the DECRACK_AT.
 template<typename T>
-static T* rough_middle_partition(T *L, T *R, int min_gap) {
+static T* rough_middle_partition2(T *L, T *R, int min_gap) {
   T *arr = L;
   int idx[10000];
   int N = R - L, H = N / 2;
@@ -490,7 +485,7 @@ int LeafBucket::get_piece_by_value(int &v, int &L, int &R) {
   L = (i == 0) ? 0 : C[i - 1];          // Left crack boundary.
   R = (i == nC) ? size() : C[i];        // Right crack boundary.
   while (R - L > CRACK_AT) {            // Narrow down the piece using DDR.
-    int M = rough_middle_partition(D + L + (i ? 1 : 0), D + R, DECRACK_AT) - D;
+    int M = rough_middle_partition(D + L + (i ? 1 : 0), D + R) - D;
     // assert(abs((L + R) / 2 - M) <= 1);
     add_cracker_index(i, M);
     // fprintf(stderr,"CRACKING %d %d, [%d %d]\n", M, D[M], L, R);
@@ -918,7 +913,7 @@ class CTree {
 
  public:
 
-  const char *version = "Crack 2048 bucket";
+  const char *version = "Crack 2048 bucket, middle";
 
   CTree() {
     root = new_leaf(LEAF_BSIZE);
