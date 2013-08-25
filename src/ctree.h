@@ -15,8 +15,7 @@ using namespace chrono;
 namespace ctree {
 
 #define INTERNAL_BSIZE 64   // Must be power of two.
-// #define LEAF_BSIZE 2048     // Must be power of two.
-#define MAX_LEAF_BSIZE 2048
+#define LEAF_BSIZE 2048     // Must be power of two.
 #define MAX_INDEX 64
 #define CRACK_AT 64
 #define DECRACK_AT 32
@@ -235,10 +234,10 @@ void LeafBucket::leaf_insert(int value) {
     D[N++] = value;
   } else {
     if (!tail) {
-      assert(cap == INTERNAL_BSIZE);
-      add_chain(new_leaf(INTERNAL_BSIZE));
+      assert(cap == LEAF_BSIZE);
+      add_chain(new_leaf(LEAF_BSIZE));
     } else if (tail->is_full()) {
-      add_chain(new_leaf(std::min(tail->cap * 2, MAX_LEAF_BSIZE)));
+      add_chain(new_leaf(LEAF_BSIZE));
     }
     tail->D[tail->N++] = value;
   }
@@ -669,12 +668,12 @@ LeafBucket* LeafBucket::transfer_to(LeafBucket *b, int pivot) {
 void LeafBucket::leaf_split(vector<pair<int, LeafBucket*>> &ret) {
   ret.clear();
   assert(next);
-  assert(cap == INTERNAL_BSIZE); // The first bucket must be the smallest capacity.
+  assert(cap == LEAF_BSIZE); // The first bucket must be the smallest capacity.
 
   if (!next->next) {
     LeafBucket *b = detach_and_get_next(); b->detach_and_get_next();
 
-    if (N + b->N <= INTERNAL_BSIZE) {
+    if (N + b->N <= LEAF_BSIZE) {
       for (int i = 0; i < b->N; i++)
         D[N++] = b->D[i];
     } else {
@@ -713,7 +712,7 @@ void LeafBucket::leaf_split(vector<pair<int, LeafBucket*>> &ret) {
       D[N++] = R[3];
       b->D[b->N++] = R[4];
 
-      LeafBucket *nb = transfer_to(new_leaf(INTERNAL_BSIZE), pivot);
+      LeafBucket *nb = transfer_to(new_leaf(LEAF_BSIZE), pivot);
       b->transfer_to(nb, pivot);
       for (int i = 0; i < b->N; i++) {
         leaf_insert(b->D[i]);
@@ -772,7 +771,7 @@ void LeafBucket::leaf_split(vector<pair<int, LeafBucket*>> &ret) {
 
     // debug(10);
 
-    LeafBucket *chain[2] { this, new_leaf(INTERNAL_BSIZE) };
+    LeafBucket *chain[2] { this, new_leaf(LEAF_BSIZE) };
 
     // Split the first bucket (this bucket).
     for (int i = 0; i < N; i++) {
@@ -787,8 +786,8 @@ void LeafBucket::leaf_split(vector<pair<int, LeafBucket*>> &ret) {
 
     LeafBucket *Lb = NULL, *Rb = NULL;
     // TODO: optimize locality.
-    int hi[MAX_LEAF_BSIZE], nhi = 0;
-    int lo[MAX_LEAF_BSIZE], nlo = 0;
+    int hi[LEAF_BSIZE], nhi = 0;
+    int lo[LEAF_BSIZE], nlo = 0;
     while (true) {
       if (nhi && nlo) {
         assert(Lb && Rb);
@@ -916,7 +915,7 @@ class CTree {
   const char *version = "exp leaf size";
 
   CTree() {
-    root = new_leaf(INTERNAL_BSIZE);
+    root = new_leaf(LEAF_BSIZE);
   }
 
   void debug() {
