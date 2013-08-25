@@ -10,6 +10,7 @@ all: \
 	$(ODIR)/comb_lfhv \
 	$(ODIR)/comb2_noup \
 	$(ODIR)/comb2_lfhv \
+	$(ODIR)/ctree_best_noup \
 	$(ODIR)/ctree_eager_noup \
 	$(ODIR)/ctree_noup \
 	$(ODIR)/ctree_lfhv \
@@ -36,6 +37,9 @@ $(ODIR)/comb2_lfhv: comb2.cc comb2.h random.h test_lfhv.h
 
 
 $(ODIR)/ctree_eager_noup: ctree_eager.cc ctree_eager.h random.h test_noup.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DNOUP -Wall -o $@ $<
+
+$(ODIR)/ctree_best_noup: ctree_best.cc ctree_best.h random.h test_noup.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DNOUP -Wall -o $@ $<
 
 $(ODIR)/ctree_noup: ctree.cc ctree.h random.h test_noup.h
