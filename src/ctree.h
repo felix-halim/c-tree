@@ -14,7 +14,7 @@ using namespace chrono;
 
 namespace ctree {
 
-#define INTERNAL_BSIZE 64   // Must be power of two.
+#define INTERNAL_BSIZE 128   // Must be power of two.
 #define MAX_LEAF_BSIZE 2048     // Must be power of two.
 #define MAX_INDEX 64
 #define CRACK_AT 64
@@ -307,6 +307,37 @@ void LeafBucket::leaf_split(vector<pair<int, LeafBucket*>> &ret) {
 
     delete_leaf(b);
 
+  } else if (!next->next->next) {
+    LeafBucket *b1 = detach_and_get_next();
+    LeafBucket *b2 = b1->detach_and_get_next(); b2->detach_and_get_next();
+
+    int *T = new int[N + b1->N + b2->N];
+    int nT = 0;
+    for (int i = 0; i < N; i++) T[nT++] = D[i];
+    for (int i = 0; i < b1->N; i++) T[nT++] = b1->D[i];
+    for (int i = 0; i < b2->N; i++) T[nT++] = b2->D[i];
+
+    sort(T, T + nT);
+    int i = 0;
+    while (i < nT && i < INTERNAL_BSIZE) {
+      D[i] = T[i];
+      i++;
+    }
+    N = i;
+    pending_insert = 0;
+
+    LeafBucket *pnb = this;
+    while (i < nT) {
+      LeafBucket *nb = new_leaf(INTERNAL_BSIZE);
+      nb->pending_insert = 0;
+      while (i < nT && !nb->is_full()) nb->D[nb->N++] = T[i++];
+      ret.push_back(make_pair(pnb->D[--pnb->N], nb));
+      pnb = nb;
+    }
+
+    delete_leaf(b1);
+    delete_leaf(b2);
+
   } else {
     // fprintf(stderr, "split N = %d\n", N);
     // Reservoir sampling (http://en.wikipedia.org/wiki/Reservoir_sampling).
@@ -568,8 +599,10 @@ class CTree {
             int promotedValueInternal = ((InternalBucket*) b)->internal_promote_last();
             for (int j = 0; j < (int) nbs.size(); j++) {
               if (nbs[j].first >= promotedValueInternal) {
+                assert(!inb->is_full());
                 inb->internal_insert(nbs[j].first, nbs[j].second);
               } else {
+                assert(!b->is_full());
                 ((InternalBucket*) b)->internal_insert(nbs[j].first, nbs[j].second);
               }
             }
