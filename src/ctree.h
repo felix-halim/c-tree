@@ -268,7 +268,7 @@ void LeafBucket::leaf_split(vector<pair<int, LeafBucket*>> &ret) {
   assert(next);
   assert(cap == INTERNAL_BSIZE); // The first bucket must be the smallest capacity.
 
-  if (!next->next) {
+  if (!next->next && false) {
     LeafBucket *b = detach_and_get_next(); b->detach_and_get_next();
     int T[INTERNAL_BSIZE];
     for (int i = 0; i < N; i++)
