@@ -1,3 +1,4 @@
+#include <cstring>
 #include <chrono>
 #include <map>
 #include <algorithm>
@@ -33,20 +34,25 @@ void erase(int value);       // Deletes the value. The value guaranteed to exist
 void results(double insert_time, double query_time, int checksum);
 
 int main(int argc, char *argv[]) {
-  int N = atoi(argv[1]);
-  int Q = atoi(argv[2]);
+  char *hostname = argv[1];
+  int N = atoi(argv[2]);
+  int Q = atoi(argv[3]);
+  char *prog = argv[0];
+  while (true) {
+    char *p = strstr(prog, "/");
+    if (p) prog = p + 1; else break;
+  }
+  printf("%lu,\"%s\",\"%s\",%d,%d,", system_clock::to_time_t(system_clock::now()), hostname, prog, N, Q);
 
   Random r(140384);
   int *iarr = new int[N];
-  int *queries = new int[Q];
   for (int i = 0; i < N; i++) iarr[i] = r.nextInt();
-  for (int i = 0; i < Q; i++) queries[i] = r.nextInt();
 
   int csum = 0;
   double insert_time = time_it([&] { init(iarr, N); });
   double query_time = time_it([&] {
     for (int i = 0; i < Q; i++) {
-      csum = csum * 13 + query(queries[i]);
+      csum = csum * 13 + query(r.nextInt());
       if (i % 1000 == 0) {
         for (int j = 0; j < 1000; j++) {
           int k = ((r.nextInt() % N) + N) % N;

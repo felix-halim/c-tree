@@ -45,15 +45,13 @@ int main(int argc, char *argv[]) {
 
   Random r(140384);
   int *iarr = new int[N];
-  int *queries = new int[Q];
   for (int i = 0; i < N; i++) iarr[i] = r.nextInt();
-  for (int i = 0; i < Q; i++) queries[i] = r.nextInt();
 
   int csum = 0;
   double insert_time = time_it([&] { init(iarr, N); });
   double query_time = time_it([&]{
     for (int i = 0; i < Q; i++)
-      csum = csum * 13 + query(queries[i]);
+      csum = csum * 13 + query(r.nextInt());
   });
 
   results(insert_time, query_time, csum);

@@ -17,19 +17,45 @@ noup)
 	;;
 
 
-batch)
+
+lfhv)
+
+	if [[ -n $3 ]]; then
+		Q=$3
+	fi
+	make -s -C src "../bin/$2_lfhv"
+	bin/$2_lfhv `hostname` $N $Q
+	;;
+
+
+batch_noup)
 
 	S=3
 	for (( Q = 1; Q <= 1000000000; Q*=10 ))
 	do
 	#	./run.sh noup comb $Q | tee -a $out; sleep $S
 		./run.sh noup ctree $Q | tee -a $out; sleep $S
-	#	./run.sh noup ctree_best $Q | tee -a $out; sleep $S
+	#	./run.sh noup ctree_exp_leafsize $Q | tee -a $out; sleep $S
 	#	./run.sh noup ctree_eager $Q | tee -a $out; sleep $S
 	#	./run.sh noup comb2 $Q | tee -a $out; sleep $S
 	#	./run.sh noup btree_google $Q | tee -a $out; sleep $S
 	#	./run.sh noup sort $Q | tee -a $out; sleep $S
 	#	./run.sh noup btree_stx $Q | tee -a $out; sleep $S
+	done
+	;;
+
+
+batch_lfhv)
+
+	S=3
+	for (( Q = 1; Q <= 1000000000; Q*=10 ))
+	do
+		./run.sh lfhv comb $Q | tee -a $out; sleep $S
+		./run.sh lfhv ctree $Q | tee -a $out; sleep $S
+		./run.sh lfhv ctree_best $Q | tee -a $out; sleep $S
+		./run.sh lfhv comb2 $Q | tee -a $out; sleep $S
+		./run.sh lfhv btree_google $Q | tee -a $out; sleep $S
+		./run.sh lfhv btree_stx $Q | tee -a $out; sleep $S
 	done
 	;;
 
