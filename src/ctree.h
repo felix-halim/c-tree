@@ -50,7 +50,6 @@ class Bucket {
 class LeafBucket : public Bucket {
  protected:
   int *D;
-  int last_indexed_pos;   // Last indexed position in D.
   unsigned char nC;       // Number of cracker indices.
   unsigned long long S1;  // Sorted bits of each cracker index.
   int C[MAX_INDEX];       // Cracker index positions.
@@ -64,7 +63,7 @@ class LeafBucket : public Bucket {
   LeafBucket* next_bucket() { return next; }
   int data(int i) { assert(i >= 0 && i < N); return D[i]; }
 
-  void clear_indexes() { S1 = /* S2 = S3 = S4 = */ nC = last_indexed_pos = 0; }
+  void clear_indexes() { S1 = /* S2 = S3 = S4 = */ nC = pending_insert = 0; }
   void piece_set_sorted(int i, bool sorted);
   bool piece_is_sorted(int i) const;
   void piece_set_unsorted_onwards(int i);
@@ -232,7 +231,6 @@ LeafBucket::~LeafBucket() {
 void LeafBucket::leaf_insert(int value) {
   assert(is_leaf());
   assert(N >= 0);
-  pending_insert++;
   if (!is_full()) {
     D[N++] = value;
   } else {
@@ -243,7 +241,6 @@ void LeafBucket::leaf_insert(int value) {
       add_chain(new_leaf(std::min(tail->cap * 2, MAX_LEAF_BSIZE)));
     }
     tail->D[tail->N++] = value;
-    tail->pending_insert++;
   }
   // assert(check());
 }
@@ -306,18 +303,19 @@ void LeafBucket::remove_cracker_index(int at) {
 
 void LeafBucket::flush_pending_inserts() {
   // Indexed index should be less than the number of elements.
-  assert(last_indexed_pos <= size());
+  // fprintf(stderr, "%d <= %d\n", pending_insert, size());
+  assert(pending_insert <= size());
 
   // No index yet, all the elements are considered "inserted".
-  if (!nC) { last_indexed_pos = size(); S1 = 0; return; } // S2 = S3 = S4 =
+  if (!nC) { pending_insert = size(); S1 = 0; return; } // S2 = S3 = S4 =
 
   // Flushing only makes sense when the bucket is not chained.
   assert(!next);
 
   // IMPROVE: bulk insert? (Currently using Merge Completely).
   int minC = nC;
-  // Inserts all pending elements (from last_indexed_pos to size).
-  for (int j = last_indexed_pos; last_indexed_pos < size(); j = ++last_indexed_pos) {
+  // Inserts all pending elements (from pending_insert to size).
+  for (int j = pending_insert; pending_insert < size(); j = ++pending_insert) {
     int i = nC - 1;
     int tmp = D[j];            // Store the pending tuple.
     for (; i >= 0 && (tmp < V[i]); i--) {  // insert by shuffling through the cracker indices C
@@ -569,7 +567,7 @@ int LeafBucket::crack(int &v, int &i, int &L, int &R, bool sort_piece) {
 //     at = R;
 //   }
 //   D[at] = D[--size_];   // The deleted element has been shuffled out from the bucket.
-//   last_indexed_pos--;   // Adjust the pending index.
+//   pending_insert--;   // Adjust the pending index.
 
 //   // assert(check(D[0],false,D[0],false));
 //   return true;
@@ -580,7 +578,7 @@ int LeafBucket::crack(int &v, int &i, int &L, int &R, bool sort_piece) {
 //     fprintf(stderr,"C[%d/%d] = %d, %d (sorted = %d)\n",
 //       k,nC,C[k],(int)D[C[k]],piece_is_sorted(k));
 //   fprintf(stderr,"%s : i=%d/N=%d, j=%d/nC=%d, D[i,i+1] = %d, %d; I=%d, N=%d, next=%d\n",
-//     msg, i,size(), j,nC, (int)D[i],(int)D[i+1], last_indexed_pos,size(),next_bucket_id);
+//     msg, i,size(), j,nC, (int)D[i],(int)D[i+1], pending_insert,size(),next_bucket_id);
 //   return false;
 // }
 
@@ -593,9 +591,9 @@ int LeafBucket::crack(int &v, int &i, int &L, int &R, bool sort_piece) {
 //     fprintf(stderr,"D[%d] = %d, hi = %d\n", i, D[i], hi);
 //     return debug("useHi failed", i, 0);
 //   }
-//   for (int i=0,j=0; i<last_indexed_pos; i++){                    // check cracker indices
+//   for (int i=0,j=0; i<pending_insert; i++){                    // check cracker indices
 //     if (j<nC && C[j]==i) assert(eq(V[j],D[i])), lo = D[i], j++;
-//     if (piece_is_sorted(j) && (j==nC? (i+1<last_indexed_pos) : (i<C[j])) && cmp(D[i+1], D[i]))
+//     if (piece_is_sorted(j) && (j==nC? (i+1<pending_insert) : (i<C[j])) && cmp(D[i+1], D[i]))
 //       return debug("sortedness violation", i,j);
 //     if (j>0 && cmp(D[i], D[C[j-1]])) return debug("lower bound fail", i,j);
 //     if (j<nC && cmp(D[C[j]], D[i])) return debug("upper bound fail", i,j);
@@ -631,7 +629,7 @@ void fusion(int *Lp, int *Rp, int *hi, int *lo, int &nhi, int &nlo) {
 LeafBucket* LeafBucket::detach_and_get_next() {
   LeafBucket* ret = next;
   next = tail = NULL;
-  pending_insert = 1;
+  pending_insert = 0;
   return ret;
 }
 
