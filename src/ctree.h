@@ -16,9 +16,6 @@ namespace ctree {
 
 #define INTERNAL_BSIZE 60   // Must be power of two.
 #define MAX_LEAF_BSIZE 2048     // Must be power of two.
-#define MAX_INDEX 64
-#define CRACK_AT 64
-#define DECRACK_AT 32
 
 template<typename Func>
 double time_it(Func f) {
@@ -90,6 +87,8 @@ class InternalBucket : public LeafBucket {
 vector<LeafBucket*> free_leaves[30];
 
 LeafBucket* new_leaf(int cap) {
+  return new LeafBucket(cap);
+
   for (int i = 2; ; i++) {
     if ((1 << i) == cap) {
       if (free_leaves[i].empty()) {
@@ -104,6 +103,8 @@ LeafBucket* new_leaf(int cap) {
 }
 
 void delete_leaf(LeafBucket *b) {
+  delete b;
+  return;
   for (int i = 2; ; i++) {
     if ((1 << i) == b->get_cap()) {
       free_leaves[i].push_back(b);
