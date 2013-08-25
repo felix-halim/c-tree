@@ -657,11 +657,12 @@ void LeafBucket::distribute_values(int pivot, LeafBucket *chain[2]) {
 }
 
 LeafBucket* LeafBucket::transfer_to(LeafBucket *b, int pivot) {
-  for (int i = 0; i < N; i++) {
-    if (D[i] >= pivot) {
-      b->leaf_insert(D[i]);
-      D[i--] = D[--N];
-    }
+  int oldN = N;
+  N = 0;
+  LeafBucket *arr[2] { this, b };
+  for (int i = 0; i < oldN; i++) {
+    int j = !(D[i] < pivot);
+    arr[j]->leaf_insert(D[i]);
   }
   return b;
 }
@@ -913,7 +914,7 @@ class CTree {
 
  public:
 
-  const char *version = "Crack 2048 bucket, middle";
+  const char *version = "Crack 2048 bucket, middle, transfer_to";
 
   CTree() {
     root = new_leaf(LEAF_BSIZE);
