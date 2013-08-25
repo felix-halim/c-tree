@@ -15,7 +15,7 @@ using namespace chrono;
 namespace ctree {
 
 #define INTERNAL_BSIZE 64   // Must be power of two.
-#define LEAF_BSIZE 2048     // Must be power of two.
+#define MAX_LEAF_BSIZE 2048     // Must be power of two.
 #define MAX_INDEX 64
 #define CRACK_AT 64
 #define DECRACK_AT 32
@@ -49,10 +49,6 @@ class Bucket {
 class LeafBucket : public Bucket {
  protected:
   int *D;
-  unsigned char nC;       // Number of cracker indices.
-  unsigned long long S1;  // Sorted bits of each cracker index.
-  int C[MAX_INDEX];       // Cracker index positions.
-  int V[MAX_INDEX];       // Cached cracker values.
   LeafBucket *next, *tail;  // Store pending inserts in a linked list.
 
  public:
@@ -61,47 +57,6 @@ class LeafBucket : public Bucket {
   void init(int cap);
   LeafBucket* next_bucket() { return next; }
   int data(int i) { assert(i >= 0 && i < N); return D[i]; }
-
-  void clear_indexes() { S1 = /* S2 = S3 = S4 = */ nC = pending_insert = 0; }
-  void piece_set_sorted(int i, bool sorted);
-  bool piece_is_sorted(int i) const;
-  void piece_set_unsorted_onwards(int i);
-  void add_cracker_index(int at, int M);
-  void remove_cracker_index(int at);
-
-  int get_piece_by_index(int idx, int &L, int &R);
-
-  // T nth(int idx) {
-  //   assert(next() == -1);      // it doesn't make sense crack a chained bucket!
-  //   int L, R, i = get_piece_by_index(idx, L, R);
-  //   assert(L >= 0 && L <= R && R <= size());
-  //   if (!piece_is_sorted(i)){    // sort the piece if it isn't
-  //     std::sort(D+L,D+R);
-  //     piece_set_sorted(i,true);
-  //   }
-  //   return D[idx];          // this is the correct nth element
-  // }
-
-  // T randomValue(Random &rng) const { return D[rng.nextInt(size())]; }
-
-  void flush_pending_inserts();
-
-  // Reorganizes the elements and returns a piece [L,R) that contains v.
-  int get_piece_by_value(int &v, int &L, int &R);
-
-  int crack(int &v, int &i, int &L, int &R, bool sort_piece);
-
-  // template<typename T, typename CMP>
-  // bool erase(int &v);
-
-  // bool debug(const char *msg, int i, int j) const;
-
-  // // call this function to check the consistency of this Bucket structure
-  // template<typename T, typename CMP>
-  // bool check(T lo, bool useLo, T hi, bool useHi) const;
-
-
-
   void leaf_insert(int v);
   void leaf_split(vector<pair<int, LeafBucket*>> &nbs);
   void leaf_optimize();
@@ -230,379 +185,21 @@ LeafBucket::~LeafBucket() {
 void LeafBucket::leaf_insert(int value) {
   assert(is_leaf());
   assert(N >= 0);
+  pending_insert = 1;
   if (!is_full()) {
     D[N++] = value;
   } else {
     if (!tail) {
-      assert(cap == LEAF_BSIZE);
-      add_chain(new_leaf(LEAF_BSIZE));
+      assert(cap == INTERNAL_BSIZE);
+      add_chain(new_leaf(INTERNAL_BSIZE));
     } else if (tail->is_full()) {
-      add_chain(new_leaf(LEAF_BSIZE));
+      add_chain(new_leaf(std::min(tail->cap * 2, MAX_LEAF_BSIZE)));
     }
     tail->D[tail->N++] = value;
+    tail->pending_insert = 1;
   }
   // assert(check());
 }
-
-
-
-
-void LeafBucket::piece_set_sorted(int i, bool sorted) {
-  assert(i >= 0 && i <= nC && nC <= MAX_INDEX);
-  if (sorted) {
-    S1 |= 1ULL << i;
-  } else {
-    S1 &= ~(1ULL << i);
-  }
-}
-
-bool LeafBucket::piece_is_sorted(int i) const {
-  assert(i >= 0 && i <= nC && nC <= MAX_INDEX);
-  return S1 & (1ULL << i);
-}
-
-void LeafBucket::piece_set_unsorted_onwards(int i) {
-  assert(i >= 0 && i <= nC && nC <= MAX_INDEX);
-  S1 &= (1ULL << i) - 1;          // destroy sorted bit std::vector from i onwards
-}
-
-// Insert bit 0 at position {at} in {S}
-static void insert_bit_at(unsigned long long &S, int at) {
-  S = ((S << 1) & ~((((1ULL << at) - 1) << 1) | 1)) | (S & ((1ULL << at) - 1));
-}
-
-// Remove bit at position {at} in {S}
-static void remove_bit_at(unsigned long long &S, int at) {
-  S = ((S & ~((((1ULL << at) - 1) << 1) | 1)) >> 1) | (S & ((1ULL << at) - 1));
-}
-
-void LeafBucket::add_cracker_index(int at, int M) {
-  assert(at >= 0 && at <= nC && nC < MAX_INDEX);
-  for (int i = nC-1; i >= at; i--) {
-    C[i + 1] = C[i];
-    V[i + 1] = V[i];
-  }
-  C[at] = M;
-  V[at] = D[M];
-  nC++;
-  assert(at == 0 || C[at - 1] < C[at]);
-  assert(at + 1 == nC || C[at] < C[at + 1]);
-  insert_bit_at(S1, at);
-}
-
-void LeafBucket::remove_cracker_index(int at) {
-  assert(at >= 0 && at < nC && nC > 0);
-  for (int i = at + 1; i < nC; i++) {
-    C[i - 1] = C[i];
-    V[i - 1] = V[i];
-  }
-  nC--;
-  remove_bit_at(S1, at);
-}
-
-void LeafBucket::flush_pending_inserts() {
-  // Indexed index should be less than the number of elements.
-  // fprintf(stderr, "%d <= %d\n", pending_insert, size());
-  assert(pending_insert <= size());
-
-  // No index yet, all the elements are considered "inserted".
-  if (!nC) { pending_insert = size(); S1 = 0; return; } // S2 = S3 = S4 =
-
-  // Flushing only makes sense when the bucket is not chained.
-  assert(!next);
-
-  // IMPROVE: bulk insert? (Currently using Merge Completely).
-  int minC = nC;
-  // Inserts all pending elements (from pending_insert to size).
-  for (int j = pending_insert; pending_insert < size(); j = ++pending_insert) {
-    int i = nC - 1;
-    int tmp = D[j];            // Store the pending tuple.
-    for (; i >= 0 && (tmp < V[i]); i--) {  // insert by shuffling through the cracker indices C
-      int &L = C[i];         // Left boundary of this cracker piece.
-      D[j] = D[L + 1];       // Replace the pending with the next to cracker boundary.
-      D[L + 1] = D[L];       // Shift the cracker boundary to the right.
-      j = L++;               // reposition the cracker piece separator.
-    }
-    D[j] = tmp;              // The pending tuple is now merged in.
-    minC = std::min(minC, i + 1);      // Keep track the lowest piece that is touched.
-  }
-
-  piece_set_unsorted_onwards(minC);
-}
-
-
-template<typename T>
-static T* doUpperCrack(T *lo, T *hi, T *pivot) {
-  while (lo <= hi) {
-    while (lo <= hi && !(*pivot < *lo)) lo++;
-    while (lo <= hi &&  (*pivot < *hi)) hi--;
-    if (lo < hi) std::iter_swap(lo, hi);
-  }
-  return lo;
-}
-
-template<typename T>
-static T* doLowerCrack(T *lo, T *hi, T *pivot) {
-  while (lo <= hi) {
-    while (lo <= hi &&  (*lo < *pivot)) lo++;
-    while (lo <= hi && !(*hi < *pivot)) hi--;
-    if (lo < hi) std::iter_swap(lo, hi);
-  }
-  return lo;
-}
-
-template<typename T>
-static T* partition(T *lo, T *hi, T *pivot, bool upperCrack) {
-  assert(lo <= pivot && pivot <= hi);
-  if (upperCrack) {
-    std::iter_swap(lo, pivot);
-    // fprintf(stderr, "upperCrack %d, %d\n", *lo, hi - lo);
-    T* ret = doUpperCrack(lo + 1, hi, lo);
-    std::iter_swap(ret, lo);
-    return ret;
-  }
-  std::iter_swap(hi, pivot);
-  T* ret = doLowerCrack(lo, hi - 1, hi);
-  std::iter_swap(ret, hi);
-  return ret;
-}
-
-template<typename T>
-T* partition(T *F, T *L, T const &v){
-  while (true){
-    while (true)
-      if (F == L) return F;
-      else if ((*F < v)) ++F;
-      else break;
-    --L;
-    while (true)
-      if (F == L) return F;
-      else if (!bool((*L < v))) --L;
-      else break;
-    std::iter_swap(F, L);
-    ++F;
-  }
-  assert(false);
-}
-
-// partitions roughly in the middle satisfying the DECRACK_AT
-template<typename T>
-T* rough_middle_partition(T *L, T *R) {
-  assert(R-L >= CRACK_AT);
-  int ntry = 10;
-  for (T *i=L, *j=R, *p; ntry--; ){
-    std::iter_swap(j-1, i + rng.nextInt(j-i));
-    std::iter_swap(j-1, p = partition(i, j-1, *(j-1)));
-    if (p-L <= DECRACK_AT) i = p;
-    else if (R-p <= DECRACK_AT) j = p;
-    else return p;
-  }
-  T *M = L+((R-L)>>1);
-  std::nth_element(L, M, R);
-  return M;
-}
-
-
-// Partitions roughly in the middle satisfying the DECRACK_AT.
-template<typename T>
-static T* rough_middle_partition2(T *L, T *R, int min_gap) {
-  T *arr = L;
-  int idx[10000];
-  int N = R - L, H = N / 2;
-  int lo = 0, hi = N, ret = -1;
-  assert(N >= min_gap * 2);
-  while (true) {
-    int n = hi - lo;
-    // fprintf(stderr, "%d %d, min_gap = %d, gap left = %d, %d\n", lo, hi, min_gap, lo, N - hi);
-    assert(n > 0);
-    T* p = arr + lo + rng.nextInt(n);
-    // T pval = *p;
-    if (lo >= min_gap && N - hi >= min_gap) {
-      // Normal Crack
-      ret = partition(arr + lo, arr + hi, p, false) - arr;
-      // fprintf(stderr, "normal crac = %d, pos = %d < %d < %d\n", *p, lo, ret, hi);
-
-      // for (int i = lo; i < hi; i++) {
-      //   fprintf(stderr, "%d = %d\n", i, arr[i]);
-      // }
-      break;
-    }
-    // Fusion!
-    int ilo = 0, ihi = n;
-    for (int i = lo, _n = lo + n; i < _n; i++) {
-      idx[ilo] = idx[ihi] = i;
-      ilo += !(arr[i] < *p);
-      ihi +=  (arr[i] < *p);
-    }
-    int nswap = std::min(ilo, ihi - n);
-    for (int i = 0; i < nswap; i++) {
-      int j = ihi - i - 1;
-      // fprintf(stderr, "swapping %d (%d) <>  %d (%d), pivot = %d\n", arr[idx[i]], idx[i], arr[idx[j]], idx[j], pval);
-      if (idx[i] >= idx[j]) { nswap = i; break; }
-      swap(arr[idx[i]], arr[idx[j]]);
-    }
-    int j = ihi - nswap;
-    assert(j >= 0);
-    int next = std::min(idx[nswap], idx[j]);
-    // fprintf(stderr, "n = %d, nswap = %d, %d %d, ilo = %d, ihi = %d, next = %d, pivot = %d\n",
-    //   n, nswap, idx[nswap], idx[n + nswap], ilo, ihi - n, next, p - arr);
-    if (nswap == 0) {
-      std::iter_swap(p, arr + next);
-      ret = next;
-      break;
-    }
-    // for (int i = 0; i < N; i++) fprintf(stderr, "[%d]%d ", i, arr[i]);
-    // fprintf(stderr, "\n" );
-    if (next <= H) {
-      lo = next;
-    } else {
-      hi = next;
-    }
-  }
-  assert(ret != -1);
-  // fprintf(stderr, "ret = %d\n", ret);
-  // for (int i = 0; i < N; i++) fprintf(stderr, "[%d]%d ", i, arr[i]);
-
-  // for (int i = 0; i <= ret; i++) {
-  //   fprintf(stderr, "\ni = %d, L = %d <= %d", i, arr[i], arr[ret]);
-  //   assert(arr[i] <= arr[ret]);
-  // }
-  // for (int i = ret; i < N; i++) {
-  //   fprintf(stderr, "\ni = %d, R = %d >= %d", i, arr[i], arr[ret]);
-  //   assert(arr[i] >= arr[ret]);
-  // }
-  // fprintf(stderr, "\n\n");
-  return L + ret;
-}
-
-int LeafBucket::get_piece_by_value(int &v, int &L, int &R) {
-  flush_pending_inserts();
-  // assert(check(D[0],false,D[0],false));
-  int i = 0;
-  while (i < nC && (v >= V[i])) i++;  // Find the cracker indices that covers v
-  L = (i == 0) ? 0 : C[i - 1];          // Left crack boundary.
-  R = (i == nC) ? size() : C[i];        // Right crack boundary.
-  while (R - L > CRACK_AT) {            // Narrow down the piece using DDR.
-    int M = rough_middle_partition(D + L + (i ? 1 : 0), D + R) - D;
-    // assert(abs((L + R) / 2 - M) <= 1);
-    add_cracker_index(i, M);
-    // fprintf(stderr,"CRACKING %d %d, [%d %d]\n", M, D[M], L, R);
-    if ((v < D[M])) R = M; else L = M, i++;  // Adjust the cracker index i.
-  }
-  assert(i >= 0 && i <= nC);
-  // assert(check(D[0],false,D[0],false));
-  return i;
-}
-
-// BUCKET_TPLC(int)::get_piece_by_index(int idx, int &L, int &R) {
-//   assert(idx >= 0 && idx < size());        // index must fall within the bucket's size
-//   flush_pending_inserts(cmp);
-//   int i = 0;
-//   while (i<nC && idx >= C[i]) i++;    // find the cracker indices that covers the idx
-//   L = i==0? 0 : C[i-1];          // the left crack
-//   R = i==nC? size() : C[i];          // the right crack
-//   while (R-L > CRACK_AT){          // narrow down the piece using DDR
-//     int M = rough_middle_partition(D + L + (i ? 1 : 0), D + R, DECRACK_AT) - D;
-//     // assert(abs((L + R) / 2 - M) <= 1);
-//     add_cracker_index(i,M);
-//     if (idx < M) R=M; else L=M, i++;  // adjust the cracker index
-//   }
-//   assert(i>=0 && i<=nC);
-//   // assert(check(D[0], false, D[0], false));
-//   return i;
-// }
-
-int LeafBucket::crack(int &v, int &i, int &L, int &R, bool sort_piece) {
-  assert(!next);                     // It doesn't make sense crack a chained bucket!
-  // assert(check(D[0], false, D[0], false));
-  i = get_piece_by_value(v, L, R);    // Find the piece [L,R) containing v.
-  assert(L >= 0 && L <= R && R <= size());
-  // assert(check(D[0], false, D[0], false));
-  if (!piece_is_sorted(i)) {
-    if (sort_piece) {                       // Sort the piece if requested.
-      std::sort(D + L, D + R);
-      piece_set_sorted(i, true);
-    } else {
-      for (int at = L; at < R; at++)
-        if (D[at] == v) return at;
-      return R;
-    }
-  }
-  // assert(check(D[0], false, D[0], false));
-  int pos = L;
-  while (pos < R && D[pos] < v) pos++;
-  // debug(0); fprintf(stderr, "pos = %d, v = %d\n", pos, v);
-  return pos;
-  return std::lower_bound(D + L, D + R, v) - D;
-}
-
-
-// BUCKET_TPLC(bool)::erase(int &v) {
-//   int i, L, R, at = crack(v, i, L, R, false);
-//   if (at >= R || !eq(D[at], v)) return false;  // The element to be erased is not found!
-
-//   // Decrack this cracker piece (it becomes too small) or
-//   // if the deleted element index is a cracker index
-//   if (nC && R - L + 1 <= DECRACK_AT) {
-//     remove_cracker_index((i > 0) ? --i : i);
-//   } else if (i > 0 && at == L) {
-//     at = L + 1;
-//     for (int j = L + 2; j < R; j++)    // find a replacement element for the cracker index
-//       if (cmp(D[j], D[at])) at = j;  // that is the smallest element in the piece (L,R)
-//     std::swap(D[L], D[at]);
-//     piece_set_sorted(i, false);
-//     V[i - 1] = D[L];
-//   }
-
-//   assert(at < R && eq(D[at], v));    // the element v must be found!
-
-//   // IMPROVE: use pending delete? antimatter?
-//   piece_set_unsorted_onwards(i);      // unset the sorted bit i onwards
-//   assert(i == nC || cmp(D[at], V[i]));
-//   for (int j = i; j < nC; j++) {        // shuffle out the deleted element
-//     R = C[j]--;
-//     D[at] = D[R - 1];
-//     D[R - 1] = D[R];
-//     at = R;
-//   }
-//   D[at] = D[--size_];   // The deleted element has been shuffled out from the bucket.
-//   pending_insert--;   // Adjust the pending index.
-
-//   // assert(check(D[0],false,D[0],false));
-//   return true;
-// }
-
-// BUCKET_TPL(bool)::debug(const char *msg, int i, int j) const {
-//   for (int k=0; k<nC; k++)
-//     fprintf(stderr,"C[%d/%d] = %d, %d (sorted = %d)\n",
-//       k,nC,C[k],(int)D[C[k]],piece_is_sorted(k));
-//   fprintf(stderr,"%s : i=%d/N=%d, j=%d/nC=%d, D[i,i+1] = %d, %d; I=%d, N=%d, next=%d\n",
-//     msg, i,size(), j,nC, (int)D[i],(int)D[i+1], pending_insert,size(),next_bucket_id);
-//   return false;
-// }
-
-// BUCKET_TPLC(bool)::check(T lo, bool useLo, T hi, bool useHi) const {
-//   if (useLo) for (int i = 0; i < size(); i++) if (cmp(D[i], lo)) {
-//     fprintf(stderr,"D[%d] = %d, lo = %d\n", i, D[i], lo);
-//     return debug("useLo failed", i, 0);
-//   }
-//   if (useHi) for (int i = 0; i < size(); i++) if (!cmp(D[i], hi)) {
-//     fprintf(stderr,"D[%d] = %d, hi = %d\n", i, D[i], hi);
-//     return debug("useHi failed", i, 0);
-//   }
-//   for (int i=0,j=0; i<pending_insert; i++){                    // check cracker indices
-//     if (j<nC && C[j]==i) assert(eq(V[j],D[i])), lo = D[i], j++;
-//     if (piece_is_sorted(j) && (j==nC? (i+1<pending_insert) : (i<C[j])) && cmp(D[i+1], D[i]))
-//       return debug("sortedness violation", i,j);
-//     if (j>0 && cmp(D[i], D[C[j-1]])) return debug("lower bound fail", i,j);
-//     if (j<nC && cmp(D[C[j]], D[i])) return debug("upper bound fail", i,j);
-//     // if (j<nC && !(cmp(D[i], D[C[j]]))) return debug("upper bound fail", i,j);
-//   }
-//   return true;
-// }
-
-
-
 
 void mark_hi(int *D, int N, int P, int *hi, int &nhi) {
   for (int i = 0; i < N; i++) {
@@ -628,7 +225,7 @@ void fusion(int *Lp, int *Rp, int *hi, int *lo, int &nhi, int &nlo) {
 LeafBucket* LeafBucket::detach_and_get_next() {
   LeafBucket* ret = next;
   next = tail = NULL;
-  pending_insert = 0;
+  pending_insert = 1;
   return ret;
 }
 
@@ -668,12 +265,12 @@ LeafBucket* LeafBucket::transfer_to(LeafBucket *b, int pivot) {
 void LeafBucket::leaf_split(vector<pair<int, LeafBucket*>> &ret) {
   ret.clear();
   assert(next);
-  assert(cap == LEAF_BSIZE); // The first bucket must be the smallest capacity.
+  assert(cap == INTERNAL_BSIZE); // The first bucket must be the smallest capacity.
 
   if (!next->next) {
     LeafBucket *b = detach_and_get_next(); b->detach_and_get_next();
 
-    if (N + b->N <= LEAF_BSIZE) {
+    if (N + b->N <= INTERNAL_BSIZE) {
       for (int i = 0; i < b->N; i++)
         D[N++] = b->D[i];
     } else {
@@ -712,7 +309,7 @@ void LeafBucket::leaf_split(vector<pair<int, LeafBucket*>> &ret) {
       D[N++] = R[3];
       b->D[b->N++] = R[4];
 
-      LeafBucket *nb = transfer_to(new_leaf(LEAF_BSIZE), pivot);
+      LeafBucket *nb = transfer_to(new_leaf(INTERNAL_BSIZE), pivot);
       b->transfer_to(nb, pivot);
       for (int i = 0; i < b->N; i++) {
         leaf_insert(b->D[i]);
@@ -771,7 +368,7 @@ void LeafBucket::leaf_split(vector<pair<int, LeafBucket*>> &ret) {
 
     // debug(10);
 
-    LeafBucket *chain[2] { this, new_leaf(LEAF_BSIZE) };
+    LeafBucket *chain[2] { this, new_leaf(INTERNAL_BSIZE) };
 
     // Split the first bucket (this bucket).
     for (int i = 0; i < N; i++) {
@@ -786,8 +383,8 @@ void LeafBucket::leaf_split(vector<pair<int, LeafBucket*>> &ret) {
 
     LeafBucket *Lb = NULL, *Rb = NULL;
     // TODO: optimize locality.
-    int hi[LEAF_BSIZE], nhi = 0;
-    int lo[LEAF_BSIZE], nlo = 0;
+    int hi[MAX_LEAF_BSIZE], nhi = 0;
+    int lo[MAX_LEAF_BSIZE], nlo = 0;
     while (true) {
       if (nhi && nlo) {
         assert(Lb && Rb);
@@ -844,7 +441,8 @@ int LeafBucket::lower_pos(int value) {
 }
 
 pair<bool,int> LeafBucket::leaf_lower_bound(int value) {
-  int i, L, R, pos = crack(value, i, L, R, true);
+  if (pending_insert) leaf_optimize();
+  int pos = lower_pos(value);
   return (pos == N) ? make_pair(false, 0) : make_pair(true, D[pos]);
 }
 
@@ -915,7 +513,7 @@ class CTree {
   const char *version = "exp leaf size";
 
   CTree() {
-    root = new_leaf(LEAF_BSIZE);
+    root = new_leaf(INTERNAL_BSIZE);
   }
 
   void debug() {
