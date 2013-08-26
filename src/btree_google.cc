@@ -20,7 +20,9 @@ void insert(int value) {
 }
 
 void erase(int value) {
-  b.erase(value);
+  auto it = b.lower_bound(value);
+  assert(it != b.end());
+  b.erase(it);
 }
 
 int query(int value) {

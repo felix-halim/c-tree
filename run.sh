@@ -46,11 +46,11 @@ batch_noup)
 
 batch_lfhv)
 
-	S=3
-	for (( Q = 1; Q <= 1000000000; Q*=10 ))
+	S=1
+	for (( Q = 1; Q <= 100000000; Q*=10 ))
 	do
-		./run.sh lfhv comb $Q | tee -a $out; sleep $S
-		# ./run.sh lfhv ctree $Q | tee -a $out; sleep $S
+		# ./run.sh lfhv comb $Q | tee -a $out; sleep $S
+		./run.sh lfhv ctree $Q | tee -a $out; sleep $S
 		# ./run.sh lfhv ctree_best $Q | tee -a $out; sleep $S
 		# ./run.sh lfhv comb2 $Q | tee -a $out; sleep $S
 		# ./run.sh lfhv btree_google $Q | tee -a $out; sleep $S

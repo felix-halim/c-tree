@@ -32,7 +32,7 @@ void erase(int value) {
 
 int query(int value) {
   auto it = c.lower_bound(value);
-  int ret = it.first ? it.second : 0;
+  int ret = c.is_end(it) ? 0 : it.value();
   // fprintf(stderr, "%d (%d)\n", ret, value);
   return ret;
 }
