@@ -32,8 +32,8 @@ batch_noup)
 	S=3
 	for (( Q = 1; Q <= 1000000000; Q*=10 ))
 	do
-	#	./run.sh noup comb $Q | tee -a $out; sleep $S
-		./run.sh noup ctree $Q | tee -a $out; sleep $S
+		./run.sh noup comb $Q | tee -a $out; sleep $S
+	#	./run.sh noup ctree $Q | tee -a $out; sleep $S
 	#	./run.sh noup ctree_exp_leafsize $Q | tee -a $out; sleep $S
 	#	./run.sh noup ctree_eager $Q | tee -a $out; sleep $S
 	#	./run.sh noup comb2 $Q | tee -a $out; sleep $S
