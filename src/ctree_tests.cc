@@ -44,10 +44,10 @@ vector<pair<string,function<void()>>> tests {
     int csum = 0;
     REP(i, N) {
       auto it = c.lower_bound(arr[i]);
-      // fprintf(stderr, "find %d, res = %d, %d\n", arr[i], !c.is_end(it), it.value());
-      ASSERT_TRUE(!c.is_end(it));
-      ASSERT_TRUE(it.value() == arr[i]);
-      csum = csum * 13 + it.value();
+      // fprintf(stderr, "find %d, res = %d, %d\n", arr[i], it.first, it.second);
+      ASSERT_TRUE(it.first);
+      ASSERT_TRUE(it.second == arr[i]);
+      csum = csum * 13 + it.second;
     }
     fprintf(stderr, "csum = %d\n", csum);
   }},
@@ -74,10 +74,10 @@ vector<pair<string,function<void()>>> tests {
     int csum = 0;
     REP(i, N) {
       auto it = c.lower_bound(arr[i]);
-      // fprintf(stderr, "find %d, res = %d, %d\n", arr[i], !c.is_end(it), it.value());
-      ASSERT_TRUE(!c.is_end(it));
-      ASSERT_TRUE(it.value() == arr[i]);
-      csum = csum * 13 + it.value();
+      // fprintf(stderr, "find %d, res = %d, %d\n", arr[i], it.first, it.second);
+      ASSERT_TRUE(it.first);
+      ASSERT_TRUE(it.second == arr[i]);
+      csum = csum * 13 + it.second;
     }
     fprintf(stderr, "csum = %d\n", csum);
   }},
@@ -96,10 +96,10 @@ vector<pair<string,function<void()>>> tests {
     int csum = 0;
     REP(i, N) {
       auto it = c.lower_bound(arr[i]);
-      // fprintf(stderr, "find %d, res = %d, %d\n", arr[i], !c.is_end(it), it.value());
-      ASSERT_TRUE(!c.is_end(it));
-      ASSERT_TRUE(it.value() == arr[i]);
-      csum = csum * 13 + it.value();
+      // fprintf(stderr, "find %d, res = %d, %d\n", arr[i], it.first, it.second);
+      ASSERT_TRUE(it.first);
+      ASSERT_TRUE(it.second == arr[i]);
+      csum = csum * 13 + it.second;
     }
     fprintf(stderr, "csum = %d\n", csum);
   }},
@@ -119,10 +119,10 @@ vector<pair<string,function<void()>>> tests {
     int csum = 0;
     REP(i, N) {
       auto it = c.lower_bound(arr[i]);
-      // fprintf(stderr, "find %d, res = %d, %d\n", arr[i], !c.is_end(it), it.value());
-      ASSERT_TRUE(!c.is_end(it));
-      ASSERT_TRUE(it.value() == arr[i]);
-      csum = csum * 13 + it.value();
+      // fprintf(stderr, "find %d, res = %d, %d\n", arr[i], it.first, it.second);
+      ASSERT_TRUE(it.first);
+      ASSERT_TRUE(it.second == arr[i]);
+      csum = csum * 13 + it.second;
     }
     fprintf(stderr, "csum = %d\n", csum);
   }},
@@ -142,10 +142,10 @@ vector<pair<string,function<void()>>> tests {
     int csum = 0;
     REP(i, N) {
       auto it = c.lower_bound(arr[i]);
-      // fprintf(stderr, "find %d, res = %d, %d\n", arr[i], !c.is_end(it), it.value());
-      ASSERT_TRUE(!c.is_end(it));
-      ASSERT_TRUE(it.value() == arr[i]);
-      csum = csum * 13 + it.value();
+      // fprintf(stderr, "find %d, res = %d, %d\n", arr[i], it.first, it.second);
+      ASSERT_TRUE(it.first);
+      ASSERT_TRUE(it.second == arr[i]);
+      csum = csum * 13 + it.second;
     }
     fprintf(stderr, "csum = %d\n", csum);
   }},
@@ -173,11 +173,11 @@ vector<pair<string,function<void()>>> tests {
           c.insert(num);
         } else if (mset.count(num)) {
           auto it = c.lower_bound(num);
-          ASSERT_TRUE(!c.is_end(it));
-          ASSERT_TRUE(it.value() == num);
+          ASSERT_TRUE(it.first);
+          ASSERT_TRUE(it.second == num);
         } else {
           auto it = c.lower_bound(num);
-          ASSERT_TRUE(!!c.is_end(it) || it.value() != num);
+          ASSERT_TRUE(!it.first || it.second != num);
         }
       }
     }
@@ -197,7 +197,7 @@ vector<pair<string,function<void()>>> tests {
       int csum = 0;
       REP(i, 10000) {
         auto it = c.lower_bound(10);
-        if (!c.is_end(it)) csum = csum * 13 + it.value();
+        if (it.first) csum = csum * 13 + it.second;
       }
       fprintf(stderr, "csum = %d\n", csum);
     });
