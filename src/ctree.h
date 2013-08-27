@@ -15,10 +15,10 @@ using namespace chrono;
 namespace ctree {
 
 #define INTERNAL_BSIZE 64   // Must be power of two.
-#define LEAF_BSIZE 2048/2/2/2/2     // Must be power of two.
-#define MAX_INDEX 64/2/2
-#define CRACK_AT 64/2/2
-#define DECRACK_AT 32/2/2
+#define LEAF_BSIZE 2048     // Must be power of two.
+#define MAX_INDEX 64
+#define CRACK_AT 64
+#define DECRACK_AT 32
 
 template<typename Func>
 double time_it(Func f) {
