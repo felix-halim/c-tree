@@ -972,9 +972,7 @@ class CTree {
     return true;
   }
 
-  pair<bool, int> lower_bound(int value) {
-    // fprintf(stderr, "lower_bound %d\n", value);
-    // assert(check());
+  pair<Bucket*, int> find_leaf_bucket(int value) {
     Bucket *b = root;
     while (true) {
       if (b->is_leaf()) {
@@ -983,25 +981,26 @@ class CTree {
         assert(Lb->get_parent());
         b = Lb->get_parent();
       } else {
-        // fprintf(stderr, "root is leaf = %d, size = %d\n", root->is_leaf(), root->size());
         InternalBucket *ib = (InternalBucket*) b;
         int pos = ib->internal_lower_pos(value);
         if (pos < ib->size() && ib->data(pos) == value) {
-          return make_pair(true, value); // Found in the internal bucket.
+          return make_pair(ib, pos); // Found in the internal bucket.
         }
-        // fprintf(stderr, "lower_bound child %d\n", pos);
         b = ib->child(pos);    // Search the child.
       }
     }
-    // fprintf(stderr, "awww %lu\n", it.path.size());
-    // for (int i = 0; i < (int) it.path.size(); i++)
-    //   fprintf(stderr, "path[%d] = %d\n", i, it.path[i].second);
+    return make_pair(b, 0);
+  }
 
-    // fprintf(stderr, "split_chain finished %d\n", value);
-    // debug(); assert(check());
+  pair<bool, int> lower_bound(int value) {
+    // fprintf(stderr, "lower_bound %d\n", value);
+    pair<Bucket*, int> p = find_leaf_bucket(value);
 
-    // This is standalone leaf. The result is guaranteed to be inside the bucket.
-    int pos = ((LeafBucket*) b)->leaf_lower_pos(value);
+    // Found in internal bucket.
+    if (!p.first->is_leaf()) return make_pair(true, value);
+
+    LeafBucket *b = (LeafBucket*) p.first;
+    int pos = b->leaf_lower_pos(value);
     if (pos < b->size()) return make_pair(true, b->data(pos));
 
     InternalBucket *ib = (InternalBucket*) b->get_parent();
@@ -1010,7 +1009,6 @@ class CTree {
       if (pos < ib->size()) return make_pair(true, ib->data(pos));
       ib = (InternalBucket*) ib->get_parent();
     }
-    // fprintf(stderr, "lower_bound FAIL!\n");
     return make_pair(false, 0);
   }
 
@@ -1024,15 +1022,14 @@ class CTree {
   }
 
   bool erase(int value) {
-    // iterator it = lower_bound(value);
-    // // fprintf(stderr, "erase %d, is leaf = %d\n", value, L.first->is_leaf());
-    // if (it.path.back().first->is_leaf()) {
-    //   // fprintf(stderr, "leaf_erase\n");
-    //   return ((LeafBucket*) it.path.back().first)->leaf_erase(value); // May return false.
-    // }
-    // // fprintf(stderr, "internal_erase\n");
-    // return ((InternalBucket*) it.path.back().first)->internal_erase(value); // Always return true.
-    return true;
+    // fprintf(stderr, "erase %d, is leaf = %d\n", value, L.first->is_leaf());
+    pair<Bucket*, int> p = find_leaf_bucket(value);
+    if (p.first->is_leaf()) {
+      // fprintf(stderr, "leaf_erase\n");
+      return ((LeafBucket*) p.first)->leaf_erase(value); // May return false.
+    }
+    // fprintf(stderr, "internal_erase\n");
+    return ((InternalBucket*) p.first)->internal_erase(value); // Always return true.
   }
 
   bool check() {
