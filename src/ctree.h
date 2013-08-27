@@ -33,22 +33,26 @@ Random rng;
 
 class Bucket {
  protected:
+  int *D;
   int pending_insert; // -1 for InternalBucket, >= 0 for LeafBucket.
   int N, cap;
 
  public:
-  int get_cap() { return cap; }
-  int size() { return N; }
-  bool is_full() { return size() == cap; }
-  bool is_leaf() { return pending_insert >= 0; }
+  int get_cap() const { return cap; }
+  int size() const { return N; }
+  bool is_full() const { return size() == cap; }
+  bool is_leaf() const { return pending_insert >= 0; }
+  int data(int i) { assert(i >= 0 && i < N); return D[i]; }
   void optimize();
   int debug(int depth);
-  bool check();
+  bool check(int lo);
+  bool check(int lo, int hi);
+  pair<bool,int> erase_largest();
+  bool lower_bound(int value, vector<pair<int, Bucket*>> &nbs, vector<pair<Bucket*, int>> &path);
 };
 
 class LeafBucket : public Bucket {
  protected:
-  int *D;
   unsigned char nC;       // Number of cracker indices.
   unsigned long long S1;  // Sorted bits of each cracker index.
   int C[MAX_INDEX];       // Cracker index positions.
@@ -60,7 +64,6 @@ class LeafBucket : public Bucket {
   LeafBucket(int cap);
   void init(int cap);
   LeafBucket* next_bucket() { return next; }
-  int data(int i) { assert(i >= 0 && i < N); return D[i]; }
 
   void clear_indexes() { S1 = /* S2 = S3 = S4 = */ nC = pending_insert = 0; }
   void piece_set_sorted(int i, bool sorted);
@@ -68,7 +71,6 @@ class LeafBucket : public Bucket {
   void piece_set_unsorted_onwards(int i);
   void add_cracker_index(int at, int M);
   void remove_cracker_index(int at);
-
   int get_piece_by_index(int idx, int &L, int &R);
 
   // T nth(int idx) {
@@ -88,26 +90,22 @@ class LeafBucket : public Bucket {
 
   // Reorganizes the elements and returns a piece [L,R) that contains v.
   int get_piece_by_value(int &v, int &L, int &R);
-
   int crack(int &v, int &i, int &L, int &R, bool sort_piece);
+  bool leaf_erase(int &v);
+  pair<bool,int> leaf_erase_largest();
 
-  // template<typename T, typename CMP>
-  // bool erase(int &v);
+  bool leaf_debug(const char *msg, int i, int j) const;
 
-  // bool debug(const char *msg, int i, int j) const;
+  // call this function to check the consistency of this Bucket structure
+  bool leaf_check() const;
+  bool leaf_check(int lo, bool useLo, int hi, bool useHi) const;
 
-  // // call this function to check the consistency of this Bucket structure
-  // template<typename T, typename CMP>
-  // bool check(T lo, bool useLo, T hi, bool useHi) const;
-
-
-
+  void leaf_debug();
   void leaf_insert(int v);
-  void leaf_split(vector<pair<int, LeafBucket*>> &nbs);
+  void leaf_split(vector<pair<int, Bucket*>> &nbs);
   void leaf_optimize();
   int promote_last();
-  int lower_pos(int value);
-  pair<bool,int> leaf_lower_bound(int value);
+  int leaf_lower_pos(int value);
   LeafBucket* detach_and_get_next();
   void add_chain(LeafBucket *b);
   void distribute_values(int pivot, LeafBucket* chain[2]);
@@ -120,14 +118,16 @@ class InternalBucket : public LeafBucket {
 
  public:
   ~InternalBucket();
-  InternalBucket();
-  InternalBucket(int promotedValue, Bucket *left, Bucket *right);
+  InternalBucket(Bucket *left);
   Bucket*& child(int i) { assert(i >= 0 && i <= N); return C[i]; }
   int child_pos(int value);
   Bucket*& child_bucket(int value);
+  int internal_lower_pos(int value);
   InternalBucket* internal_split();
   void internal_insert(int value, Bucket *b);
   int internal_promote_last();
+  bool internal_erase(int &v);
+  pair<bool,int> internal_erase_largest();
 };
 
 
@@ -167,16 +167,83 @@ void Bucket::optimize() {
   }
 }
 
+pair<bool,int> Bucket::erase_largest() {
+  return is_leaf()
+    ? ((LeafBucket*) this)->leaf_erase_largest()
+    : ((InternalBucket*) this)->internal_erase_largest();
+}
+
+bool Bucket::lower_bound(int value, vector<pair<int, Bucket*>> &nbs, vector<pair<Bucket*, int>> &path) {
+  assert(nbs.empty());
+  // fprintf(stderr, "bucket_lower_bound %d, leaf = %d\n", size(), is_leaf());
+  if (is_leaf()) {
+    // fprintf(stderr, "lower_bound leaf %d, path = %lu\n", value, path.size());
+    LeafBucket *b = (LeafBucket*) this;
+    if (b->next_bucket()) {       // Split chain if exists.
+      b->leaf_split(nbs);
+      if (!nbs.empty()) {
+        // fprintf(stderr, "lower_bound nbsx %lu\n", nbs.size());
+        return false;   // The caller must retry after merging the new buckets in nbs.
+      }
+      // fprintf(stderr, "lower_bound nbs IS empty!\n");
+    }
+    // This is standalone leaf. The result is guaranteed to be inside the bucket.
+    int pos = b->leaf_lower_pos(value);
+    if (pos < b->size()) {
+      // fprintf(stderr, "lower_bound GOT %d!\n", pos);
+      path.push_back(make_pair(b, pos));    // Only fill in the path if found.
+      return true;
+    }
+    // fprintf(stderr, "lower_bound FAIL!\n");
+    return false;
+  }
+
+  InternalBucket *ib = (InternalBucket*) this;
+  int pos = ib->internal_lower_pos(value);
+  if (pos < ib->size() && ib->data(pos) == value) {
+    path.push_back(make_pair(ib, pos));
+    return true; // Found in the internal bucket.
+  }
+
+  while (true) {
+    // fprintf(stderr, "lower_bound child %d\n", pos);
+    path.push_back(make_pair(ib, pos)); // Only fill in the path if found.
+    bool ok = ib->child(pos)->lower_bound(value, nbs, path);    // Search the child.
+    // fprintf(stderr, "lower_bound ok = %d\n", ok);
+    if (nbs.empty() && (ok || pos < ib->size())) return true;
+    path.pop_back();
+    if (nbs.empty()) return ok;
+    // fprintf(stderr, "lower_bound nbs merging1 %lu, sz = %d\n", nbs.size(), ib->size());
+    while (!ib->is_full() && !nbs.empty()) {
+      ib->internal_insert(nbs.back().first, nbs.back().second);
+      nbs.pop_back();
+    }
+    if (!nbs.empty()) break;
+    // fprintf(stderr, "lower_bound nbs merging2 %lu\n", nbs.size());
+    pos = ib->internal_lower_pos(value); // Retry after merging new buckets.
+  }
+  // fprintf(stderr, "lower_bound escalate %lu\n", nbs.size());
+
+  // Escalate to the parent since this internal bucket is full.
+  InternalBucket *inb = ib->internal_split();
+  // fprintf(stderr, "split sizes = %d  %d\n", ib->size(), inb->size());
+  int promotedValueInternal = ib->internal_promote_last();
+  for (int j = 0; j < (int) nbs.size(); j++) {
+    ((nbs[j].first >= promotedValueInternal) ? inb : ib)
+      ->internal_insert(nbs[j].first, nbs[j].second);
+  }
+  nbs.clear();
+  nbs.push_back(make_pair(promotedValueInternal, inb));
+  return false;
+}
+
 int Bucket::debug(int depth) {
   for (int i = 0; i < depth; i++) fprintf(stderr, "  ");
   LeafBucket *b = (LeafBucket *) this;
   int sz = 0;
   while (b) {
     sz += b->size();
-    fprintf(stderr, "N = %d (%d%s), ", b->size(), b->pending_insert, b->is_leaf() ? ", leaf" : "");
-    for (int i = 0; i < b->size(); i++) {
-      fprintf(stderr, "%d ", b->data(i));
-    }
+    ((LeafBucket*) b)->leaf_debug();
     if ((b = b->next_bucket())) {
       fprintf(stderr, "------ ");
     }
@@ -192,15 +259,22 @@ int Bucket::debug(int depth) {
   return sz;
 }
 
-bool Bucket::check() {
+bool Bucket::check(int lo, int hi) {
+  if (is_leaf()) return ((LeafBucket*) this)->leaf_check(lo, true, hi, true);
+  return check(lo);
+}
+
+bool Bucket::check(int lo) {
   assert(N >=0 && N <= cap);
   assert(is_leaf() || ((InternalBucket*) this)->child(N));
+  if (is_leaf()) return ((LeafBucket*) this)->leaf_check();
+  InternalBucket *ib = (InternalBucket*) this;
+  if (N) ib->child(0)->check(lo, D[0]);
   for (int i = 0; i < N; i++) {
-    if (is_leaf()) {
-    } else if (i > 0) {
-      assert(((InternalBucket*) this)->child(i));
-      assert(((InternalBucket*) this)->data(i - 1) < ((InternalBucket*) this)->data(i));
-    }
+    assert(ib->child(i));
+    if (i > 0) assert(ib->data(i - 1) < ib->data(i));
+    if (!ib->child(i + 1)->check(D[i], (i + 1 < N) ? D[i + 1] : 2147483647))
+      return false;
   }
   return true;
 }
@@ -227,7 +301,18 @@ LeafBucket::~LeafBucket() {
   nDes++;
 }
 
+void LeafBucket::leaf_debug() {
+  fprintf(stderr, "N = %d (p=%d, c=%d, LEAF), ", N, pending_insert, nC);
+  for (int i = 0; i < N; i++) {
+    fprintf(stderr, "%d ", D[i]);
+  }
+  for (int i = 0; i < nC; i++) {
+    fprintf(stderr, "C[%d] = (pos=%d, val=%d), ", i, C[i], V[i]);
+  }
+}
+
 void LeafBucket::leaf_insert(int value) {
+  // assert(leaf_check());
   assert(is_leaf());
   assert(N >= 0);
   if (!is_full()) {
@@ -241,7 +326,7 @@ void LeafBucket::leaf_insert(int value) {
     }
     tail->D[tail->N++] = value;
   }
-  // assert(check());
+  // assert(leaf_check());
 }
 
 
@@ -303,6 +388,7 @@ void LeafBucket::remove_cracker_index(int at) {
 void LeafBucket::flush_pending_inserts() {
   // Indexed index should be less than the number of elements.
   // fprintf(stderr, "%d <= %d\n", pending_insert, size());
+  // debug(10);
   assert(pending_insert <= size());
 
   // No index yet, all the elements are considered "inserted".
@@ -328,43 +414,6 @@ void LeafBucket::flush_pending_inserts() {
   }
 
   piece_set_unsorted_onwards(minC);
-}
-
-
-template<typename T>
-static T* doUpperCrack(T *lo, T *hi, T *pivot) {
-  while (lo <= hi) {
-    while (lo <= hi && !(*pivot < *lo)) lo++;
-    while (lo <= hi &&  (*pivot < *hi)) hi--;
-    if (lo < hi) std::iter_swap(lo, hi);
-  }
-  return lo;
-}
-
-template<typename T>
-static T* doLowerCrack(T *lo, T *hi, T *pivot) {
-  while (lo <= hi) {
-    while (lo <= hi &&  (*lo < *pivot)) lo++;
-    while (lo <= hi && !(*hi < *pivot)) hi--;
-    if (lo < hi) std::iter_swap(lo, hi);
-  }
-  return lo;
-}
-
-template<typename T>
-static T* partition(T *lo, T *hi, T *pivot, bool upperCrack) {
-  assert(lo <= pivot && pivot <= hi);
-  if (upperCrack) {
-    std::iter_swap(lo, pivot);
-    // fprintf(stderr, "upperCrack %d, %d\n", *lo, hi - lo);
-    T* ret = doUpperCrack(lo + 1, hi, lo);
-    std::iter_swap(ret, lo);
-    return ret;
-  }
-  std::iter_swap(hi, pivot);
-  T* ret = doLowerCrack(lo, hi - 1, hi);
-  std::iter_swap(ret, hi);
-  return ret;
 }
 
 template<typename T>
@@ -400,79 +449,6 @@ T* rough_middle_partition(T *L, T *R) {
   T *M = L+((R-L)>>1);
   std::nth_element(L, M, R);
   return M;
-}
-
-
-// Partitions roughly in the middle satisfying the DECRACK_AT.
-template<typename T>
-static T* rough_middle_partition2(T *L, T *R, int min_gap) {
-  T *arr = L;
-  int idx[10000];
-  int N = R - L, H = N / 2;
-  int lo = 0, hi = N, ret = -1;
-  assert(N >= min_gap * 2);
-  while (true) {
-    int n = hi - lo;
-    // fprintf(stderr, "%d %d, min_gap = %d, gap left = %d, %d\n", lo, hi, min_gap, lo, N - hi);
-    assert(n > 0);
-    T* p = arr + lo + rng.nextInt(n);
-    // T pval = *p;
-    if (lo >= min_gap && N - hi >= min_gap) {
-      // Normal Crack
-      ret = partition(arr + lo, arr + hi, p, false) - arr;
-      // fprintf(stderr, "normal crac = %d, pos = %d < %d < %d\n", *p, lo, ret, hi);
-
-      // for (int i = lo; i < hi; i++) {
-      //   fprintf(stderr, "%d = %d\n", i, arr[i]);
-      // }
-      break;
-    }
-    // Fusion!
-    int ilo = 0, ihi = n;
-    for (int i = lo, _n = lo + n; i < _n; i++) {
-      idx[ilo] = idx[ihi] = i;
-      ilo += !(arr[i] < *p);
-      ihi +=  (arr[i] < *p);
-    }
-    int nswap = std::min(ilo, ihi - n);
-    for (int i = 0; i < nswap; i++) {
-      int j = ihi - i - 1;
-      // fprintf(stderr, "swapping %d (%d) <>  %d (%d), pivot = %d\n", arr[idx[i]], idx[i], arr[idx[j]], idx[j], pval);
-      if (idx[i] >= idx[j]) { nswap = i; break; }
-      swap(arr[idx[i]], arr[idx[j]]);
-    }
-    int j = ihi - nswap;
-    assert(j >= 0);
-    int next = std::min(idx[nswap], idx[j]);
-    // fprintf(stderr, "n = %d, nswap = %d, %d %d, ilo = %d, ihi = %d, next = %d, pivot = %d\n",
-    //   n, nswap, idx[nswap], idx[n + nswap], ilo, ihi - n, next, p - arr);
-    if (nswap == 0) {
-      std::iter_swap(p, arr + next);
-      ret = next;
-      break;
-    }
-    // for (int i = 0; i < N; i++) fprintf(stderr, "[%d]%d ", i, arr[i]);
-    // fprintf(stderr, "\n" );
-    if (next <= H) {
-      lo = next;
-    } else {
-      hi = next;
-    }
-  }
-  assert(ret != -1);
-  // fprintf(stderr, "ret = %d\n", ret);
-  // for (int i = 0; i < N; i++) fprintf(stderr, "[%d]%d ", i, arr[i]);
-
-  // for (int i = 0; i <= ret; i++) {
-  //   fprintf(stderr, "\ni = %d, L = %d <= %d", i, arr[i], arr[ret]);
-  //   assert(arr[i] <= arr[ret]);
-  // }
-  // for (int i = ret; i < N; i++) {
-  //   fprintf(stderr, "\ni = %d, R = %d >= %d", i, arr[i], arr[ret]);
-  //   assert(arr[i] >= arr[ret]);
-  // }
-  // fprintf(stderr, "\n\n");
-  return L + ret;
 }
 
 int LeafBucket::get_piece_by_value(int &v, int &L, int &R) {
@@ -513,9 +489,11 @@ int LeafBucket::get_piece_by_value(int &v, int &L, int &R) {
 // }
 
 int LeafBucket::crack(int &v, int &i, int &L, int &R, bool sort_piece) {
+  // assert(leaf_check());
   assert(!next);                     // It doesn't make sense crack a chained bucket!
   // assert(check(D[0], false, D[0], false));
   i = get_piece_by_value(v, L, R);    // Find the piece [L,R) containing v.
+  // fprintf(stderr, "i = %d, v = %d, %d %d, N = %d, pi = %d\n", i,v,L,R,N, pending_insert);
   assert(L >= 0 && L <= R && R <= size());
   // assert(check(D[0], false, D[0], false));
   if (!piece_is_sorted(i)) {
@@ -536,70 +514,106 @@ int LeafBucket::crack(int &v, int &i, int &L, int &R, bool sort_piece) {
   return std::lower_bound(D + L, D + R, v) - D;
 }
 
+pair<bool,int> LeafBucket::leaf_erase_largest() {
+  assert(!next);
+  flush_pending_inserts();
+  // assert(leaf_check());
+  // fprintf(stderr, "leaf1");
+  if (N == 0) return make_pair(false, D[0]);
+  // fprintf(stderr, "leaf2");
+  int pos = 0;
+  if (nC) {
+    pos = C[nC - 1] + 1;
+    if (N - pos < DECRACK_AT) {
+      remove_cracker_index(nC - 1);
+    }
+    // TODO: optimize.
+    piece_set_sorted(nC, false);
+  } else {
+    pending_insert = N;
+  }
+  int largest_pos = pos++;
+  while (pos < N) {
+    if (D[pos] > D[largest_pos])
+      largest_pos = pos;
+    pos++;
+  }
+  // fprintf(stderr, "pos %d %d\n", pos, largest_pos);
+  swap(D[largest_pos], D[--N]);
+  pending_insert--;
+  // assert(leaf_check());
+  return make_pair(true, D[N]);
+}
 
-// BUCKET_TPLC(bool)::erase(int &v) {
-//   int i, L, R, at = crack(v, i, L, R, false);
-//   if (at >= R || !eq(D[at], v)) return false;  // The element to be erased is not found!
+bool LeafBucket::leaf_erase(int &v) {
+  // assert(leaf_check());
+  int i, L, R, at = crack(v, i, L, R, false);
+  // fprintf(stderr, "at = %d < %d\n", at, R);
+  if (at >= R || D[at] != v) return false;  // The element to be erased is not found!
 
-//   // Decrack this cracker piece (it becomes too small) or
-//   // if the deleted element index is a cracker index
-//   if (nC && R - L + 1 <= DECRACK_AT) {
-//     remove_cracker_index((i > 0) ? --i : i);
-//   } else if (i > 0 && at == L) {
-//     at = L + 1;
-//     for (int j = L + 2; j < R; j++)    // find a replacement element for the cracker index
-//       if (cmp(D[j], D[at])) at = j;  // that is the smallest element in the piece (L,R)
-//     std::swap(D[L], D[at]);
-//     piece_set_sorted(i, false);
-//     V[i - 1] = D[L];
-//   }
+  // Decrack this cracker piece (it becomes too small) or
+  // if the deleted element index is a cracker index
+  if (nC && R - L <= DECRACK_AT) {
+    remove_cracker_index((i > 0) ? --i : i);
+  } else if (i > 0 && at == L) {
+    at = L + 1;
+    for (int j = L + 2; j < R; j++)    // find a replacement element for the cracker index
+      if (D[j] < D[at]) at = j;  // that is the smallest element in the piece (L,R)
+    std::swap(D[L], D[at]);
+    piece_set_sorted(i, false);
+    V[i - 1] = D[L];
+  }
 
-//   assert(at < R && eq(D[at], v));    // the element v must be found!
+  assert(at < R && D[at] == v);    // the element v must be found!
 
-//   // IMPROVE: use pending delete? antimatter?
-//   piece_set_unsorted_onwards(i);      // unset the sorted bit i onwards
-//   assert(i == nC || cmp(D[at], V[i]));
-//   for (int j = i; j < nC; j++) {        // shuffle out the deleted element
-//     R = C[j]--;
-//     D[at] = D[R - 1];
-//     D[R - 1] = D[R];
-//     at = R;
-//   }
-//   D[at] = D[--size_];   // The deleted element has been shuffled out from the bucket.
-//   pending_insert--;   // Adjust the pending index.
+  // IMPROVE: use pending delete? antimatter?
+  piece_set_unsorted_onwards(i);      // unset the sorted bit i onwards
+  assert(i == nC || D[at] < V[i]);
+  for (int j = i; j < nC; j++) {        // shuffle out the deleted element
+    R = C[j]--;
+    D[at] = D[R - 1];
+    D[R - 1] = D[R];
+    at = R;
+  }
+  D[at] = D[--N];   // The deleted element has been shuffled out from the bucket.
+  pending_insert--;   // Adjust the pending index.
 
-//   // assert(check(D[0],false,D[0],false));
-//   return true;
-// }
+  // assert(leaf_check());
+  return true;
+}
 
-// BUCKET_TPL(bool)::debug(const char *msg, int i, int j) const {
-//   for (int k=0; k<nC; k++)
-//     fprintf(stderr,"C[%d/%d] = %d, %d (sorted = %d)\n",
-//       k,nC,C[k],(int)D[C[k]],piece_is_sorted(k));
-//   fprintf(stderr,"%s : i=%d/N=%d, j=%d/nC=%d, D[i,i+1] = %d, %d; I=%d, N=%d, next=%d\n",
-//     msg, i,size(), j,nC, (int)D[i],(int)D[i+1], pending_insert,size(),next_bucket_id);
-//   return false;
-// }
+bool LeafBucket::leaf_debug(const char *msg, int i, int j) const {
+  for (int k=0; k < nC; k++)
+    fprintf(stderr,"C[%d/%d] = %d, %d (sorted = %d)\n",
+      k, nC, C[k], (int)D[C[k]], piece_is_sorted(k));
+  fprintf(stderr,"%s : i=%d/N=%d, j=%d/nC=%d, D[i,i+1] = %d, %d; I=%d, N=%d, next=%p\n",
+    msg, i,size(), j,nC, (int)D[i],(int)D[i+1], pending_insert,size(), next);
+  return false;
+}
 
-// BUCKET_TPLC(bool)::check(T lo, bool useLo, T hi, bool useHi) const {
-//   if (useLo) for (int i = 0; i < size(); i++) if (cmp(D[i], lo)) {
-//     fprintf(stderr,"D[%d] = %d, lo = %d\n", i, D[i], lo);
-//     return debug("useLo failed", i, 0);
-//   }
-//   if (useHi) for (int i = 0; i < size(); i++) if (!cmp(D[i], hi)) {
-//     fprintf(stderr,"D[%d] = %d, hi = %d\n", i, D[i], hi);
-//     return debug("useHi failed", i, 0);
-//   }
-//   for (int i=0,j=0; i<pending_insert; i++){                    // check cracker indices
-//     if (j<nC && C[j]==i) assert(eq(V[j],D[i])), lo = D[i], j++;
-//     if (piece_is_sorted(j) && (j==nC? (i+1<pending_insert) : (i<C[j])) && cmp(D[i+1], D[i]))
-//       return debug("sortedness violation", i,j);
-//     if (j>0 && cmp(D[i], D[C[j-1]])) return debug("lower bound fail", i,j);
-//     if (j<nC && cmp(D[C[j]], D[i])) return debug("upper bound fail", i,j);
-//     // if (j<nC && !(cmp(D[i], D[C[j]]))) return debug("upper bound fail", i,j);
-//   }
-//   return true;
-// }
+bool LeafBucket::leaf_check() const {
+  return leaf_check(D[0],false,D[0],false);
+}
+
+bool LeafBucket::leaf_check(int lo, bool useLo, int hi, bool useHi) const {
+  if (useLo) for (int i = 0; i < size(); i++) if ((D[i] < lo)) {
+    fprintf(stderr,"D[%d] = %d, lo = %d\n", i, D[i], lo);
+    return leaf_debug("useLo failed", i, 0);
+  }
+  if (useHi) for (int i = 0; i < size(); i++) if (!(D[i] < hi)) {
+    fprintf(stderr,"D[%d] = %d, hi = %d\n", i, D[i], hi);
+    return leaf_debug("useHi failed", i, 0);
+  }
+  for (int i=0,j=0; i<pending_insert; i++){                    // check cracker indices
+    if (j<nC && C[j]==i) assert((V[j] == D[i])), lo = D[i], j++;
+    if (piece_is_sorted(j) && (j==nC? (i+1<pending_insert) : (i<C[j])) && (D[i+1] < D[i]))
+      return leaf_debug("sortedness violation", i,j);
+    if (j>0 && (D[i] < D[C[j-1]])) return leaf_debug("lower bound fail", i,j);
+    if (j<nC && (D[C[j]] < D[i])) return leaf_debug("upper bound fail", i,j);
+    // if (j<nC && !((D[i] < D[C[j]]))) return debug("upper bound fail", i,j);
+  }
+  return true;
+}
 
 
 
@@ -628,7 +642,7 @@ void fusion(int *Lp, int *Rp, int *hi, int *lo, int &nhi, int &nlo) {
 LeafBucket* LeafBucket::detach_and_get_next() {
   LeafBucket* ret = next;
   next = tail = NULL;
-  pending_insert = 0;
+  clear_indexes();
   return ret;
 }
 
@@ -665,7 +679,8 @@ LeafBucket* LeafBucket::transfer_to(LeafBucket *b, int pivot) {
   return b;
 }
 
-void LeafBucket::leaf_split(vector<pair<int, LeafBucket*>> &ret) {
+void LeafBucket::leaf_split(vector<pair<int, Bucket*>> &ret) {
+  // assert(leaf_check());
   ret.clear();
   assert(next);
   assert(cap == LEAF_BSIZE); // The first bucket must be the smallest capacity.
@@ -823,6 +838,7 @@ void LeafBucket::leaf_split(vector<pair<int, LeafBucket*>> &ret) {
     if (Rb) Rb->distribute_values(pivot, chain), delete_leaf(Rb);
     ret.push_back(make_pair(pivot, chain[1]));
   }
+  // assert(leaf_check());
 }
 
 int LeafBucket::promote_last() {
@@ -836,30 +852,19 @@ void LeafBucket::leaf_optimize() {
   pending_insert = 0;
 }
 
-int LeafBucket::lower_pos(int value) {
-  // return std::lower_bound(D, D + N, value) - D;
-  int pos = 0;
-  while (pos < N && D[pos] < value) pos++;
+int LeafBucket::leaf_lower_pos(int value) {
+  // assert(leaf_check());
+  int i, L, R, pos = crack(value, i, L, R, true);
+  // assert(leaf_check());
+  // leaf_debug();
+  // fprintf(stderr, "leaf_lower_pos = %d, pos = %d, %d %d\n", value, pos, L, R);
   return pos;
 }
 
-pair<bool,int> LeafBucket::leaf_lower_bound(int value) {
-  int i, L, R, pos = crack(value, i, L, R, true);
-  return (pos == N) ? make_pair(false, 0) : make_pair(true, D[pos]);
-}
-
-InternalBucket::InternalBucket() : LeafBucket(INTERNAL_BSIZE) {
+InternalBucket::InternalBucket(Bucket *left) : LeafBucket(INTERNAL_BSIZE) {
   nInternals++;
   pending_insert = -1;
-}
-
-InternalBucket::InternalBucket(int promotedValue, Bucket *left, Bucket *right) : LeafBucket(INTERNAL_BSIZE) {
-  nInternals++;
-  pending_insert = -1;
-  D[0] = promotedValue;
   C[0] = left;
-  C[1] = right;
-  N = 1;
 }
 
 InternalBucket::~InternalBucket() {
@@ -867,14 +872,13 @@ InternalBucket::~InternalBucket() {
 }
 
 InternalBucket* InternalBucket::internal_split() {
-  InternalBucket *nb = new InternalBucket();
+  InternalBucket *nb = new InternalBucket(C[N / 2]);
   for (int i = N / 2, j = 0; i < N; i++) {
     nb->D[j++] = D[i];
     nb->C[j] = C[i + 1];
   }
   N /= 2;
   nb->N = N;
-  nb->C[0] = C[N];
   // assert(check());
   return nb;
 }
@@ -884,7 +888,6 @@ void InternalBucket::internal_insert(int value, Bucket *b) {
   // assert(check());
   assert(!is_full());
   int i = N - 1;
-  assert(i >= 0);
   while (i >= 0 && D[i] > value) {
     D[i + 1] = D[i];
     C[i + 2] = C[i + 1];
@@ -896,8 +899,50 @@ void InternalBucket::internal_insert(int value, Bucket *b) {
   // assert(check());
 }
 
+int InternalBucket::internal_lower_pos(int value) {
+  int pos = 0;
+  while (pos < N && D[pos] < value) pos++;
+  return pos;
+}
+
 int InternalBucket::internal_promote_last() {
  return D[--N];
+}
+
+bool InternalBucket::internal_erase(int &v) {
+  int pos = internal_lower_pos(v);
+  assert(D[pos] == v);
+  auto res = C[pos]->erase_largest();
+  // fprintf(stderr, "ii res = %d, largest = %d\n", res.first, res.second);
+  if (!res.first) {
+    N--;
+    while (pos < N) {
+      D[pos] = D[pos + 1];
+      C[pos] = C[pos + 1];
+      pos++;
+    }
+    C[pos] = C[pos + 1];
+  } else {
+    D[pos] = res.second;
+  }
+  // fprintf(stderr, "ii4");
+  return true;
+}
+
+pair<bool,int> InternalBucket::internal_erase_largest() {
+  auto res = C[N]->erase_largest();
+  if (res.first) return res;
+  if (C[N]->is_leaf()) {
+    LeafBucket *b = (LeafBucket*) C[N];
+    assert(!b->size());
+    delete_leaf(b);
+  } else {
+    InternalBucket *b = (InternalBucket*) C[N];
+    assert(!b->size());
+    delete b;
+  }
+  if (N > 0) return make_pair(true, D[--N]);
+  return make_pair(false, D[0]);
 }
 
 Bucket*& InternalBucket::child_bucket(int value) {
@@ -923,8 +968,73 @@ class CTree {
     // fprintf(stderr, "\n");
   }
 
+  class iterator {
+   public:
+    vector<pair<Bucket*, int>> path;
+
+    int value() {
+      // fprintf(stderr, "val %lu\n", path.size());
+      while (true) {
+        assert(!path.empty());
+        Bucket *b = path.back().first;
+        int pos = path.back().second;
+        // fprintf(stderr, "getting %d < %d\n", pos, b->size());
+        if (pos < b->size()) return b->data(pos);
+        // fprintf(stderr, "noget %lu\n", path.size());
+        path.pop_back();
+      }
+    }
+  };
+
+  bool is_end(iterator &it) {
+    return it.path.empty();
+  }
+
+  vector<pair<int, Bucket*>> nbs;
+  double t1 = 0, t2 = 0, t3 = 0;
+
+  void create_new_root() {
+    assert(!nbs.empty());
+    reverse(nbs.begin(), nbs.end());
+    if (!root->is_leaf()) {
+      while (!root->is_full() && !nbs.empty()) {
+        ((InternalBucket*) root)->internal_insert(nbs.back().first, nbs.back().second);
+        nbs.pop_back();
+      }
+    }
+    if (nbs.empty()) {
+      // fprintf(stderr, "added to root %d / %d\n", root->size(), root->get_cap());
+      return;
+    }
+    root = new InternalBucket(root);
+    // fprintf(stderr, "NEW ROOT %d / %d\n", root->size(), root->get_cap());
+    create_new_root();
+    assert(nbs.empty());
+  }
+
+  iterator lower_bound(int value) {
+    // fprintf(stderr, "lower_bound check %d\n", value);
+    // assert(check());
+    // fprintf(stderr, "lower_bound %d\n", value);
+    iterator it;
+    assert(nbs.empty());
+    while (true) {
+      // fprintf(stderr, "root is leaf = %d, size = %d\n", root->is_leaf(), root->size());
+      root->lower_bound(value, nbs, it.path);
+      // fprintf(stderr, "try %lu\n", nbs.size());
+      if (nbs.empty()) break;
+      create_new_root();
+    }
+    // fprintf(stderr, "awww %lu\n", it.path.size());
+    // for (int i = 0; i < (int) it.path.size(); i++)
+    //   fprintf(stderr, "path[%d] = %d\n", i, it.path[i].second);
+    // debug();
+    return it;
+  }
+
   void insert(int value) {
-    // fprintf(stderr, "ins %d\n", value);
+    // if (t1 > 0) fprintf(stderr, "ins %d\n", value);
+    // if (value == 711)  debug();
     Bucket *b = root;
     while (!b->is_leaf()) b = ((InternalBucket*) b)->child_bucket(value);
     ((LeafBucket*) b)->leaf_insert(value);
@@ -932,86 +1042,20 @@ class CTree {
   }
 
   bool erase(int value) {
-    return true;
-  }
-
-  pair<InternalBucket*, int> parents[10];
-  vector<pair<int, LeafBucket*>> nbs;
-  double t1 = 0, t2 = 0, t3 = 0;
-
-  pair<bool, int> lower_bound(int value) {
-    // fprintf(stderr, "lower_bound %d\n", value);
-    int i = 0;
-    Bucket *b = root;
-    // if (!root->is_leaf()) parents[i++] = make_pair((InternalBucket*) root, ((InternalBucket*) root)->child_pos(value));
-      // fprintf(stderr, "leaf_split iii = %d\n", i);
-    while (true) {
-      // fprintf(stderr, "leaf_split ii = %d\n", i);
-      if (!b->is_leaf()) {
-        // t1 += time_it([&] {
-          assert(i < 10);
-          parents[i].first = (InternalBucket*) b;
-          parents[i].second = ((InternalBucket*) b)->lower_pos(value);
-          // fprintf(stderr, "child pos %d <= %d\n", parents[i].second, parents[i].first->size());
-          b = parents[i].first->child(parents[i].second);
-          i++;
-        // });
-
-        if (parents[i-1].second < parents[i-1].first->size() && parents[i-1].first->data(parents[i-1].second) == value)
-          return make_pair(true, value);
-
-      } else if (((LeafBucket*) b)->next_bucket()) {
-        // t2 += time_it([&] {
-          ((InternalBucket*) b)->leaf_split(nbs);
-          while (!nbs.empty()) {
-            if (i == 0) {
-              b = root = new InternalBucket(nbs[0].first, b, nbs[0].second);
-              for (int j = 1; j < (int) nbs.size(); j++) {
-                ((InternalBucket*) b)->internal_insert(nbs[j].first, nbs[j].second);
-              }
-              break;
-            }
-            b = parents[--i].first;
-            while (!b->is_full() && !nbs.empty()) {
-              ((InternalBucket*) b)->internal_insert(nbs.back().first, nbs.back().second);
-              nbs.pop_back();
-            }
-            if (nbs.empty()) break;
-            InternalBucket *inb = ((InternalBucket*) b)->internal_split();
-            int promotedValueInternal = ((InternalBucket*) b)->internal_promote_last();
-            for (int j = 0; j < (int) nbs.size(); j++) {
-              if (nbs[j].first >= promotedValueInternal) {
-                inb->internal_insert(nbs[j].first, nbs[j].second);
-              } else {
-                ((InternalBucket*) b)->internal_insert(nbs[j].first, nbs[j].second);
-              }
-            }
-            nbs.clear();
-            nbs.push_back(make_pair(promotedValueInternal, inb));
-          }
-        // });
-      } else {
-        break;
-      }
-      // debug();
+    iterator it = lower_bound(value);
+    // fprintf(stderr, "erase %d, is leaf = %d\n", value, L.first->is_leaf());
+    if (it.path.back().first->is_leaf()) {
+      // fprintf(stderr, "leaf_erase\n");
+      return ((LeafBucket*) it.path.back().first)->leaf_erase(value); // May return false.
     }
-
-    pair<bool, int> ret;
-    // t3 += time_it([&] {
-      ret = ((LeafBucket*) b)->leaf_lower_bound(value);
-      while (!ret.first && i > 0) {
-        auto &p = parents[--i];
-        if (p.second < p.first->size()) {
-          // fprintf(stderr, "here %d\n", p.first->data(p.second));
-          ret = make_pair(true, p.first->data(p.second));
-          break;
-        }
-      }
-    // });
-    // fprintf(stderr, "awww %d %d\n", ret.first, ret.second);
-      // debug();
-    return ret;
+    // fprintf(stderr, "internal_erase\n");
+    return ((InternalBucket*) it.path.back().first)->internal_erase(value); // Always return true.
   }
+
+  bool check() {
+    return root->check(-2147483648);
+  }
+
 };
 
 }

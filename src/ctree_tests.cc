@@ -23,9 +23,9 @@ using namespace chrono;
 
 vector<pair<string,function<void()>>> tests {
 
-  { "ctree small", [] {
+  { "ctree erase small", [] {
     Random rng;
-    constexpr int N = 70;
+    int N = 70, E = 30;
     int *arr = new int[N];
     REP(i, N) arr[i] = rng.nextInt(100);
 
@@ -34,13 +34,72 @@ vector<pair<string,function<void()>>> tests {
     // c.debug();
 
     random_shuffle(arr, arr + N);
+
+    REP(i, E) {
+      bool ok = c.erase(arr[--N]);
+      assert(ok);
+    }
+    // c.debug();
+
     int csum = 0;
     REP(i, N) {
       auto it = c.lower_bound(arr[i]);
-      // fprintf(stderr, "find %d, res = %d, %d\n", arr[i], it.first, it.second);
-      ASSERT_TRUE(it.first);
-      ASSERT_TRUE(it.second == arr[i]);
-      csum = csum * 13 + it.second;
+      // fprintf(stderr, "find %d, res = %d, %d\n", arr[i], !c.is_end(it), it.value());
+      ASSERT_TRUE(!c.is_end(it));
+      ASSERT_TRUE(it.value() == arr[i]);
+      csum = csum * 13 + it.value();
+    }
+    fprintf(stderr, "csum = %d\n", csum);
+  }},
+
+  { "ctree erase medium", [] {
+    Random rng;
+    int N = 1000, E = 800;
+    int *arr = new int[N];
+    REP(i, N) arr[i] = rng.nextInt(1000);
+
+    CTree c;
+    REP(i, N) c.insert(arr[i]);
+    // c.debug();
+
+    random_shuffle(arr, arr + N);
+
+    REP(i, E) {
+      bool ok = c.erase(arr[--N]);
+      assert(ok);
+    }
+
+    // c.debug();
+
+    int csum = 0;
+    REP(i, N) {
+      auto it = c.lower_bound(arr[i]);
+      // fprintf(stderr, "find %d, res = %d, %d\n", arr[i], !c.is_end(it), it.value());
+      ASSERT_TRUE(!c.is_end(it));
+      ASSERT_TRUE(it.value() == arr[i]);
+      csum = csum * 13 + it.value();
+    }
+    fprintf(stderr, "csum = %d\n", csum);
+  }},
+
+  { "ctree small", [] {
+    Random rng;
+    constexpr int N = 70;
+    int *arr = new int[N];
+    REP(i, N) arr[i] = rng.nextInt(100);
+
+    CTree c;
+    REP(i, N) c.insert(arr[i]);
+    c.debug();
+
+    random_shuffle(arr, arr + N);
+    int csum = 0;
+    REP(i, N) {
+      auto it = c.lower_bound(arr[i]);
+      // fprintf(stderr, "find %d, res = %d, %d\n", arr[i], !c.is_end(it), it.value());
+      ASSERT_TRUE(!c.is_end(it));
+      ASSERT_TRUE(it.value() == arr[i]);
+      csum = csum * 13 + it.value();
     }
     fprintf(stderr, "csum = %d\n", csum);
   }},
@@ -53,17 +112,40 @@ vector<pair<string,function<void()>>> tests {
 
     CTree c;
     REP(i, N) c.insert(arr[i]);
-    c.optimize();
+    // c.optimize();
     c.debug();
 
     random_shuffle(arr, arr + N);
     int csum = 0;
     REP(i, N) {
       auto it = c.lower_bound(arr[i]);
-      // fprintf(stderr, "find %d, res = %d, %d\n", arr[i], it.first, it.second);
-      ASSERT_TRUE(it.first);
-      ASSERT_TRUE(it.second == arr[i]);
-      csum = csum * 13 + it.second;
+      // fprintf(stderr, "find %d, res = %d, %d\n", arr[i], !c.is_end(it), it.value());
+      ASSERT_TRUE(!c.is_end(it));
+      ASSERT_TRUE(it.value() == arr[i]);
+      csum = csum * 13 + it.value();
+    }
+    fprintf(stderr, "csum = %d\n", csum);
+  }},
+
+  { "ctree large", [] {
+    Random rng;
+    constexpr int N = 200;
+    int *arr = new int[N];
+    REP(i, N) arr[i] = rng.nextInt(300);
+
+    CTree c;
+    REP(i, N) c.insert(arr[i]);
+    // c.optimize();
+    c.debug();
+
+    random_shuffle(arr, arr + N);
+    int csum = 0;
+    REP(i, N) {
+      auto it = c.lower_bound(arr[i]);
+      // fprintf(stderr, "find %d, res = %d, %d\n", arr[i], !c.is_end(it), it.value());
+      ASSERT_TRUE(!c.is_end(it));
+      ASSERT_TRUE(it.value() == arr[i]);
+      csum = csum * 13 + it.value();
     }
     fprintf(stderr, "csum = %d\n", csum);
   }},
@@ -91,11 +173,11 @@ vector<pair<string,function<void()>>> tests {
           c.insert(num);
         } else if (mset.count(num)) {
           auto it = c.lower_bound(num);
-          ASSERT_TRUE(it.first);
-          ASSERT_TRUE(it.second == num);
+          ASSERT_TRUE(!c.is_end(it));
+          ASSERT_TRUE(it.value() == num);
         } else {
           auto it = c.lower_bound(num);
-          ASSERT_TRUE(!it.first || it.second != num);
+          ASSERT_TRUE(!!c.is_end(it) || it.value() != num);
         }
       }
     }
@@ -109,12 +191,13 @@ vector<pair<string,function<void()>>> tests {
       REP(i, 1000000)
         c.insert(rng.nextInt());
     });
+    // c.debug();
 
     double query_time = time_it([&] {
       int csum = 0;
       REP(i, 10000) {
         auto it = c.lower_bound(10);
-        csum = csum * 13 + it.second;
+        if (!c.is_end(it)) csum = csum * 13 + it.value();
       }
       fprintf(stderr, "csum = %d\n", csum);
     });
@@ -126,6 +209,7 @@ vector<pair<string,function<void()>>> tests {
 
 int main() {
   for (auto it : tests) {
+    if (strstr(it.first.c_str(), "erase")) continue;
     printf("%s ... ", it.first.c_str());
     it.second();
     puts(PASSED);
