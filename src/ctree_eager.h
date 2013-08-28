@@ -36,6 +36,7 @@ class Bucket {
   void optimize();
   void debug(int depth);
   bool check();
+  int slack();
 };
 
 class LeafBucket : public Bucket {
@@ -162,6 +163,16 @@ pair<bool,int> LeafBucket::leaf_lower_bound(int value) {
   // std::lower_bound(D, D + N, value) - D;
 
   return (pos == N) ? make_pair(false, 0) : make_pair(true, D[pos]);
+}
+
+
+int Bucket::slack() {
+  int ret = BSIZE - N;
+  if (is_leaf()) return ret;
+  for (int i = 0; i <= size(); i++) {
+    ret += ((InternalBucket*) this)->child(i)->slack();
+  }
+  return ret;
 }
 
 InternalBucket::InternalBucket() {
@@ -316,6 +327,10 @@ class CTree {
     } else {
       return internal_insert((InternalBucket*&) b, p, value, depth);
     }
+  }
+
+  int slack() {
+    return root->slack();
   }
 
   bool erase(int value) {

@@ -19,6 +19,7 @@ void init(int *arr, int N) {
     c.insert(arr[i]);
   }
   c.optimize();
+  fprintf(stderr, "slac = %d\n", c.slack());
   // c.debug();
 }
 
