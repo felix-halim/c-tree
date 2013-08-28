@@ -692,7 +692,9 @@ class CTree {
     if (!b) b = root;
     if (b->is_leaf()) {
       // fprintf(stderr, "optimize leaf\n");
-      return split_chain((LeafBucket*) b);
+      if (split_chain((LeafBucket*) b)) return true;
+      ((LeafBucket*) b)->leaf_optimize();
+      return false;
     }
     // fprintf(stderr, "optimize internal\n");
     bool retry = false;
