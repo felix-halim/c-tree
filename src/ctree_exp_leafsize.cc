@@ -18,11 +18,11 @@ void init(int *arr, int N) {
   for (int i = 0; i < N; i++) {
     c.insert(arr[i]);
   }
-  while (c.optimize());
-  c.compact();
-  while (c.optimize());
+  // while (c.optimize());
+  // c.compact();
+  // while (c.optimize());
   // c.debug();
-  fprintf(stderr, "depth = %d, slack = %d\n", c.max_depth(), c.slack());
+  // fprintf(stderr, "depth = %d, slack = %d\n", c.max_depth(), c.slack());
   locked = 1;
 }
 

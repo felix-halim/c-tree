@@ -16,7 +16,7 @@ namespace ctree {
 
 #define INTERNAL_BSIZE 64   // Must be power of two.
 #define MIN_LEAF_BSIZE 64     // Must be power of two.
-#define MAX_LEAF_BSIZE 64     // Must be power of two.
+#define MAX_LEAF_BSIZE 4096     // Must be power of two.
 
 template<typename Func>
 double time_it(Func f) {
@@ -257,7 +257,7 @@ void LeafBucket::leaf_insert(int value) {
       assert(cap == MIN_LEAF_BSIZE);
       add_chain(new_leaf(parent, MIN_LEAF_BSIZE));
     } else if (tail->is_full()) {
-      add_chain(new_leaf(parent, std::min(cap * 2, MAX_LEAF_BSIZE)));
+      add_chain(new_leaf(parent, std::min(MAX_LEAF_BSIZE, MAX_LEAF_BSIZE)));
     }
     tail->D[tail->N++] = value;
   }
@@ -547,7 +547,7 @@ int LeafBucket::promote_last() {
 
 void LeafBucket::leaf_optimize() {
   assert(pending_insert >= 0);
-  assert(!locked);
+  // assert(!locked);
   sort(D, D + N);
   pending_insert = 0;
 }
@@ -686,7 +686,7 @@ class CTree {
     // fprintf(stderr, "split_chain %d\n", b->size());
     if (!b->next_bucket()) return false;
 
-    assert(!locked);
+    // assert(!locked);
 
     int promotedValue;
     LeafBucket *nb;
@@ -833,11 +833,11 @@ class CTree {
   pair<bool, int> lower_bound(int value) {
     pair<bool, int> ret = make_pair(false, 0);
     pair<Bucket*, int> p;
-    t1 += time_it([&] {
+    // t1 += time_it([&] {
       // fprintf(stderr, "lower_bound %d\n", value);
       p = find_leaf_bucket(value);
-    });
-    t2 += time_it([&] {
+    // });
+    // t2 += time_it([&] {
       // Found in internal bucket.
       if (!p.first->is_leaf()) {
         ret = make_pair(true, value);
@@ -858,7 +858,7 @@ class CTree {
               }
           }
       }
-    });
+    // });
     return ret;
   }
 
