@@ -525,6 +525,7 @@ int LeafBucket::promote_last() {
 
 void LeafBucket::leaf_optimize() {
   assert(pending_insert >= 0);
+  assert(!locked);
   sort(D, D + N);
   pending_insert = 0;
 }
@@ -692,7 +693,10 @@ class CTree {
     if (!b) b = root;
     if (b->is_leaf()) {
       // fprintf(stderr, "optimize leaf\n");
-      if (split_chain((LeafBucket*) b)) return true;
+      if (split_chain((LeafBucket*) b)) {
+        while (split_chain((LeafBucket*) b));
+        return true;
+      }
       ((LeafBucket*) b)->leaf_optimize();
       return false;
     }
@@ -753,18 +757,16 @@ class CTree {
       // fprintf(stderr, "lower_bound %d\n", value);
       p = find_leaf_bucket(value);
     });
-
+    t2 += time_it([&] {
       // Found in internal bucket.
       if (!p.first->is_leaf()) {
         ret = make_pair(true, value);
       } else {
-        t2 += time_it([&] {
           LeafBucket *b = (LeafBucket*) p.first;
           int pos = b->leaf_lower_pos(value);
           if (pos < b->size()) {
             ret = make_pair(true, b->data(pos));
           } else {
-            t3 += time_it([&] {
               InternalBucket *ib = (InternalBucket*) b->get_parent();
               while (ib) {
                 pos = ib->internal_lower_pos(value);
@@ -774,10 +776,9 @@ class CTree {
                 }
                 ib = (InternalBucket*) ib->get_parent();
               }
-            });
           }
-        });
       }
+    });
     return ret;
   }
 
