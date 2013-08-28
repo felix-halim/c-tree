@@ -325,11 +325,11 @@ class CTree {
   pair<bool,int> lower_bound(int value) {
     // fprintf(stderr, "lower_bound %d\n", value);
     pair<bool, int> ret;
-    // t3 += time_it([&] {
+    t3 += time_it([&] {
      ret = root->is_leaf()
       ? ((LeafBucket*) root)->leaf_lower_bound(value)
       : ((InternalBucket*) root)->internal_lower_bound(value);
-    // });
+    });
     return ret;
   }
 };

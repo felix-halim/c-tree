@@ -21,6 +21,7 @@ void init(int *arr, int N) {
   while (c.optimize());
   // c.debug();
   fprintf(stderr, "depth = %d, slack = %d\n", c.max_depth(), c.slack());
+  locked = 1;
 }
 
 void insert(int value) {
