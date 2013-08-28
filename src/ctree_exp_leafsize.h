@@ -16,7 +16,7 @@ namespace ctree {
 
 #define INTERNAL_BSIZE 64   // Must be power of two.
 #define MIN_LEAF_BSIZE 64     // Must be power of two.
-#define MAX_LEAF_BSIZE 2048     // Must be power of two.
+#define MAX_LEAF_BSIZE 64     // Must be power of two.
 
 template<typename Func>
 double time_it(Func f) {
@@ -117,6 +117,7 @@ class InternalBucket : public LeafBucket {
 vector<LeafBucket*> free_leaves[30];
 
 LeafBucket* new_leaf(Bucket *parent, int cap) {
+  // return new LeafBucket(parent, cap);
   for (int i = 2; ; i++) {
     if ((1 << i) == cap) {
       if (free_leaves[i].empty()) {
@@ -131,6 +132,7 @@ LeafBucket* new_leaf(Bucket *parent, int cap) {
 }
 
 void delete_leaf(LeafBucket *b) {
+  // delete b; return;
   for (int i = 2; ; i++) {
     if ((1 << i) == b->get_cap()) {
       free_leaves[i].push_back(b);
@@ -698,6 +700,26 @@ class CTree {
       // fprintf(stderr, "optimize internal i = %d / %d\n", i, b->size());
     }
     return retry;
+  }
+
+  int max_depth(Bucket *b = NULL) {
+    if (!b) b = root;
+    if (b->is_leaf()) return 1;
+    int ret = 1;
+    for (int i = 0; i <= b->size(); i++) {
+      ret = max(ret, 1 + max_depth(((InternalBucket*) b)->child(i)));
+    }
+    return ret;
+  }
+
+  int slack(Bucket *b = NULL) {
+    if (!b) b = root;
+    int ret = b->get_cap() - b->size();
+    if (b->is_leaf()) return ret;
+    for (int i = 0; i <= b->size(); i++) {
+      ret += slack(((InternalBucket*) b)->child(i));
+    }
+    return ret;
   }
 
   pair<Bucket*, int> find_leaf_bucket(int value) {
