@@ -44,7 +44,6 @@ class Bucket {
   int data(int i) { assert(i >= 0 && i < N); return D[i]; }
   Bucket* get_parent() const { return parent; }
   void set_parent(Bucket *parent) { this->parent = parent; }
-  void optimize();
   int debug(int depth);
   bool check(int lo) const;
   bool check(int lo, int hi) const;
@@ -136,16 +135,6 @@ void delete_leaf(LeafBucket *b) {
     if ((1 << i) == b->get_cap()) {
       free_leaves[i].push_back(b);
       break;
-    }
-  }
-}
-
-void Bucket::optimize() {
-  if (is_leaf()) {
-    ((LeafBucket*) this)->leaf_optimize();
-  } else {
-    for (int i = 0; i <= N; i++) {
-      ((InternalBucket*) this)->child(i)->optimize();
     }
   }
 }
@@ -656,24 +645,6 @@ class CTree {
     // fprintf(stderr, "\n");
   }
 
-  class iterator {
-   public:
-    vector<pair<Bucket*, int>> path;
-
-    int value() {
-      // fprintf(stderr, "val %lu\n", path.size());
-      while (true) {
-        assert(!path.empty());
-        Bucket *b = path.back().first;
-        int pos = path.back().second;
-        // fprintf(stderr, "getting %d < %d\n", pos, b->size());
-        if (pos < b->size()) return b->data(pos);
-        // fprintf(stderr, "noget %lu\n", path.size());
-        path.pop_back();
-      }
-    }
-  };
-
   double t1 = 0, t2 = 0, t3 = 0;
 
   bool split_chain(LeafBucket *b) {
@@ -710,6 +681,23 @@ class CTree {
       ((InternalBucket*) root)->internal_insert(promotedValue, nb);
     }
     return true;
+  }
+
+  bool optimize(Bucket *b = NULL) {
+    // fprintf(stderr, "optimize\n");
+    if (!b) b = root;
+    if (b->is_leaf()) {
+      // fprintf(stderr, "optimize leaf\n");
+      return split_chain((LeafBucket*) b);
+    }
+    // fprintf(stderr, "optimize internal\n");
+    bool retry = false;
+    for (int i = 0; i <= b->size(); i++) {
+      if (optimize(((InternalBucket*) b)->child(i)))
+        i = -1, retry = true;
+      // fprintf(stderr, "optimize internal i = %d / %d\n", i, b->size());
+    }
+    return retry;
   }
 
   pair<Bucket*, int> find_leaf_bucket(int value) {
