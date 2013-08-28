@@ -26,7 +26,7 @@ double time_it(Func f) {
   return duration_cast<microseconds>(t1 - t0).count() * 1e-6;
 }
 
-int nLeaves, nInternals, nCap, nDes;
+int nLeaves, nInternals, nCap, nDes, locked;
 Random rng;
 
 class Bucket {
@@ -653,6 +653,8 @@ class CTree {
     // fprintf(stderr, "split_chain %d\n", b->size());
     if (!b->next_bucket()) return false;
 
+    assert(!locked);
+
     int promotedValue;
     LeafBucket *nb;
     b->leaf_split(promotedValue, nb);
@@ -743,23 +745,33 @@ class CTree {
   }
 
   pair<bool, int> lower_bound(int value) {
-    // fprintf(stderr, "lower_bound %d\n", value);
-    pair<Bucket*, int> p = find_leaf_bucket(value);
+    pair<bool, int> ret = make_pair(false, 0);
+    t1 += time_it([&] {
+      // fprintf(stderr, "lower_bound %d\n", value);
+      pair<Bucket*, int> p = find_leaf_bucket(value);
 
-    // Found in internal bucket.
-    if (!p.first->is_leaf()) return make_pair(true, value);
-
-    LeafBucket *b = (LeafBucket*) p.first;
-    int pos = b->leaf_lower_pos(value);
-    if (pos < b->size()) return make_pair(true, b->data(pos));
-
-    InternalBucket *ib = (InternalBucket*) b->get_parent();
-    while (ib) {
-      pos = ib->internal_lower_pos(value);
-      if (pos < ib->size()) return make_pair(true, ib->data(pos));
-      ib = (InternalBucket*) ib->get_parent();
-    }
-    return make_pair(false, 0);
+      // Found in internal bucket.
+      if (!p.first->is_leaf()) {
+        ret = make_pair(true, value);
+      } else {
+        LeafBucket *b = (LeafBucket*) p.first;
+        int pos = b->leaf_lower_pos(value);
+        if (pos < b->size()) {
+          ret = make_pair(true, b->data(pos));
+        } else {
+          InternalBucket *ib = (InternalBucket*) b->get_parent();
+          while (ib) {
+            pos = ib->internal_lower_pos(value);
+            if (pos < ib->size()) {
+              ret = make_pair(true, ib->data(pos));
+              break;
+            }
+            ib = (InternalBucket*) ib->get_parent();
+          }
+        }
+      }
+    });
+    return ret;
   }
 
   void insert(int value) {
