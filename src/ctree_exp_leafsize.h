@@ -42,6 +42,7 @@ class Bucket {
   bool is_full() const { return size() == cap; }
   bool is_leaf() const { return pending_insert >= 0; }
   int data(int i) { assert(i >= 0 && i < N); return D[i]; }
+  void set_data(int i, int v) { D[i] = v; }
   Bucket* get_parent() const { return parent; }
   void set_parent(Bucket *parent) { this->parent = parent; }
   int debug(int depth);
@@ -92,6 +93,14 @@ class LeafBucket : public Bucket {
   void add_chain(LeafBucket *b);
   void distribute_values(int pivot, LeafBucket* chain[2]);
   LeafBucket* transfer_to(LeafBucket *b, int pivot);
+
+  bool promote_first(int &pv) {
+    pv = D[0];
+    N--;
+    for (int i = 0; i < N; i++)
+      D[i] = D[i + 1];
+    return N;
+  }
 };
 
 class InternalBucket : public LeafBucket {
@@ -110,6 +119,7 @@ class InternalBucket : public LeafBucket {
   int internal_promote_last();
   bool internal_erase(int &v);
   pair<bool,int> internal_erase_largest();
+  void internal_erase_pos(int pos);
 };
 
 
@@ -589,6 +599,16 @@ int InternalBucket::internal_promote_last() {
  return D[--N];
 }
 
+void InternalBucket::internal_erase_pos(int pos) {
+  N--;
+  while (pos < N) {
+    D[pos] = D[pos + 1];
+    C[pos] = C[pos + 1];
+    pos++;
+  }
+  C[pos] = C[pos + 1];
+}
+
 bool InternalBucket::internal_erase(int &v) {
   int pos = internal_lower_pos(v);
   assert(D[pos] == v);
@@ -684,6 +704,33 @@ class CTree {
       assert(parent == NULL);
       root = new InternalBucket(NULL, root);
       ((InternalBucket*) root)->internal_insert(promotedValue, nb);
+    }
+    return true;
+  }
+
+  bool compact(Bucket *b = NULL) {
+    if (!b) b = root;
+    if (b->is_leaf()) return true;
+    for (int i = 0; i < b->size(); i++) {
+      Bucket *L = ((InternalBucket*) b)->child(i);
+      Bucket *R = ((InternalBucket*) b)->child(i + 1);
+      if (!L->is_leaf()) {
+        compact(L);
+      } else if (!R->is_leaf()) {
+        if (i + 1 == b->size())
+          compact(R);
+      } else if (L->is_leaf() && R->is_leaf()) {
+        int promotedValue;
+        while (!L->is_full() && ((LeafBucket*) R)->promote_first(promotedValue)) {
+          ((LeafBucket*) L)->leaf_insert(b->data(i));
+          b->set_data(i, promotedValue);
+        }
+        if (!L->is_full() && !R->size()) {
+          delete_leaf((LeafBucket*) R);
+          ((LeafBucket*) L)->leaf_insert(b->data(i));
+          ((InternalBucket*) b)->internal_erase_pos(i--);
+        }
+      }
     }
     return true;
   }
