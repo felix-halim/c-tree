@@ -737,28 +737,31 @@ class CTree {
     for (int i = 0; i < b->size(); i++) {
       Bucket *L = ((InternalBucket*) b)->child(i);
       Bucket *R = ((InternalBucket*) b)->child(i + 1);
-      if (!L->is_leaf() && !R->is_leaf()) {
-        int promotedValue;
-        Bucket *nb;
-        while (!L->is_full() && ((InternalBucket*) R)->internal_promote_first(promotedValue, nb)) {
-          ((InternalBucket*) L)->internal_insert(b->data(i), nb);
-          b->set_data(i, promotedValue);
-        }
-        if (!L->is_full() && !R->size()) {
-          delete_leaf((InternalBucket*) R);
-          ((InternalBucket*) L)->internal_insert(b->data(i), nb);
-          ((InternalBucket*) b)->internal_erase_pos(i--);
-        }
-      } else if (L->is_leaf() && R->is_leaf()) {
-        int promotedValue;
-        while (!L->is_full() && ((LeafBucket*) R)->leaf_promote_first(promotedValue)) {
+      if (L->is_leaf() != R->is_leaf()) continue;
+      if (L->is_leaf()) {
+        while (!L->is_full() && R->size()) {
+          int promotedValue;
+          ((LeafBucket*) R)->leaf_promote_first(promotedValue);
           ((LeafBucket*) L)->leaf_insert(b->data(i));
           b->set_data(i, promotedValue);
         }
         if (!L->is_full() && !R->size()) {
+          ((LeafBucket*) L)->leaf_insert(b->data(i));
+          ((InternalBucket*) b)->internal_erase_pos(i--);
           delete_leaf((LeafBucket*) R);
-          ((LeafBucket*) L)->leaf_insert(b->data(i));
+        }
+      } else {
+        while (!L->is_full() && R->size()) {
+          int promotedValue;
+          Bucket *nb;
+          ((InternalBucket*) R)->internal_promote_first(promotedValue, nb);
+          ((InternalBucket*) L)->internal_insert(b->data(i), nb);
+          b->set_data(i, promotedValue);
+        }
+        if (!L->is_full() && !R->size()) {
+          ((InternalBucket*) L)->internal_insert(b->data(i), ((InternalBucket*) R)->child(0));
           ((InternalBucket*) b)->internal_erase_pos(i--);
+          delete_leaf((InternalBucket*) R);
         }
       }
     }
