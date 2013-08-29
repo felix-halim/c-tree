@@ -67,7 +67,7 @@ class LeafBucket : public Bucket {
   void init(int cap);
   LeafBucket* next_bucket() { return next; }
 
-  void clear_indexes() { S1 = /* S2 = S3 = S4 = */ nC = pending_insert = 0; }
+  void clear_indexes() { S1 = /* S2 = S3 = S4 = */ nC = 0; pending_insert = N; }
   void piece_set_sorted(int i, bool sorted);
   bool piece_is_sorted(int i) const;
   void piece_set_unsorted_onwards(int i);
