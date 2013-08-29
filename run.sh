@@ -12,7 +12,7 @@ noup)
 	if [[ -n $3 ]]; then
 		Q=$3
 	fi
-	make -s -C src "../bin/$2_noup"
+	make -s -C src "../bin/$2_noup" || exit;
 	bin/$2_noup `hostname` $N $Q
 	;;
 
@@ -22,7 +22,7 @@ lfhv)
 	if [[ -n $3 ]]; then
 		Q=$3
 	fi
-	make -s -C src "../bin/$2_lfhv"
+	make -s -C src "../bin/$2_lfhv" || return;
 	bin/$2_lfhv `hostname` $N $Q
 	;;
 
