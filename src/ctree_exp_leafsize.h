@@ -90,7 +90,8 @@ class InternalBucket : public LeafBucket {
   Bucket*& child_bucket(int value);
   int internal_lower_pos(int value);
   InternalBucket* internal_split();
-  void internal_insert(int value, Bucket *b);
+  void internal_insert(int value, Bucket *b, int left = 0);
+  int internal_promote_first();
   int internal_promote_last();
   void internal_erase(int pos, int stride);
 };
@@ -561,7 +562,7 @@ InternalBucket* InternalBucket::internal_split() {
 }
 
 
-void InternalBucket::internal_insert(int value, Bucket *b) {
+void InternalBucket::internal_insert(int value, Bucket *b, int left) {
   // assert(check());
   assert(!is_full());
   int i = N - 1;
@@ -571,7 +572,12 @@ void InternalBucket::internal_insert(int value, Bucket *b) {
     i--;
   }
   D[i + 1] = value;
-  C[i + 2] = b;
+  if (left == -1) {
+    C[i + 2] = C[i + 1];
+    C[i + 1] = b;
+  } else {
+    C[i + 2] = b;
+  }
   N++;
   b->set_parent(this);
   // assert(check());
@@ -581,6 +587,17 @@ int InternalBucket::internal_lower_pos(int value) {
   int pos = 0;
   while (pos < N && D[pos] < value) pos++;
   return pos;
+}
+
+int InternalBucket::internal_promote_first() {
+  int ret = D[0];
+  N--;
+  for (int i = 0; i < N; i++) {
+    D[i] = D[i + 1];
+    C[i] = C[i + 1];
+  }
+  C[N] = C[N + 1];
+ return ret;
 }
 
 int InternalBucket::internal_promote_last() {
@@ -716,8 +733,36 @@ class CTree {
     return true;
   }
 
-  void compact_internals(InternalBucket *ib, int pos) {
+  bool compact_internals(InternalBucket *ib, int rpos) {
+    int lpos = rpos - 1;
+    InternalBucket *L = (InternalBucket*) ib->child(lpos);
+    InternalBucket *M = (InternalBucket*) ib->child(rpos);
+    InternalBucket *R = (InternalBucket*) ib->child(rpos + 1);
+    assert(!L->next_bucket() && !M->next_bucket() && !R->next_bucket());
 
+    // Move from M to L as many as possible.
+    while (!L->is_full() && M->size()) {
+      L->internal_insert(ib->data(lpos), M->child(0));
+      ib->set_data(lpos, M->internal_promote_first());
+    }
+    if (!L->is_full() && !M->size()) {
+      L->internal_insert(ib->data(lpos), M->child(0));
+      ib->internal_erase(lpos, 1);
+      delete M;
+      return true; // M is empty, compaction is done.
+    }
+
+    // Move from M to R as many as possible.
+    while (M->size()) {
+      assert(!R->is_full());
+      R->internal_insert(ib->data(rpos), M->child(M->size()), -1);
+      ib->set_data(rpos, M->internal_promote_last());
+    }
+    assert(!R->is_full());
+    R->internal_insert(ib->data(rpos), M->child(M->size()), -1);
+    ib->internal_erase(rpos, 0);
+    delete M;
+    return true;
   }
 
   pair<Bucket*, int> find_bucket(int value, bool include_internal) {
@@ -744,7 +789,7 @@ class CTree {
             if (b->is_leaf()) {
               if (compact_leaves(ib, pos)) b = ib;
             } else {
-              compact_internals(ib, pos);
+              if (compact_internals(ib, pos)) b = ib;
             }
           }
         }
