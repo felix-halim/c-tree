@@ -221,7 +221,6 @@ void LeafBucket::leaf_insert(int value) {
       add_chain(new_leaf(parent, std::min(cap * 2, LEAF_BSIZE)));
     }
     tail->D[tail->N++] = value;
-    tail->pending_insert++;
   }
   // assert(leaf_check());
 }
@@ -672,6 +671,14 @@ class CTree {
     return true;
   }
 
+  void compact_leaves(InternalBucket *ib, int pos) {
+
+  }
+
+  void compact_internals(InternalBucket *ib, int pos) {
+
+  }
+
   pair<Bucket*, int> find_bucket(int value, bool include_internal) {
     Bucket *b = root;
     while (true) {
@@ -687,6 +694,19 @@ class CTree {
           return make_pair(ib, pos); // Found in the internal bucket.
         }
         b = ib->child(pos);    // Search the child.
+        if (pos > 0 && pos < ib->size()) {
+          Bucket *L = ib->child(pos - 1);
+          Bucket *R = ib->child(pos + 1);
+          assert(b->is_leaf() == L->is_leaf());
+          assert(b->is_leaf() == R->is_leaf());
+          if (b->size() + L->size() + R->size() + 1 < INTERNAL_BSIZE * 2) {
+            if (b->is_leaf()) {
+              compact_leaves(ib, pos);
+            } else {
+              compact_internals(ib, pos);
+            }
+          }
+        }
       }
     }
     return make_pair(b, 0);
@@ -767,7 +787,6 @@ class CTree {
     }
     // assert(check());
     return true;
-
   }
 
   bool check() {

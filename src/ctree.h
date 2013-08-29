@@ -261,7 +261,6 @@ void LeafBucket::leaf_insert(int value) {
       add_chain(new_leaf(parent, LEAF_BSIZE));
     }
     tail->D[tail->N++] = value;
-    tail->pending_insert++;
   }
   // assert(leaf_check());
 }
