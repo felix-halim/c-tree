@@ -22,7 +22,7 @@ lfhv)
 	if [[ -n $3 ]]; then
 		Q=$3
 	fi
-	make -s -C src "../bin/$2_lfhv" || return;
+	make -s -C src "../bin/$2_lfhv" || exit;
 	bin/$2_lfhv `hostname` $N $Q
 	;;
 
