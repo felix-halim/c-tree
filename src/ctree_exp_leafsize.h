@@ -705,8 +705,7 @@ class CTree {
     int lpos = rpos - 1;
     LeafBucket *L = (LeafBucket*) ib->child(lpos);
     LeafBucket *M = (LeafBucket*) ib->child(rpos);
-    LeafBucket *R = (LeafBucket*) ib->child(rpos + 1);
-    if (L->next_bucket() || M->next_bucket() || R->next_bucket()) return false;
+    assert(!L->next_bucket() && !M->next_bucket());
 
     // Move from M to L as many as possible.
     while (!L->is_full() && M->size()) {
@@ -719,6 +718,9 @@ class CTree {
       delete_leaf(M);
       return true; // M is empty, compaction is done.
     }
+
+    LeafBucket *R = (LeafBucket*) ib->child(rpos + 1);
+    assert(!R->next_bucket());
 
     // Move from M to R as many as possible.
     while (M->size()) {
@@ -737,8 +739,7 @@ class CTree {
     int lpos = rpos - 1;
     InternalBucket *L = (InternalBucket*) ib->child(lpos);
     InternalBucket *M = (InternalBucket*) ib->child(rpos);
-    InternalBucket *R = (InternalBucket*) ib->child(rpos + 1);
-    assert(!L->next_bucket() && !M->next_bucket() && !R->next_bucket());
+    assert(!L->next_bucket() && !M->next_bucket());
 
     // Move from M to L as many as possible.
     while (!L->is_full() && M->size()) {
@@ -751,6 +752,9 @@ class CTree {
       delete M;
       return true; // M is empty, compaction is done.
     }
+
+    InternalBucket *R = (InternalBucket*) ib->child(rpos + 1);
+    assert(!R->next_bucket());
 
     // Move from M to R as many as possible.
     while (M->size()) {
@@ -787,13 +791,34 @@ class CTree {
           assert(b->is_leaf() == R->is_leaf());
           if (b->size() + L->size() + R->size() + 1 < INTERNAL_BSIZE * 2) {
             if (b->is_leaf()) {
-              if (compact_leaves(ib, pos)) b = ib;
+              if (!(((LeafBucket*) L)->next_bucket() || ((LeafBucket*) b)->next_bucket() || ((LeafBucket*) R)->next_bucket()))
+                if (compact_leaves(ib, pos)) b = ib;
             } else {
               if (compact_internals(ib, pos)) b = ib;
             }
           }
+        // } else if (1 == ib->size()) {
+        //   Bucket *L = ib->child(0);
+        //   Bucket *R = ib->child(1);
+        //   if (L->size() + R->size() < INTERNAL_BSIZE && 0) {
+        //     if (b->is_leaf()) {
+        //       bool ok = compact_leaves(ib, 1);
+        //       assert(ok);
+        //       b = ib;
+        //     } else {
+        //       bool ok = compact_internals(ib, 1);
+        //       assert(ok);
+        //       b = ib;
+        //     }
+        //   }
         }
       }
+    }
+    if (root->size() == 0) {
+      fprintf(stderr, "PROMOTE ROOT\n");
+      Bucket *b = ((InternalBucket*) root)->child(0);
+      delete ((InternalBucket*) root);
+      root = b;
     }
     return make_pair(b, 0);
   }
