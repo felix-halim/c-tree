@@ -218,7 +218,7 @@ void LeafBucket::leaf_insert(int value) {
       assert(cap == INTERNAL_BSIZE);
       add_chain(new_leaf(parent, INTERNAL_BSIZE));
     } else if (tail->is_full()) {
-      add_chain(new_leaf(parent, std::min(cap * 2, LEAF_BSIZE)));
+      add_chain(new_leaf(parent, std::min(tail->cap * 2, LEAF_BSIZE)));
     }
     tail->D[tail->N++] = value;
   }
