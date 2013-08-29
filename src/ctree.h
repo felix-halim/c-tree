@@ -67,7 +67,7 @@ class LeafBucket : public Bucket {
   void init(int cap);
   LeafBucket* next_bucket() { return next; }
 
-  void clear_indexes() { S1 = /* S2 = S3 = S4 = */ nC = 0; pending_insert = N; }
+  void clear_indexes() { S1 = /* S2 = S3 = S4 = */ nC = 0; pending_insert = 0; }
   void piece_set_sorted(int i, bool sorted);
   bool piece_is_sorted(int i) const;
   void piece_set_unsorted_onwards(int i);
@@ -252,6 +252,7 @@ void LeafBucket::leaf_insert(int value) {
   assert(N >= 0);
   if (!is_full()) {
     D[N++] = value;
+    pending_insert++;
   } else {
     if (!tail) {
       assert(cap == LEAF_BSIZE);
@@ -260,6 +261,7 @@ void LeafBucket::leaf_insert(int value) {
       add_chain(new_leaf(parent, LEAF_BSIZE));
     }
     tail->D[tail->N++] = value;
+    tail->pending_insert++;
   }
   // assert(leaf_check());
 }
