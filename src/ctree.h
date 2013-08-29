@@ -882,23 +882,27 @@ class CTree {
     // fprintf(stderr, "\n");
   }
 
-  class iterator {
-   public:
-    vector<pair<Bucket*, int>> path;
-
-    int value() {
-      // fprintf(stderr, "val %lu\n", path.size());
-      while (true) {
-        assert(!path.empty());
-        Bucket *b = path.back().first;
-        int pos = path.back().second;
-        // fprintf(stderr, "getting %d < %d\n", pos, b->size());
-        if (pos < b->size()) return b->data(pos);
-        // fprintf(stderr, "noget %lu\n", path.size());
-        path.pop_back();
-      }
+  int max_depth(Bucket *b = NULL) {
+    if (!b) b = root;
+    if (b->is_leaf()) return 1;
+    int ret = -1;
+    for (int i = 0; i <= b->size(); i++) {
+      int d = max_depth(((InternalBucket*) b)->child(i));
+      assert(ret == -1 || ret == d);
+      ret = d;
     }
-  };
+    return ret + 1;
+  }
+
+  int slack(Bucket *b = NULL) {
+    if (!b) b = root;
+    int ret = b->get_cap() - b->size();
+    if (b->is_leaf()) return ret;
+    for (int i = 0; i <= b->size(); i++) {
+      ret += slack(((InternalBucket*) b)->child(i));
+    }
+    return ret;
+  }
 
   double t1 = 0, t2 = 0, t3 = 0;
 

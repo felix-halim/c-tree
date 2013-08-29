@@ -16,9 +16,6 @@ namespace ctree {
 
 #define INTERNAL_BSIZE 64   // Must be power of two.
 #define LEAF_BSIZE 2048     // Must be power of two.
-#define MAX_INDEX 64
-#define CRACK_AT 64
-#define DECRACK_AT 32
 
 template<typename Func>
 double time_it(Func f) {
@@ -55,10 +52,6 @@ class Bucket {
 
 class LeafBucket : public Bucket {
  protected:
-  unsigned char nC;       // Number of cracker indices.
-  unsigned long long S1;  // Sorted bits of each cracker index.
-  int C[MAX_INDEX];       // Cracker index positions.
-  int V[MAX_INDEX];       // Cached cracker values.
   LeafBucket *next, *tail;  // Store pending inserts in a linked list.
 
  public:
@@ -207,12 +200,9 @@ LeafBucket::~LeafBucket() {
 }
 
 void LeafBucket::leaf_debug() {
-  fprintf(stderr, "N = %d (p=%d, c=%d, LEAF), ", N, pending_insert, nC);
+  fprintf(stderr, "N = %d (p=%d, LEAF), ", N, pending_insert);
   for (int i = 0; i < N; i++) {
     fprintf(stderr, "%d ", D[i]);
-  }
-  for (int i = 0; i < nC; i++) {
-    fprintf(stderr, "C[%d] = (pos=%d, val=%d), ", i, C[i], V[i]);
   }
 }
 
@@ -607,7 +597,7 @@ class CTree {
 
  public:
 
-  const char *version = "Crack 2048";
+  const char *version = "Exp LEAF_SIZE 2048";
 
   CTree() {
     root = new_leaf(NULL, INTERNAL_BSIZE);
@@ -618,23 +608,27 @@ class CTree {
     // fprintf(stderr, "\n");
   }
 
-  class iterator {
-   public:
-    vector<pair<Bucket*, int>> path;
-
-    int value() {
-      // fprintf(stderr, "val %lu\n", path.size());
-      while (true) {
-        assert(!path.empty());
-        Bucket *b = path.back().first;
-        int pos = path.back().second;
-        // fprintf(stderr, "getting %d < %d\n", pos, b->size());
-        if (pos < b->size()) return b->data(pos);
-        // fprintf(stderr, "noget %lu\n", path.size());
-        path.pop_back();
-      }
+  int max_depth(Bucket *b = NULL) {
+    if (!b) b = root;
+    if (b->is_leaf()) return 1;
+    int ret = -1;
+    for (int i = 0; i <= b->size(); i++) {
+      int d = max_depth(((InternalBucket*) b)->child(i));
+      assert(ret == -1 || ret == d);
+      ret = d;
     }
-  };
+    return ret + 1;
+  }
+
+  int slack(Bucket *b = NULL) {
+    if (!b) b = root;
+    int ret = b->get_cap() - b->size();
+    if (b->is_leaf()) return ret;
+    for (int i = 0; i <= b->size(); i++) {
+      ret += slack(((InternalBucket*) b)->child(i));
+    }
+    return ret;
+  }
 
   double t1 = 0, t2 = 0, t3 = 0;
 
