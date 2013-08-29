@@ -701,6 +701,28 @@ class CTree {
     return true;
   }
 
+  bool shift_leaves(InternalBucket *ib, int rpos) {
+    int lpos = rpos - 1;
+    LeafBucket *L = (LeafBucket*) ib->child(lpos);
+    LeafBucket *M = (LeafBucket*) ib->child(rpos);
+    assert(!L->next_bucket() && !M->next_bucket());
+
+    // Move from M to L as many as possible.
+    bool changed = false;
+    while (!L->is_full() && M->size()) {
+      L->leaf_insert(ib->data(lpos));
+      ib->set_data(lpos, M->leaf_promote_first());
+      changed = true;
+    }
+    if (!L->is_full() && !M->size()) {
+      L->leaf_insert(ib->data(lpos));
+      ib->internal_erase(lpos, 1);
+      delete_leaf(M);
+      return true; // M is empty, compaction is done.
+    }
+    return changed;
+  }
+
   bool compact_leaves(InternalBucket *ib, int rpos) {
     int lpos = rpos - 1;
     LeafBucket *L = (LeafBucket*) ib->child(lpos);
@@ -733,6 +755,28 @@ class CTree {
     ib->internal_erase(rpos, 0);
     delete_leaf(M);
     return true;
+  }
+
+  bool shift_internals(InternalBucket *ib, int rpos) {
+    int lpos = rpos - 1;
+    InternalBucket *L = (InternalBucket*) ib->child(lpos);
+    InternalBucket *M = (InternalBucket*) ib->child(rpos);
+    assert(!L->next_bucket() && !M->next_bucket());
+
+    // Move from M to L as many as possible.
+    bool changed = false;
+    while (!L->is_full() && M->size()) {
+      L->internal_insert(ib->data(lpos), M->child(0));
+      ib->set_data(lpos, M->internal_promote_first());
+      changed = true;
+    }
+    if (!L->is_full() && !M->size()) {
+      L->internal_insert(ib->data(lpos), M->child(0));
+      ib->internal_erase(lpos, 1);
+      delete M;
+      return true; // M is empty, compaction is done.
+    }
+    return changed;
   }
 
   bool compact_internals(InternalBucket *ib, int rpos) {
@@ -783,64 +827,76 @@ class CTree {
         if (include_internal && pos < ib->size() && ib->data(pos) == value) {
           return make_pair(ib, pos); // Found in the internal bucket.
         }
-        b = ib->child(pos);    // Search the child.
-        if (pos > 0 && pos < ib->size()) {
-          Bucket *L = ib->child(pos - 1);
-          Bucket *R = ib->child(pos + 1);
-          assert(b->is_leaf() == L->is_leaf());
-          assert(b->is_leaf() == R->is_leaf());
-          if (b->size() + L->size() + R->size() + 1 < INTERNAL_BSIZE * 2) {
-            if (b->is_leaf()) {
-              if (!(((LeafBucket*) L)->next_bucket() || ((LeafBucket*) b)->next_bucket() || ((LeafBucket*) R)->next_bucket()))
-                if (compact_leaves(ib, pos)) b = ib;
-            } else {
-              if (compact_internals(ib, pos)) b = ib;
-            }
+        bool changed = 0;
+        for (int i = 1; i <= ib->size(); i++) {
+          Bucket *L = ib->child(i - 1);
+          Bucket *R = ib->child(i);
+          assert(L->is_leaf() == R->is_leaf());
+          if (L->is_leaf()) {
+            // if (!(((LeafBucket*) L)->next_bucket() || ((LeafBucket*) R)->next_bucket()))
+            //   if (shift_leaves(ib, i)) changed = 1;
+          } else {
+            if (shift_internals(ib, i)) changed = 1;
           }
-        // } else if (1 == ib->size()) {
-        //   Bucket *L = ib->child(0);
-        //   Bucket *R = ib->child(1);
-        //   if (L->size() + R->size() < INTERNAL_BSIZE && 0) {
+        }
+        if (changed) b = ib;
+        else b = ib->child(pos);    // Search the child.
+
+        // if (pos > 0 && pos < ib->size()) {
+        //   Bucket *L = ib->child(pos - 1);
+        //   Bucket *R = ib->child(pos + 1);
+        //   assert(b->is_leaf() == L->is_leaf());
+        //   assert(b->is_leaf() == R->is_leaf());
+        //   if (b->size() + L->size() + R->size() + 1 < INTERNAL_BSIZE * 2) {
         //     if (b->is_leaf()) {
-        //       bool ok = compact_leaves(ib, 1);
-        //       assert(ok);
-        //       b = ib;
+        //       if (!(((LeafBucket*) L)->next_bucket() || ((LeafBucket*) b)->next_bucket() || ((LeafBucket*) R)->next_bucket()))
+        //         if (compact_leaves(ib, pos)) b = ib;
         //     } else {
-        //       bool ok = compact_internals(ib, 1);
-        //       assert(ok);
-        //       b = ib;
+        //       if (compact_internals(ib, pos)) b = ib;
         //     }
         //   }
-        }
+        // }
       }
-    }
-    if (root->size() == 0) {
-      fprintf(stderr, "PROMOTE ROOT\n");
-      Bucket *b = ((InternalBucket*) root)->child(0);
-      delete ((InternalBucket*) root);
-      root = b;
     }
     return make_pair(b, 0);
   }
 
   pair<bool, int> lower_bound(int value) {
+    if (root->size() == 0) {
+      fprintf(stderr, "PROMOTE ROOT\n");
+      assert(!root->is_leaf());
+      Bucket *x = ((InternalBucket*) root)->child(0);
+      delete ((InternalBucket*) root);
+      root = x;
+    }
+
+
     // fprintf(stderr, "lower_bound %d\n", value);
     pair<Bucket*, int> p = find_bucket(value, true);
 
     // Found in internal bucket.
-    if (!p.first->is_leaf()) return make_pair(true, value);
-
-    LeafBucket *b = (LeafBucket*) p.first;
-    int pos = b->leaf_lower_pos(value);
-    if (pos < b->size()) return make_pair(true, b->data(pos));
-
-    InternalBucket *ib = (InternalBucket*) b->get_parent();
-    while (ib) {
-      pos = ib->internal_lower_pos(value);
-      if (pos < ib->size()) return make_pair(true, ib->data(pos));
-      ib = (InternalBucket*) ib->get_parent();
+    pair<bool, int> ret = make_pair(false, 0);
+    if (!p.first->is_leaf()) {
+      ret = make_pair(true, value);
+    } else {
+      LeafBucket *b = (LeafBucket*) p.first;
+      int pos = b->leaf_lower_pos(value);
+      if (pos < b->size()) {
+        ret = make_pair(true, b->data(pos)); 
+      } else {
+        InternalBucket *ib = (InternalBucket*) b->get_parent();
+        while (ib) {
+          pos = ib->internal_lower_pos(value);
+          if (pos < ib->size()) {
+            ret = make_pair(true, ib->data(pos));
+            break;
+          }
+          ib = (InternalBucket*) ib->get_parent();
+        }
+      }
     }
-    return make_pair(false, 0);
+
+    return ret;
   }
 
   void insert(int value) {
