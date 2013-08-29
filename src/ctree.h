@@ -327,7 +327,7 @@ void LeafBucket::flush_pending_inserts() {
   assert(pending_insert <= size());
 
   // No index yet, all the elements are considered "inserted".
-  if (!nC) { pending_insert = size(); S1 = 0; return; } // S2 = S3 = S4 =
+  if (!nC) { pending_insert = 0; S1 = 0; return; } // S2 = S3 = S4 =
 
   // Flushing only makes sense when the bucket is not chained.
   assert(!next);
@@ -335,7 +335,7 @@ void LeafBucket::flush_pending_inserts() {
   // IMPROVE: bulk insert? (Currently using Merge Completely).
   int minC = nC;
   // Inserts all pending elements (from pending_insert to size).
-  for (int j = pending_insert; pending_insert < size(); j = ++pending_insert) {
+  for (int j = size() - pending_insert; pending_insert; j = size() - --pending_insert) {
     int i = nC - 1;
     int tmp = D[j];            // Store the pending tuple.
     for (; i >= 0 && (tmp < V[i]); i--) {  // insert by shuffling through the cracker indices C
@@ -465,7 +465,7 @@ pair<bool,int> LeafBucket::leaf_erase_largest() {
     // TODO: optimize.
     piece_set_sorted(nC, false);
   } else {
-    pending_insert = N;
+    pending_insert = 0;
   }
   int largest_pos = pos++;
   while (pos < N) {
@@ -475,7 +475,6 @@ pair<bool,int> LeafBucket::leaf_erase_largest() {
   }
   // fprintf(stderr, "pos %d %d\n", pos, largest_pos);
   swap(D[largest_pos], D[--N]);
-  pending_insert--;
   // assert(leaf_check());
   return make_pair(true, D[N]);
 }
@@ -511,7 +510,6 @@ bool LeafBucket::leaf_erase(int &v) {
     at = R;
   }
   D[at] = D[--N];   // The deleted element has been shuffled out from the bucket.
-  pending_insert--;   // Adjust the pending index.
 
   // assert(leaf_check());
   return true;
@@ -539,9 +537,9 @@ bool LeafBucket::leaf_check(int lo, bool useLo, int hi, bool useHi) const {
     fprintf(stderr,"D[%d] = %d, hi = %d\n", i, D[i], hi);
     return leaf_debug("useHi failed", i, 0);
   }
-  for (int i=0,j=0; i<pending_insert; i++){                    // check cracker indices
+  for (int i=0,j=0; i<N - pending_insert; i++){                    // check cracker indices
     if (j<nC && C[j]==i) assert((V[j] == D[i])), lo = D[i], j++;
-    if (piece_is_sorted(j) && (j==nC? (i+1<pending_insert) : (i<C[j])) && (D[i+1] < D[i]))
+    if (piece_is_sorted(j) && (j==nC? (i+1<N - pending_insert) : (i<C[j])) && (D[i+1] < D[i]))
       return leaf_debug("sortedness violation", i,j);
     if (j>0 && (D[i] < D[C[j-1]])) return leaf_debug("lower bound fail", i,j);
     if (j<nC && (D[C[j]] < D[i])) return leaf_debug("upper bound fail", i,j);
