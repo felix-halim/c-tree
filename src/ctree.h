@@ -106,7 +106,7 @@ class LeafBucket : public Bucket {
   void leaf_insert(int v);
   void leaf_split(int &promotedValue, LeafBucket *&nb);
   void leaf_optimize();
-  int promote_last();
+  int leaf_promote_last();
   int leaf_lower_pos(int value);
   LeafBucket* detach_and_get_next();
   void add_chain(LeafBucket *b);
@@ -777,7 +777,7 @@ void LeafBucket::leaf_split(int &promotedValue, LeafBucket *&new_bucket) {
   // assert(leaf_check());
 }
 
-int LeafBucket::promote_last() {
+int LeafBucket::leaf_promote_last() {
   nth_element(D, D + N - 1, D + N);
   return D[--N];
 }

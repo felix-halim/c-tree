@@ -69,7 +69,8 @@ class LeafBucket : public Bucket {
   void leaf_insert(int v);
   void leaf_split(int &promotedValue, LeafBucket *&nb);
   void leaf_optimize();
-  int promote_last();
+  int leaf_promote_first();
+  int leaf_promote_last();
   int leaf_lower_pos(int value);
   LeafBucket* detach_and_get_next();
   void add_chain(LeafBucket *b);
@@ -91,7 +92,7 @@ class InternalBucket : public LeafBucket {
   InternalBucket* internal_split();
   void internal_insert(int value, Bucket *b);
   int internal_promote_last();
-  void internal_erase(int pos);
+  void internal_erase(int pos, int stride);
 };
 
 
@@ -501,8 +502,20 @@ void LeafBucket::leaf_split(int &promotedValue, LeafBucket *&new_bucket) {
   // assert(leaf_check());
 }
 
-int LeafBucket::promote_last() {
-  nth_element(D, D + N - 1, D + N);
+int LeafBucket::leaf_promote_first() {
+  // TODO: optimize
+  int smallest_pos = 0;
+  int pos = 1;
+  while (pos < N) {
+    if (D[pos] < D[smallest_pos]) smallest_pos = pos;
+    pos++;
+  }
+  swap(D[smallest_pos], D[--N]);
+  return D[N];
+}
+
+int LeafBucket::leaf_promote_last() {
+  if (pending_insert > 0) leaf_optimize();
   return D[--N];
 }
 
@@ -580,14 +593,14 @@ Bucket*& InternalBucket::child_bucket(int value) {
   return child(pos);
 }
 
-void InternalBucket::internal_erase(int pos) {
+void InternalBucket::internal_erase(int pos, int stride) {
   N--;
   while (pos < N) {
     D[pos] = D[pos + 1];
-    C[pos] = C[pos + 1];
+    C[pos + stride] = C[pos + stride + 1];
     pos++;
   }
-  C[pos] = C[pos + 1];
+  if (!stride) C[pos] = C[pos + 1];
 }
 
 
@@ -671,8 +684,36 @@ class CTree {
     return true;
   }
 
-  void compact_leaves(InternalBucket *ib, int pos) {
+  bool compact_leaves(InternalBucket *ib, int rpos) {
+    int lpos = rpos - 1;
+    LeafBucket *L = (LeafBucket*) ib->child(lpos);
+    LeafBucket *M = (LeafBucket*) ib->child(rpos);
+    LeafBucket *R = (LeafBucket*) ib->child(rpos + 1);
+    if (L->next_bucket() || M->next_bucket() || R->next_bucket()) return false;
 
+    // Move from M to L as many as possible.
+    while (!L->is_full() && M->size()) {
+      L->leaf_insert(ib->data(lpos));
+      ib->set_data(lpos, M->leaf_promote_first());
+    }
+    if (!L->is_full() && !M->size()) {
+      L->leaf_insert(ib->data(lpos));
+      ib->internal_erase(lpos, 1);
+      delete_leaf(M);
+      return true; // M is empty, compaction is done.
+    }
+
+    // Move from M to R as many as possible.
+    while (M->size()) {
+      assert(!R->is_full());
+      R->leaf_insert(ib->data(rpos));
+      ib->set_data(rpos, M->leaf_promote_last());
+    }
+    assert(!R->is_full());
+    R->leaf_insert(ib->data(rpos));
+    ib->internal_erase(rpos, 0);
+    delete_leaf(M);
+    return true;
   }
 
   void compact_internals(InternalBucket *ib, int pos) {
@@ -701,7 +742,7 @@ class CTree {
           assert(b->is_leaf() == R->is_leaf());
           if (b->size() + L->size() + R->size() + 1 < INTERNAL_BSIZE * 2) {
             if (b->is_leaf()) {
-              compact_leaves(ib, pos);
+              if (compact_leaves(ib, pos)) b = ib;
             } else {
               compact_internals(ib, pos);
             }
@@ -781,7 +822,7 @@ class CTree {
     auto res = erase_largest(upper);
     // fprintf(stderr, "ii res = %d, largest = %d\n", res.first, res.second);
     if (!res.first) {
-      ib->internal_erase(pos);
+      ib->internal_erase(pos, 0);
     } else {
       ib->set_data(pos, res.second);
     }
