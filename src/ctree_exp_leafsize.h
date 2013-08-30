@@ -837,8 +837,8 @@ class CTree {
           Bucket *R = ib->child(i);
           assert(L->is_leaf() == R->is_leaf());
           if (L->is_leaf()) {
-            // if (!(((LeafBucket*) L)->next_bucket() || ((LeafBucket*) R)->next_bucket()))
-            //   if (shift_leaves(ib, i)) changed = 1;
+            if (!(((LeafBucket*) L)->next_bucket() || ((LeafBucket*) R)->next_bucket()))
+              if (shift_leaves(ib, i)) changed = 1;
           } else {
             if (shift_internals(ib, i)) changed = 1;
           }
@@ -867,7 +867,7 @@ class CTree {
 
   pair<bool, int> lower_bound(int value) {
     if (root->size() == 0) {
-      fprintf(stderr, "PROMOTE ROOT\n");
+      // fprintf(stderr, "PROMOTE ROOT\n");
       assert(!root->is_leaf());
       Bucket *x = ((InternalBucket*) root)->child(0);
       delete ((InternalBucket*) root);
