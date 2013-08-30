@@ -557,6 +557,10 @@ InternalBucket* InternalBucket::internal_split() {
   }
   N /= 2;
   nb->N = N;
+
+  // for (int i = N + 1; i <= nb->get_cap(); i++) nb->C[i] = NULL;
+  // for (int i = N + 1; i <= cap; i++) C[i] = NULL;
+
   // assert(check());
   return nb;
 }
@@ -868,8 +872,8 @@ class CTree {
       Bucket *x = ((InternalBucket*) root)->child(0);
       delete ((InternalBucket*) root);
       root = x;
+      root->set_parent(NULL);
     }
-
 
     // fprintf(stderr, "lower_bound %d\n", value);
     pair<Bucket*, int> p = find_bucket(value, true);
