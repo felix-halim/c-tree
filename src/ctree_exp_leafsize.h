@@ -643,6 +643,15 @@ class CTree {
   }
 
   bool optimize(Bucket *b = NULL) {
+    if (root->size() == 0) {
+      // fprintf(stderr, "PROMOTE ROOT\n");
+      assert(!root->is_leaf());
+      Bucket *x = ((InternalBucket*) root)->child(0);
+      delete ((InternalBucket*) root);
+      root = x;
+      root->set_parent(NULL);
+    }
+
     if (!b) b = root;
     if (b->is_leaf()) {
       bool ok = split_chain((LeafBucket*) b);
@@ -663,10 +672,13 @@ class CTree {
       Bucket *R = ib->child(i);
       assert(L->is_leaf() == R->is_leaf());
       if (L->is_leaf()) {
-        if (!(((LeafBucket*) L)->next_bucket() || ((LeafBucket*) R)->next_bucket()))
-          shift_leaves(ib, i);
+        assert(!((LeafBucket*) L)->next_bucket());
+        assert(!((LeafBucket*) R)->next_bucket());
+        if (!(((LeafBucket*) L)->next_bucket() || ((LeafBucket*) R)->next_bucket())) {
+          if (shift_leaves(ib, i)) changed = 1, i = 0;
+        }
       } else {
-        shift_internals(ib, i);
+        if (shift_internals(ib, i)) changed = 1, i = 0;
       }
     }
     return changed;
@@ -684,12 +696,13 @@ class CTree {
     return ret + 1;
   }
 
-  int slack(Bucket *b = NULL) {
+  int slack(Bucket *b = NULL, int last = 0) {
     if (!b) b = root;
     int ret = b->get_cap() - b->size();
+    // if (ret > 10) fprintf(stderr, "slack = %d, for leaf = %d, last = %d\n", ret, b->is_leaf(), last);
     if (b->is_leaf()) return ret;
     for (int i = 0; i <= b->size(); i++) {
-      ret += slack(((InternalBucket*) b)->child(i));
+      ret += slack(((InternalBucket*) b)->child(i), i >= b->size());
     }
     return ret;
   }
@@ -898,7 +911,7 @@ class CTree {
     return make_pair(b, 0);
   }
 
-  pair<bool, int> lower_bound(int value) {
+  pair<bool, int> lower_bound2(int value) {
     if (root->size() == 0) {
       // fprintf(stderr, "PROMOTE ROOT\n");
       assert(!root->is_leaf());
@@ -934,6 +947,32 @@ class CTree {
     }
 
     return ret;
+  }
+
+  pair<bool, int> lower_bound(int value) {
+    return lower_bound_rec(root, value);
+  }
+
+  pair<bool, int> lower_bound_rec(Bucket *b, int value) {
+    if (b->is_leaf()) {
+      LeafBucket *Lb = (LeafBucket*) b;
+      assert(!split_chain(Lb));
+
+      int pos = Lb->leaf_lower_pos(value);
+      return  (pos < b->size()) ? make_pair(true, b->data(pos)) : make_pair(false, 0);
+
+    } else {
+      InternalBucket *ib = (InternalBucket*) b;
+      int pos = ib->internal_lower_pos(value);
+      if (pos < ib->size() && ib->data(pos) == value) {
+        return make_pair(true, value); // Found in the internal bucket.
+      }
+      auto res = lower_bound_rec(ib->child(pos), value);
+      if (!res.first && pos < ib->size()) {
+        res = make_pair(true, ib->data(pos));
+      }
+      return res;
+    }
   }
 
   void insert(int value) {
