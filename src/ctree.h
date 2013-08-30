@@ -248,16 +248,16 @@ void LeafBucket::leaf_debug() {
 
 void LeafBucket::leaf_insert(int value) {
   // assert(leaf_check());
-  assert(is_leaf());
-  assert(N >= 0);
+  // assert(is_leaf());
+  // assert(N >= 0);
   if (!is_full()) {
     D[N++] = value;
     pending_insert++;
   } else {
-    if (!tail) {
-      assert(cap == LEAF_BSIZE);
-      add_chain(new_leaf(parent, LEAF_BSIZE));
-    } else if (tail->is_full()) {
+    if (!tail || tail->is_full()) {
+      // assert(cap == LEAF_BSIZE);
+      // add_chain(new_leaf(parent, LEAF_BSIZE));
+    // } else if (tail->is_full()) {
       add_chain(new_leaf(parent, LEAF_BSIZE));
     }
     tail->D[tail->N++] = value;
