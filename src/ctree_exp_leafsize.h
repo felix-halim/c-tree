@@ -135,21 +135,22 @@ void leaf_insert(int b, int value) {
     B->D[B->N++] = value;
     B->P++;
   } else {
-    if (bucket_allocator.get(b)->tail == -1 || is_full(bucket_allocator.get(bucket_allocator.get(b)->tail))) {
+    if (B->tail == -1 || is_full(bucket_allocator.get(B->tail))) {
       // assert(bucket_allocator.get(b)->cap == INTERNAL_BSIZE);
       // assert(bucket_allocator.get(bucket_allocator.get(b)->tail)->next == -1);
       int idx = bucket_allocator.alloc();
-      init_leaf(idx, bucket_allocator.get(b)->parent, INTERNAL_BSIZE);
-      if (bucket_allocator.get(b)->next == -1) {
-        bucket_allocator.get(b)->next =
-        bucket_allocator.get(b)->tail = idx;
+      B = bucket_allocator.get(b);
+
+      init_leaf(idx, B->parent, INTERNAL_BSIZE);
+      if (B->next == -1) {
+        B->next =
+        B->tail = idx;
       } else {
-        bucket_allocator.get(bucket_allocator.get(b)->tail)->next = idx;
-        bucket_allocator.get(b)->tail = idx;
+        bucket_allocator.get(B->tail)->next = idx;
+        B->tail = idx;
       }
     }
-    int tail = bucket_allocator.get(b)->tail;
-    Bucket *b = bucket_allocator.get(tail);
+    Bucket *b = bucket_allocator.get(B->tail);
     b->D[b->N++] = value;
   }
   // assert(leaf_check());
