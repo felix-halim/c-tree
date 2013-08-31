@@ -333,6 +333,12 @@ class CTree {
     return root->slack();
   }
 
+  int max_depth(Bucket *b = NULL) {
+    if (!b) b = root;
+    if (b->is_leaf()) return 1;
+    return 1 + max_depth(((InternalBucket*) b)->child(0));
+  }
+
   bool erase(int value) {
     return true;
   }
@@ -340,11 +346,11 @@ class CTree {
   pair<bool,int> lower_bound(int value) {
     // fprintf(stderr, "lower_bound %d\n", value);
     pair<bool, int> ret;
-    t3 += time_it([&] {
+    // t3 += time_it([&] {
      ret = root->is_leaf()
       ? ((LeafBucket*) root)->leaf_lower_bound(value)
       : ((InternalBucket*) root)->internal_lower_bound(value);
-    });
+    // });
     return ret;
   }
 };
