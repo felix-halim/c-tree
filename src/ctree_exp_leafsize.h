@@ -14,8 +14,8 @@ using namespace chrono;
 
 namespace ctree {
 
-#define INTERNAL_BSIZE        64  // Must be power of two.
-#define LEAF_BSIZE            64  // Must be power of two.
+#define INTERNAL_BSIZE        256  // Must be power of two.
+#define LEAF_BSIZE            256  // Must be power of two.
 #define LEAF_CHAINED_BSIZE  2048  // Must be power of two.
 
 template<typename Func>
@@ -42,7 +42,7 @@ class Allocator {
   int alloc() {
     if (free_indices.empty()) {
       if (N == cap) {
-        fprintf(stderr, "double %d\n", cap);
+        // fprintf(stderr, "double %d\n", cap);
         T *newD = new T[cap * 2];
         memcpy(newD, D, sizeof(T) * cap);
         cap *= 2;
