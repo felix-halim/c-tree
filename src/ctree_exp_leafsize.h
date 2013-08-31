@@ -35,7 +35,7 @@ class Allocator {
  public:
 
   Allocator() {
-    D = new T[cap = 1];
+    D = new T[cap = 100000000];
     N = 0;
   }
 
