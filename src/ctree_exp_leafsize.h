@@ -14,8 +14,8 @@ using namespace chrono;
 
 namespace ctree {
 
-#define INTERNAL_BSIZE        4096  // Must be power of two.
-#define LEAF_BSIZE            4096  // Must be power of two.
+#define INTERNAL_BSIZE        64  // Must be power of two.
+#define LEAF_BSIZE            64  // Must be power of two.
 #define LEAF_CHAINED_BSIZE  2048  // Must be power of two.
 
 template<typename Func>
@@ -88,7 +88,7 @@ void init(int b, int parent, int cap) {
   bucket_allocator.get(b)->cap = cap;
   bucket_allocator.get(b)->parent = parent;
   bucket_allocator.get(b)->next = -1;
-  bucket_allocator.get(b)->tail = -1;
+  bucket_allocator.get(b)->tail = b;
 
   nCap += cap;
   nLeaves++;
@@ -131,28 +131,24 @@ void leaf_insert(int b, int value) {
   // assert(is_leaf(bucket_allocator.get(b)));
   // assert(bucket_allocator.get(b)->N >= 0);
   Bucket *B = bucket_allocator.get(b);
-  if (!is_full(B)) {
-    B->D[B->N++] = value;
-    B->P++;
-  } else {
-    if (B->tail == -1 || is_full(bucket_allocator.get(B->tail))) {
-      // assert(bucket_allocator.get(b)->cap == INTERNAL_BSIZE);
-      // assert(bucket_allocator.get(bucket_allocator.get(b)->tail)->next == -1);
-      int idx = bucket_allocator.alloc();
-      B = bucket_allocator.get(b);
+  B = bucket_allocator.get(B->tail);
+  if (is_full(B)) {
+    // assert(bucket_allocator.get(b)->cap == INTERNAL_BSIZE);
+    // assert(bucket_allocator.get(bucket_allocator.get(b)->tail)->next == -1);
+    int idx = bucket_allocator.alloc();
+    B = bucket_allocator.get(b);
+    init_leaf(idx, B->parent, INTERNAL_BSIZE);
 
-      init_leaf(idx, B->parent, INTERNAL_BSIZE);
-      if (B->next == -1) {
-        B->next =
-        B->tail = idx;
-      } else {
-        bucket_allocator.get(B->tail)->next = idx;
-        B->tail = idx;
-      }
+    if (B->next == -1) {
+      B->next = B->tail = idx;
+    } else {
+      bucket_allocator.get(B->tail)->next = idx;
+      B->tail = idx;
     }
-    Bucket *b = bucket_allocator.get(B->tail);
-    b->D[b->N++] = value;
+    B = bucket_allocator.get(idx);
   }
+  B->D[B->N++] = value;
+  B->P++;
   // assert(leaf_check());
 }
 
