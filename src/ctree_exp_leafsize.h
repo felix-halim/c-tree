@@ -14,8 +14,8 @@ using namespace chrono;
 
 namespace ctree {
 
-#define INTERNAL_BSIZE        64  // Must be power of two.
-#define LEAF_BSIZE            64  // Must be power of two.
+#define INTERNAL_BSIZE        4096  // Must be power of two.
+#define LEAF_BSIZE            4096  // Must be power of two.
 #define LEAF_CHAINED_BSIZE  2048  // Must be power of two.
 
 template<typename Func>
