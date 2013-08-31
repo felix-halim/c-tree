@@ -280,42 +280,52 @@ class CTree {
     }
   }
 
+  int transfer_to(int src, int des, int pivot) {
+    int oldN = BUCKET(src)->N;
+    BUCKET(src)->N = 0;
+    int arr[2] { src, des };
+    for (int i = 0; i < oldN; i++) {
+      int j = !(BUCKET(src)->D[i] < pivot);
+      leaf_insert(arr[j], BUCKET(src)->D[i]);
+    }
+    return des;
+  }
+
   void leaf_split(int b, int &promotedValue, int &new_bucket) {
     // assert(leaf_check());
     assert(BUCKET(b)->next != -1);
     assert(BUCKET(b)->cap == INTERNAL_BSIZE); // The first bucket must be the smallest capacity.
     new_bucket = -1;
 
-    if (BUCKET(BUCKET(b)->next)->next == -1 && 0) {
-      /*
-      Bucket *b = detach_and_get_next(); b->detach_and_get_next();
+    if (BUCKET(BUCKET(b)->next)->next == -1) {
+      int nb = BUCKET(b)->detach_and_get_next(); BUCKET(nb)->detach_and_get_next();
 
-      if (N + b->N <= INTERNAL_BSIZE) {
-        for (int i = 0; i < b->N; i++)
-          D[N++] = b->D[i];
+      if (BUCKET(b)->N + BUCKET(nb)->N <= INTERNAL_BSIZE) {
+        for (int i = 0; i < BUCKET(nb)->N; i++)
+          BUCKET(b)->D[BUCKET(b)->N++] = BUCKET(nb)->D[i];
       } else {
-        // assert(b->cap == cap);
+        // assert(BUCKET(nb)->cap == cap);
 
         // Ensure both have at least 5 elements.
-        assert(N >= 5 || b->N >= 5);
-        while (N < 5) D[N++] = b->D[--b->N];
-        assert(N >= 5 || b->N >= 5);
-        while (b->N < 5) b->D[b->N++] = D[--N];
-        assert(N >= 5 && b->N >= 5);
+        assert(BUCKET(b)->N >= 5 || BUCKET(nb)->N >= 5);
+        while (BUCKET(b)->N < 5) BUCKET(b)->D[BUCKET(b)->N++] = BUCKET(nb)->D[--BUCKET(nb)->N];
+        assert(BUCKET(b)->N >= 5 || BUCKET(nb)->N >= 5);
+        while (BUCKET(nb)->N < 5) BUCKET(nb)->D[BUCKET(nb)->N++] = BUCKET(b)->D[--BUCKET(b)->N];
+        assert(BUCKET(b)->N >= 5 && BUCKET(nb)->N >= 5);
 
         int R[5];
         Random rng(140384); // TODO: use randomized seed.
         for (int i = 0; i < 3; i++) {
-          assert(N > 0);
-          int j = rng.nextInt(N);
-          R[i] = D[j];
-          D[j] = D[--N];
+          assert(BUCKET(b)->N > 0);
+          int j = rng.nextInt(BUCKET(b)->N);
+          R[i] = BUCKET(b)->D[j];
+          BUCKET(b)->D[j] = BUCKET(b)->D[--BUCKET(b)->N];
         }
         for (int i = 0; i < 2; i++) {
-          assert(b->N > 0);
-          int j = rng.nextInt(b->N);
-          R[i + 3] = b->D[j];
-          b->D[j] = b->D[--b->N];
+          assert(BUCKET(nb)->N > 0);
+          int j = rng.nextInt(BUCKET(nb)->N);
+          R[i + 3] = BUCKET(nb)->D[j];
+          BUCKET(nb)->D[j] = BUCKET(nb)->D[--BUCKET(nb)->N];
         }
 
         for (int i = 0; i < 5; i++) {
@@ -324,22 +334,24 @@ class CTree {
 
         std::nth_element(R, R + 2, R + 5);
         int pivot = R[2];
-        D[N++] = R[0];
-        D[N++] = R[1];
-        D[N++] = R[3];
-        b->D[b->N++] = R[4];
+        BUCKET(b)->D[BUCKET(b)->N++] = R[0];
+        BUCKET(b)->D[BUCKET(b)->N++] = R[1];
+        BUCKET(b)->D[BUCKET(b)->N++] = R[3];
+        BUCKET(nb)->D[BUCKET(nb)->N++] = R[4];
 
-        Bucket *nb = transfer_to(new_leaf(parent, INTERNAL_BSIZE), pivot);
-        b->transfer_to(nb, pivot);
-        for (int i = 0; i < b->N; i++) {
-          leaf_insert(b->D[i]);
+        int nb2 = bucket_allocator.alloc(true);
+        leaf_init(nb2, BUCKET(b)->parent, INTERNAL_BSIZE);
+        transfer_to(b, nb2, pivot);
+        transfer_to(nb, nb2, pivot);
+        for (int i = 0; i < BUCKET(nb)->N; i++) {
+          leaf_insert(b, BUCKET(nb)->D[i]);
         }
         promotedValue = pivot;
-        new_bucket = nb;
+        new_bucket = nb2;
       }
 
-      delete_bucket(b);
-      */
+      delete_bucket(nb);
+
     } else {
       // fprintf(stderr, "split N = %d\n", BUCKET(b)->N);
       // Reservoir sampling (http://en.wikipedia.org/wiki/Reservoir_sampling).
@@ -939,16 +951,6 @@ bool leaf_erase(int &v) {
   return false;
 }
 
-Bucket* transfer_to(Bucket *b, int pivot) {
-  int oldN = N;
-  N = 0;
-  Bucket *arr[2] { this, b };
-  for (int i = 0; i < oldN; i++) {
-    int j = !(D[i] < pivot);
-    arr[j]->leaf_insert(D[i]);
-  }
-  return b;
-}
 
 
 int leaf_promote_last() {
