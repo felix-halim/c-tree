@@ -44,7 +44,7 @@ class Allocator {
  public:
 
   Allocator() {
-    D = new T[cap = 100000000/INTERNAL_BSIZE*2];
+    D = new T[cap = 100000000/INTERNAL_BSIZE*4];
     N = 0;
     for (int i = 0; i < 1000000; i++) {
       free_indices.push(N++);
