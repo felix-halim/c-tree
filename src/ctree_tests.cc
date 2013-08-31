@@ -90,8 +90,8 @@ vector<pair<string,function<void()>>> tests {
 
     CTree c;
     REP(i, N) c.insert(arr[i]);
+    // c.optimize();
     c.debug();
-    c.optimize();
 
     random_shuffle(arr, arr + N);
     int csum = 0;
@@ -113,7 +113,7 @@ vector<pair<string,function<void()>>> tests {
 
     CTree c;
     REP(i, N) c.insert(arr[i]);
-    c.optimize();
+    // c.optimize();
     c.debug();
 
     random_shuffle(arr, arr + N);
@@ -136,7 +136,7 @@ vector<pair<string,function<void()>>> tests {
 
     CTree c;
     REP(i, N) c.insert(arr[i]);
-    c.optimize();
+    // c.optimize();
     c.debug();
 
     random_shuffle(arr, arr + N);

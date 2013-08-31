@@ -47,12 +47,12 @@ class Allocator {
   Allocator() {
     D = new T[cap = 100000000/INTERNAL_BSIZE*4];
     N = 0;
-    for (int i = 0; i < 100000; i++) {
-      free_indices.push(N++);
-    }
+    // for (int i = 0; i < 100000; i++) {
+    //   free_indices.push(N++);
+    // }
   }
 
-  int alloc(bool priority) {
+  int alloc2(bool priority) {
     if (priority) {
       assert(!free_indices.empty());
       int idx = free_indices.top();
@@ -68,6 +68,23 @@ class Allocator {
       D = newD;
     }
     return N++;
+  }
+
+  int alloc(bool priority) {
+    if (free_indices.empty()) {
+      if (N == cap) {
+        fprintf(stderr, "double %d\n", cap);
+        T *newD = new T[cap * 4];
+        memcpy(newD, D, sizeof(T) * cap);
+        cap *= 4;
+        delete[] D;
+        D = newD;
+      }
+      return N++;
+    }
+    int idx = free_indices.top();
+    free_indices.pop();
+    return idx;
   }
 
   void destroy(int idx) {
@@ -90,25 +107,6 @@ struct Bucket {
   int next;    // Pointer to the next chained bucket in bucket_allocator.
   int tail;    // Pointer to the last chained bucket in bucket_allocator.
   int D[LEAF_BSIZE];       // Data values.
-
-  void init(int parent, int cap, int C = -1) {
-    this->C = C;
-    this->cap = cap;
-    this->parent = parent;
-    P = 0;
-    N = 0;
-    next = -1;
-    tail = -1;
-
-    nCap += cap;
-    if (is_leaf()) {
-      nLeaves++;
-    } else {
-      nInternals++;
-    }
-    // C[0] = left_child;
-    // left_child->set_parent(this);
-  }
 
   bool is_full() const { return N == cap; }
   bool is_leaf() const { return C == -1; }
@@ -204,6 +202,36 @@ class CTree {
 
   CTree() {
     root = -1;
+  }
+
+  void leaf_init(int b, int parent, int cap) {
+    BUCKET(b)->C = -1;
+    BUCKET(b)->cap = cap;
+    BUCKET(b)->parent = parent;
+    BUCKET(b)->P = 0;
+    BUCKET(b)->N = 0;
+    BUCKET(b)->next = -1;
+    BUCKET(b)->tail = -1;
+    nCap += cap;
+    nLeaves++;
+    assert(BUCKET(b)->is_leaf());
+  }
+
+  void internal_init(int b, int parent, int cap, int left_child) {
+    BUCKET(b)->C = child_allocator.alloc(true);
+    BUCKET(b)->cap = cap;
+    BUCKET(b)->parent = parent;
+    BUCKET(b)->P = 0;
+    BUCKET(b)->N = 0;
+    BUCKET(b)->next = -1;
+    BUCKET(b)->tail = -1;
+
+    nCap += cap;
+    assert(!BUCKET(b)->is_leaf());
+    nInternals++;
+
+    CHILDREN(b)[0] = left_child;
+    BUCKET(left_child)->parent = b;
   }
 
   void delete_bucket(int b) {
@@ -364,7 +392,7 @@ class CTree {
       // debug(10);
 
       new_bucket = bucket_allocator.alloc(true);
-      BUCKET(new_bucket)->init(BUCKET(b)->parent, INTERNAL_BSIZE);
+      leaf_init(new_bucket, BUCKET(b)->parent, INTERNAL_BSIZE);
       int chain[2] { b, new_bucket };
 
       // Split the first bucket (this bucket).
@@ -434,6 +462,7 @@ class CTree {
     BUCKET(b)->D[i + 1] = value;
     C[i + 2] = nb;
     BUCKET(b)->N++;
+    // fprintf(stderr, "set parent %d  -> %d\n", nb, b);
     BUCKET(nb)->parent = b;
     // assert(check());
   }
@@ -494,11 +523,9 @@ class CTree {
 
   int internal_split(int b) {
     int nb = bucket_allocator.alloc(true);
-    int nbc = child_allocator.alloc(true);
-    BUCKET(nb)->init(BUCKET(b)->parent, LEAF_BSIZE, nbc);
     int *C = CHILDREN(b);
+    internal_init(nb, BUCKET(b)->parent, LEAF_BSIZE, C[BUCKET(b)->N / 2]);
     int *nbC = CHILDREN(nb);
-    CHILDREN(nb)[0] = C[BUCKET(b)->N / 2];
     for (int i = BUCKET(b)->N / 2, j = 0; i < BUCKET(b)->N; i++) {
       BUCKET(nb)->D[j++] = BUCKET(b)->D[i];
       nbC[j] = C[i + 1];
@@ -511,13 +538,16 @@ class CTree {
   }
 
   bool split_chain(int b) {
+    // assert(check());
     if (BUCKET(b)->next == -1) return false;
     assert(!locked);
 
     int promotedValue;
     int nb;
     // fprintf(stderr, "split_chain %d, %d\n", BUCKET(b)->N, BUCKET(b)->next);
+    // assert(check());
     leaf_split(b, promotedValue, nb);
+    // assert(check());
     // fprintf(stderr, "promotedValue = %d\n", promotedValue);
 
     int parent = BUCKET(b)->parent;
@@ -540,25 +570,27 @@ class CTree {
         nb = -1;
       }
     }
+    // assert(check());
+    // fprintf(stderr, "nb = %d\n", nb);
     if (nb != -1) {
       // Replace root
       // fprintf(stderr, "OLD ROOT %d\n", root);
       assert(parent == -1);
+      assert(BUCKET(root)->parent == -1);
       int new_root = bucket_allocator.alloc(true);
-      int c = child_allocator.alloc(true);
-      BUCKET(new_root)->init(-1, INTERNAL_BSIZE, c); // New internal bucket.
-      CHILDREN(new_root)[0] = root;
-      BUCKET(root)->parent = new_root;
+      internal_init(new_root, -1, INTERNAL_BSIZE, root); // New internal bucket.
       internal_insert(new_root, promotedValue, nb);
       root = new_root;
       // fprintf(stderr, "NEW ROOT %d\n", root);
     }
     // fprintf(stderr, "\n\n\ndone split %d\n", b);
     // debug();
+    // assert(check());
     return true;
   }
 
   bool optimize(int b = -1) {
+    assert(0);
     if (b == -1) {
       if (root == -1) return false;
       while (optimize(root)) {
@@ -678,7 +710,56 @@ class CTree {
     return ret;
   }
 
+  pair<int, int> find_bucket(int value, bool include_internal) {
+    int b = root;
+    while (true) {
+      // fprintf(stderr, "find_bucket %d\n", b);
+      if (BUCKET(b)->is_leaf()) {
+        if (!split_chain(b)) break;
+        b = BUCKET(b)->parent;
+        assert(b != -1);
+      } else {
+        int pos = BUCKET(b)->internal_lower_pos(value);
+        if (include_internal && pos < BUCKET(b)->N && BUCKET(b)->D[pos] == value) {
+          return make_pair(b, pos); // Found in the internal bucket.
+        }
+        b = CHILDREN(b)[pos];    // Search the child.
+      }
+    }
+    return make_pair(b, 0);
+  }
+
   pair<bool, int> lower_bound(int value) {
+    // assert(check());
+    pair<int, int> p = find_bucket(value, true);
+
+    // Found in internal bucket.
+    pair<bool, int> ret = make_pair(false, 0);
+    if (!BUCKET(p.first)->is_leaf()) {
+      ret = make_pair(true, value);
+    } else {
+      int pos = BUCKET(p.first)->leaf_lower_pos(value);
+      if (pos < BUCKET(p.first)->N) {
+        ret = make_pair(true, BUCKET(p.first)->D[pos]); 
+      } else {
+        int b = BUCKET(p.first)->parent;
+        while (b != -1) {
+          pos = BUCKET(b)->internal_lower_pos(value);
+          if (pos < BUCKET(b)->N) {
+            ret = make_pair(true, BUCKET(b)->D[pos]);
+            break;
+          }
+          b = BUCKET(b)->parent;
+        }
+      }
+    }
+    // fprintf(stderr, "lower_bound4 %d\n", value);
+
+    return ret;
+  }
+
+
+  pair<bool, int> lower_bound_optimized(int value) {
     // fprintf(stderr, "lower_bound %d\n", value);
     return lower_bound_rec(root, value);
   }
@@ -722,7 +803,7 @@ class CTree {
     int i = 0;
     while (i + INTERNAL_BSIZE <= N) {
       int idx = bucket_allocator.alloc(false);
-      BUCKET(idx)->init(-1, INTERNAL_BSIZE);
+      leaf_init(idx, -1, INTERNAL_BSIZE);
       for (int j = 0; j < INTERNAL_BSIZE; j++) {
         bool ok = BUCKET(idx)->append(arr[i++]);
         assert(ok);
@@ -747,7 +828,7 @@ class CTree {
 
     if (b == -1) {
       b = bucket_allocator.alloc(true);
-      BUCKET(b)->init(-1, LEAF_BSIZE);
+      leaf_init(b, -1, LEAF_BSIZE);
       BUCKET(b)->append(value);
       return;
     }
@@ -771,16 +852,14 @@ class CTree {
     int tail = BUCKET(b)->tail;
     if (tail == -1 || BUCKET(tail)->is_full()) {
       tail = bucket_allocator.alloc(false);
-      Bucket *B = BUCKET(b);
-      Bucket *nb = BUCKET(tail);
-      nb->init(B->parent, INTERNAL_BSIZE);
-      nb->append(value);
+      leaf_init(tail, BUCKET(b)->parent, INTERNAL_BSIZE);
+      BUCKET(tail)->append(value);
 
-      if (B->tail == -1) {
-        B->next = B->tail = tail;
+      if (BUCKET(b)->tail == -1) {
+        BUCKET(b)->next = BUCKET(b)->tail = tail;
       } else {
-        BUCKET(B->tail)->next = tail;
-        B->tail = tail;
+        BUCKET(BUCKET(b)->tail)->next = tail;
+        BUCKET(b)->tail = tail;
       }
     } else {
       BUCKET(tail)->append(value);
@@ -791,51 +870,46 @@ class CTree {
     return true;
   }
 
-  bool check() {
+  bool leaf_debug(const char *msg, int i, int j) {
+    fprintf(stderr, "%s, i = %d, j = %d, root = %d\n", msg, i, j, root);
+    return false;
+  }
+
+  bool leaf_check(int b, int lo, bool useLo, int hi, bool useHi) {
+    if (useLo) for (int i = 0; i < BUCKET(b)->N; i++) if ((BUCKET(b)->D[i] < lo)) {
+      fprintf(stderr,"D[%d] = %d, lo = %d\n", i, BUCKET(b)->D[i], lo);
+      return leaf_debug("useLo failed", i, 0);
+    }
+    if (useHi) for (int i = 0; i < BUCKET(b)->N; i++) if ((BUCKET(b)->D[i] > hi)) {
+      fprintf(stderr,"D[%d] = %d, hi = %d\n", i, BUCKET(b)->D[i], hi);
+      return leaf_debug("useHi failed", i, 0);
+    }
+    return true;
+  }
+
+  bool check(int b, int lo, int hi) {
+    return BUCKET(b)->is_leaf() ? leaf_check(b, lo, true, hi, true) : check(b, lo);
+  }
+
+  bool check(int b = -1, int lo = -2147483648) {
+    if (b == -1) b = root;
+    // fprintf(stderr, "check %d, leaf = %d\n", b, BUCKET(b)->is_leaf());
+    assert(BUCKET(b)->N >=0 && BUCKET(b)->N <= BUCKET(b)->cap);
+    if (BUCKET(b)->is_leaf()) return leaf_check(b, lo, true, 0, false);
+    if (BUCKET(CHILDREN(b)[0])->parent != b) return leaf_debug("parent mismatch", BUCKET(CHILDREN(b)[0])->parent, b);
+    check(CHILDREN(b)[0], lo, BUCKET(b)->D[0]);
+    for (int i = 0; i < BUCKET(b)->N; i++) {
+      // fprintf(stderr, "%d cek anak ke-%d\n", b, i);
+      assert(i == 0 || BUCKET(b)->D[i - 1] <= BUCKET(b)->D[i]);
+      if (BUCKET(CHILDREN(b)[i + 1])->parent != b) return leaf_debug("parent mismatch internal", BUCKET(CHILDREN(b)[i + 1])->parent, b);
+      if (!check(CHILDREN(b)[i + 1], BUCKET(b)->D[i], (i + 1 < BUCKET(b)->N) ? BUCKET(b)->D[i + 1] : 2147483647)) return false;
+    }
     return true;
   }
 };
 
 
 /*
-
-Random rng;
-
-
-
-void optimize() {
-  if (is_leaf()) {
-    ((Bucket*) this)->leaf_optimize();
-  } else {
-    for (int i = 0; i <= N; i++) {
-      ((Bucket*) this)->child(i)->optimize();
-    }
-  }
-}
-
-bool check(int lo, int hi) {
-  if (is_leaf()) return ((Bucket*) this)->leaf_check(lo, true, hi, true);
-  return check(lo);
-}
-
-bool check(int lo) {
-  assert(N >=0 && N <= cap);
-  assert(is_leaf() || ((Bucket*) this)->child(N));
-  if (is_leaf()) return ((Bucket*) this)->leaf_check();
-  Bucket *ib = (Bucket*) this;
-  if (N) {
-    if (ib->child(0)->get_parent() != ib) return false;
-    ib->child(0)->check(lo, D[0]);
-  }
-  for (int i = 0; i < N; i++) {
-    assert(ib->child(i));
-    if (i > 0) assert(ib->data(i - 1) < ib->data(i));
-    if (ib->child(i + 1)->get_parent() != ib) return false;
-    if (!ib->child(i + 1)->check(D[i], (i + 1 < N) ? D[i + 1] : 2147483647))
-      return false;
-  }
-  return true;
-}
 
 pair<bool,int> leaf_erase_largest() {
   assert(!next);
@@ -864,28 +938,6 @@ bool leaf_erase(int &v) {
   }
   return false;
 }
-
-bool leaf_debug(const char *msg, int i, int j) {
-  return false;
-}
-
-bool leaf_check() {
-  return leaf_check(D[0],false,D[0],false);
-}
-
-bool leaf_check(int lo, bool useLo, int hi, bool useHi) {
-  if (useLo) for (int i = 0; i < size(); i++) if ((D[i] < lo)) {
-    fprintf(stderr,"D[%d] = %d, lo = %d\n", i, D[i], lo);
-    return leaf_debug("useLo failed", i, 0);
-  }
-  if (useHi) for (int i = 0; i < size(); i++) if ((D[i] > hi)) {
-    fprintf(stderr,"D[%d] = %d, hi = %d\n", i, D[i], hi);
-    return leaf_debug("useHi failed", i, 0);
-  }
-  return true;
-}
-
-
 
 Bucket* transfer_to(Bucket *b, int pivot) {
   int oldN = N;
@@ -988,92 +1040,6 @@ class CTree {
     return true;
   }
 
-  pair<Bucket*, int> find_bucket(int value, bool include_internal) {
-    Bucket *b = root;
-    while (true) {
-      if (b->is_leaf()) {
-        Bucket *Lb = (Bucket*) b;
-        if (!split_chain(Lb)) break;
-        assert(Lb->get_parent());
-        b = Lb->get_parent();
-      } else {
-        Bucket *ib = (Bucket*) b;
-        int pos = ib->internal_lower_pos(value);
-        if (include_internal && pos < ib->size() && ib->data(pos) == value) {
-          return make_pair(ib, pos); // Found in the internal bucket.
-        }
-        // bool changed = 0;
-        // for (int i = 1; i <= ib->size(); i++) {
-        //   Bucket *L = ib->child(i - 1);
-        //   Bucket *R = ib->child(i);
-        //   assert(L->is_leaf() == R->is_leaf());
-        //   if (L->is_leaf()) {
-        //     if (!(((Bucket*) L)->next_bucket() || ((Bucket*) R)->next_bucket()))
-        //       if (shift_leaves(ib, i)) changed = 1;
-        //   } else {
-        //     if (shift_internals(ib, i)) changed = 1;
-        //   }
-        // }
-        // if (changed) b = ib;
-        // else 
-        b = ib->child(pos);    // Search the child.
-
-        // if (pos > 0 && pos < ib->size()) {
-        //   Bucket *L = ib->child(pos - 1);
-        //   Bucket *R = ib->child(pos + 1);
-        //   assert(b->is_leaf() == L->is_leaf());
-        //   assert(b->is_leaf() == R->is_leaf());
-        //   if (b->size() + L->size() + R->size() + 1 < INTERNAL_BSIZE * 2) {
-        //     if (b->is_leaf()) {
-        //       if (!(((Bucket*) L)->next_bucket() || ((Bucket*) b)->next_bucket() || ((Bucket*) R)->next_bucket()))
-        //         if (compact_leaves(ib, pos)) b = ib;
-        //     } else {
-        //       if (compact_internals(ib, pos)) b = ib;
-        //     }
-        //   }
-        // }
-      }
-    }
-    return make_pair(b, 0);
-  }
-
-  pair<bool, int> lower_bound2(int value) {
-    if (root->size() == 0) {
-      // fprintf(stderr, "PROMOTE ROOT\n");
-      assert(!root->is_leaf());
-      Bucket *x = ((Bucket*) root)->child(0);
-      delete ((Bucket*) root);
-      root = x;
-      root->set_parent(NULL);
-    }
-
-    // fprintf(stderr, "lower_bound %d\n", value);
-    pair<Bucket*, int> p = find_bucket(value, true);
-
-    // Found in internal bucket.
-    pair<bool, int> ret = make_pair(false, 0);
-    if (!p.first->is_leaf()) {
-      ret = make_pair(true, value);
-    } else {
-      Bucket *b = (Bucket*) p.first;
-      int pos = b->leaf_lower_pos(value);
-      if (pos < b->size()) {
-        ret = make_pair(true, b->data(pos)); 
-      } else {
-        Bucket *ib = (Bucket*) b->get_parent();
-        while (ib) {
-          pos = ib->internal_lower_pos(value);
-          if (pos < ib->size()) {
-            ret = make_pair(true, ib->data(pos));
-            break;
-          }
-          ib = (Bucket*) ib->get_parent();
-        }
-      }
-    }
-
-    return ret;
-  }
 
 
   pair<bool, int> erase_largest(Bucket *b) {
@@ -1122,10 +1088,6 @@ class CTree {
     }
     // assert(check());
     return true;
-  }
-
-  bool check() {
-    return root->check(-2147483648);
   }
 };
 */
