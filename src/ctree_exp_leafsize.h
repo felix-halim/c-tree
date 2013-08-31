@@ -62,12 +62,12 @@ class Allocator {
   }
 
   T* get(int idx) {
-    return idx == -1 ? NULL : &D[idx];
+    return &D[idx];
   }
 };
 
 
-class Bucket {
+struct Bucket {
   int D;       // Pointer to data_allocator (if cap == LEAF_BSIZE), or chained_data_allocator otherwise.
   int C;       // Pointer to the child bucket in child_allocator.
   int P;       // Pending insert if positive or pending delete if negative.
@@ -76,147 +76,98 @@ class Bucket {
   int parent;  // Pointer to the parent bucket in bucket_allocator.
   int next;    // Pointer to the next chained bucket in bucket_allocator.
   int tail;    // Pointer to the last chained bucket in bucket_allocator.
-
-  void init(int parent, int cap);
-
- public:
-
-  void init_leaf(int parent, int cap);
-  void init_internal(int parent, int cap);
-  void destroy();
-
-  // Getters.
-  int size() const;
-  int capacity() const;
-  bool is_full() const;
-  bool is_leaf() const;
-  int data(int i) const;
-  int child(int i) const;
-  Bucket* get_parent() const;
-  Bucket* next_bucket() const;
-  int debug(int depth) const;
-  bool check() const;
-  bool check(int lo) const;
-  bool check(int lo, int hi) const;
-  void optimize();
-
-  void append(int value);
-  void set_parent(int parent);
-  void set_data(int i, int value);
-
-
-  bool leaf_erase(int &v);
-  pair<bool,int> leaf_erase_largest();
-  void leaf_debug();
-  void leaf_insert(int v);
-  void leaf_split(int &promotedValue, Bucket *&nb);
-  void leaf_optimize();
-  int leaf_promote_first();
-  int leaf_promote_last();
-  int leaf_lower_pos(int value);
-  Bucket* detach_and_get_next();
-  void add_chain(Bucket *b);
-  void distribute_values(int pivot, Bucket* chain[2]);
-  Bucket* transfer_to(Bucket *b, int pivot);
-
-  int child_pos(int value);
-  int internal_lower_pos(int value);
-  Bucket* internal_split();
-  void internal_insert(int value, Bucket *b, int left = 0);
-  int internal_promote_first();
-  int internal_promote_last();
-  void internal_erase(int pos, int stride);
 };
-
 
 Allocator<Bucket> bucket_allocator;
 Allocator<int[LEAF_BSIZE]> data_allocator;
 Allocator<int[INTERNAL_BSIZE + 1]> child_allocator;
 int nLeaves, nInternals, nCap, nDes, locked;
 
-void Bucket::init(int parent, int cap) {
-  P = 0;
-  N = 0;
-  this->cap = cap;
-  this->parent = parent;
-  next = tail = -1;
+void init(int b, int parent, int cap) {
+  bucket_allocator.get(b)->P = 0;
+  bucket_allocator.get(b)->N = 0;
+  bucket_allocator.get(b)->cap = cap;
+  bucket_allocator.get(b)->parent = parent;
+  bucket_allocator.get(b)->next = -1;
+  bucket_allocator.get(b)->tail = -1;
 
   nCap += cap;
   nLeaves++;
 }
 
-void Bucket::init_leaf(int parent, int cap) {
-  if (cap == LEAF_BSIZE) {
-    D = data_allocator.alloc();
+void init_leaf(int b, int parent, int cap) {
+  if (bucket_allocator.get(b)->cap == LEAF_BSIZE) {
+    bucket_allocator.get(b)->D = data_allocator.alloc();
   } else {
-    D = data_allocator.alloc();
+    bucket_allocator.get(b)->D = data_allocator.alloc();
     // D = chained_data_allocator.alloc();
   }
-  C = -1;
-  init(parent, cap);
+  bucket_allocator.get(b)->C = -1;
+  init(b, parent, cap);
 }
 
-void Bucket::init_internal(int parent, int cap) {
-  D = data_allocator.alloc();
-  C = child_allocator.alloc();
-  init(parent, cap);
+void init_internal(int b, int parent, int cap) {
+  bucket_allocator.get(b)->D = data_allocator.alloc();
+  bucket_allocator.get(b)->C = child_allocator.alloc();
+  init(b, parent, cap);
 }
 
-void Bucket::destroy() {
-  nCap -= cap;
+void destroy(int b) {
+  nCap -= bucket_allocator.get(b)->cap;
   nLeaves--;
   nDes++;
 }
 
 
-int Bucket::size() const { return N; }
-int Bucket::capacity() const { return cap; }
-bool Bucket::is_full() const { return size() == capacity(); }
-bool Bucket::is_leaf() const { return C == -1; }
-Bucket* Bucket::get_parent() const { return bucket_allocator.get(parent); }
-Bucket* Bucket::next_bucket() const {
-  assert(is_leaf());
-  return bucket_allocator.get(next);
-}
-int Bucket::child(int i) const {
-  assert(!is_leaf());
-  assert(i >= 0 && i <= N);
-  return (*child_allocator.get(C))[i];
-}
-int Bucket::data(int i) const {
-  assert(i >= 0 && i < N);
-  return (*data_allocator.get(D))[i];
-}
-void Bucket::set_parent(int parent) { this->parent = parent; }
-void Bucket::set_data(int i, int value) {
-  assert(i >= 0 && i < N);
-  (*data_allocator.get(D))[i] = value;
+bool is_full(Bucket *b) { return b->N == b->cap; }
+bool is_leaf(Bucket *b) { return b->C == -1; }
+
+int next_bucket(Bucket* b) {
+  assert(is_leaf(b));
+  return b->next;
 }
 
-void Bucket::append(int value) {
+int child(Bucket *b, int i) {
+  assert(!is_leaf(b));
+  assert(i >= 0 && i <= b->N);
+  return (*child_allocator.get(b->C))[i];
 }
 
-void Bucket::leaf_insert(int value) {
+int data(Bucket *b, int i) {
+  assert(i >= 0 && i < b->N);
+  return (*data_allocator.get(b->D))[i];
+}
+
+void set_data(Bucket *b, int i, int value) {
+  assert(i >= 0 && i < b->N);
+  (*data_allocator.get(b->D))[i] = value;
+}
+
+void leaf_insert(int b, int value) {
   // assert(leaf_check());
-  assert(is_leaf());
-  assert(N >= 0);
-  if (!is_full()) {
-    (*data_allocator.get(D))[N++] = value;
-    P++;
+
+  assert(is_leaf(bucket_allocator.get(b)));
+  assert(bucket_allocator.get(b)->N >= 0);
+  if (!is_full(bucket_allocator.get(b))) {
+    (*data_allocator.get(bucket_allocator.get(b)->D))[bucket_allocator.get(b)->N++] = value;
+    bucket_allocator.get(b)->P++;
   } else {
-    if (tail == -1) {
-      assert(cap == INTERNAL_BSIZE);
-      next = tail = bucket_allocator.alloc();
-      bucket_allocator.get(tail)->init_leaf(parent, INTERNAL_BSIZE);
+    if (bucket_allocator.get(b)->tail == -1) {
+      assert(bucket_allocator.get(b)->cap == INTERNAL_BSIZE);
+      int idx = bucket_allocator.alloc();
+      init_leaf(idx, bucket_allocator.get(b)->parent, INTERNAL_BSIZE);
+      bucket_allocator.get(b)->next =
+      bucket_allocator.get(b)->tail = idx;
     } else {
-      if (bucket_allocator.get(tail)->is_full()) {
-        // assert(bucket_allocator.get(tail)->next == -1);
+      if (is_full(bucket_allocator.get(bucket_allocator.get(b)->tail))) {
+        assert(bucket_allocator.get(bucket_allocator.get(b)->tail)->next == -1);
         int idx = bucket_allocator.alloc();
-        bucket_allocator.get(idx)->init_leaf(parent, LEAF_BSIZE); // Doubling?
-        bucket_allocator.get(tail)->next = idx;
-        tail = idx;
+        init_leaf(idx, bucket_allocator.get(b)->parent, LEAF_BSIZE); // Doubling?
+        bucket_allocator.get(bucket_allocator.get(b)->tail)->next = idx;
+        bucket_allocator.get(b)->tail = idx;
       }
     }
+    int tail = bucket_allocator.get(b)->tail;
     Bucket *b = bucket_allocator.get(tail);
     (*data_allocator.get(b->D))[b->N++] = value;
   }
@@ -233,8 +184,7 @@ class CTree {
 
   CTree() {
     root = bucket_allocator.alloc();
-    Bucket *b = bucket_allocator.get(root);
-    b->init_leaf(-1, LEAF_BSIZE);
+    init_leaf(root, -1, LEAF_BSIZE);
   }
 
   bool optimize() {
@@ -258,9 +208,9 @@ class CTree {
     // fprintf(stderr, "ins %d\n", value);
     // if (value == 711)  debug();
     int b = root;
-    while (!bucket_allocator.get(b)->is_leaf())
-      b = bucket_allocator.get(b)->child(value);
-    bucket_allocator.get(b)->leaf_insert(value);
+    while (!is_leaf(bucket_allocator.get(b)))
+      b = child(bucket_allocator.get(b), value);
+    leaf_insert(b, value);
     // root->debug(0);
   }
 
@@ -280,7 +230,7 @@ Random rng;
 
 
 
-void Bucket::optimize() {
+void optimize() {
   if (is_leaf()) {
     ((Bucket*) this)->leaf_optimize();
   } else {
@@ -290,7 +240,7 @@ void Bucket::optimize() {
   }
 }
 
-int Bucket::debug(int depth) {
+int debug(int depth) {
   for (int i = 0; i < depth; i++) fprintf(stderr, "  ");
   Bucket *b = (Bucket *) this;
   int sz = 0;
@@ -312,12 +262,12 @@ int Bucket::debug(int depth) {
   return sz;
 }
 
-bool Bucket::check(int lo, int hi) const {
+bool check(int lo, int hi) {
   if (is_leaf()) return ((Bucket*) this)->leaf_check(lo, true, hi, true);
   return check(lo);
 }
 
-bool Bucket::check(int lo) const {
+bool check(int lo) {
   assert(N >=0 && N <= cap);
   assert(is_leaf() || ((Bucket*) this)->child(N));
   if (is_leaf()) return ((Bucket*) this)->leaf_check();
@@ -337,7 +287,7 @@ bool Bucket::check(int lo) const {
 }
 
 
-void Bucket::leaf_debug() {
+void leaf_debug() {
   fprintf(stderr, "N = %d (p=%d, LEAF), ", N, P);
   for (int i = 0; i < N; i++) {
     fprintf(stderr, "%d ", D[i]);
@@ -345,7 +295,7 @@ void Bucket::leaf_debug() {
 }
 
 
-pair<bool,int> Bucket::leaf_erase_largest() {
+pair<bool,int> leaf_erase_largest() {
   assert(!next);
   if (N == 0) return make_pair(false, D[0]);
   int pos = 0;
@@ -361,7 +311,7 @@ pair<bool,int> Bucket::leaf_erase_largest() {
   return make_pair(true, D[N]);
 }
 
-bool Bucket::leaf_erase(int &v) {
+bool leaf_erase(int &v) {
   // assert(leaf_check());
   int pos = 0;
   while (pos < N) {
@@ -373,15 +323,15 @@ bool Bucket::leaf_erase(int &v) {
   return false;
 }
 
-bool Bucket::leaf_debug(const char *msg, int i, int j) const {
+bool leaf_debug(const char *msg, int i, int j) {
   return false;
 }
 
-bool Bucket::leaf_check() const {
+bool leaf_check() {
   return leaf_check(D[0],false,D[0],false);
 }
 
-bool Bucket::leaf_check(int lo, bool useLo, int hi, bool useHi) const {
+bool leaf_check(int lo, bool useLo, int hi, bool useHi) {
   if (useLo) for (int i = 0; i < size(); i++) if ((D[i] < lo)) {
     fprintf(stderr,"D[%d] = %d, lo = %d\n", i, D[i], lo);
     return leaf_debug("useLo failed", i, 0);
@@ -417,7 +367,7 @@ void fusion(int *Lp, int *Rp, int *hi, int *lo, int &nhi, int &nlo) {
   while (m--) std::swap(Lp[*(hip--)], Rp[*(lop--)]);
 }
 
-Bucket* Bucket::detach_and_get_next() {
+Bucket* detach_and_get_next() {
   Bucket* ret = next;
   next = tail = NULL;
   return ret;
@@ -428,7 +378,7 @@ void _add(Bucket *&b, Bucket *nb) {
   else b->add_chain(nb);
 }
 
-void Bucket::distribute_values(int pivot, Bucket *chain[2]) {
+void distribute_values(int pivot, Bucket *chain[2]) {
   // fprintf(stderr, "has left\n");
   while (N) {
     int i = !(D[--N] < pivot);
@@ -437,7 +387,7 @@ void Bucket::distribute_values(int pivot, Bucket *chain[2]) {
   }
 }
 
-Bucket* Bucket::transfer_to(Bucket *b, int pivot) {
+Bucket* transfer_to(Bucket *b, int pivot) {
   int oldN = N;
   N = 0;
   Bucket *arr[2] { this, b };
@@ -448,7 +398,7 @@ Bucket* Bucket::transfer_to(Bucket *b, int pivot) {
   return b;
 }
 
-void Bucket::leaf_split(int &promotedValue, Bucket *&new_bucket) {
+void leaf_split(int &promotedValue, Bucket *&new_bucket) {
   // assert(leaf_check());
   assert(next);
   assert(cap == INTERNAL_BSIZE); // The first bucket must be the smallest capacity.
@@ -612,7 +562,7 @@ void Bucket::leaf_split(int &promotedValue, Bucket *&new_bucket) {
   // assert(leaf_check());
 }
 
-int Bucket::leaf_promote_first() {
+int leaf_promote_first() {
   // TODO: optimize
   P = 1;
   int smallest_pos = 0;
@@ -625,18 +575,18 @@ int Bucket::leaf_promote_first() {
   return D[N];
 }
 
-int Bucket::leaf_promote_last() {
+int leaf_promote_last() {
   if (P > 0) leaf_optimize();
   return D[--N];
 }
 
-void Bucket::leaf_optimize() {
+void leaf_optimize() {
   assert(P >= 0);
   sort(D, D + N);
   P = 0;
 }
 
-int Bucket::leaf_lower_pos(int value) {
+int leaf_lower_pos(int value) {
   if (P) leaf_optimize();
   // assert(leaf_check());
   int pos = 0;
@@ -647,18 +597,18 @@ int Bucket::leaf_lower_pos(int value) {
   return pos;
 }
 
-Bucket::Bucket(Bucket *parent, Bucket *left_child) : Bucket(parent, INTERNAL_BSIZE) {
+Bucket(Bucket *parent, Bucket *left_child) : Bucket(parent, INTERNAL_BSIZE) {
   nInternals++;
   P = -1;
   C[0] = left_child;
   left_child->set_parent(this);
 }
 
-Bucket::~Bucket() {
+~Bucket() {
   nInternals--;
 }
 
-Bucket* Bucket::internal_split() {
+Bucket* internal_split() {
   Bucket *nb = new Bucket(parent, C[N / 2]);
   for (int i = N / 2, j = 0; i < N; i++) {
     nb->D[j++] = D[i];
@@ -676,7 +626,7 @@ Bucket* Bucket::internal_split() {
 }
 
 
-void Bucket::internal_insert(int value, Bucket *b, int left) {
+void internal_insert(int value, Bucket *b, int left) {
   // assert(check());
   assert(!is_full());
   int i = N - 1;
@@ -697,13 +647,13 @@ void Bucket::internal_insert(int value, Bucket *b, int left) {
   // assert(check());
 }
 
-int Bucket::internal_lower_pos(int value) {
+int internal_lower_pos(int value) {
   int pos = 0;
   while (pos < N && D[pos] < value) pos++;
   return pos;
 }
 
-int Bucket::internal_promote_first() {
+int internal_promote_first() {
   int ret = D[0];
   N--;
   for (int i = 0; i < N; i++) {
@@ -714,17 +664,17 @@ int Bucket::internal_promote_first() {
  return ret;
 }
 
-int Bucket::internal_promote_last() {
+int internal_promote_last() {
  return D[--N];
 }
 
-Bucket*& Bucket::child_bucket(int value) {
+Bucket*& child_bucket(int value) {
   int pos = 0;
   while (pos < N && !(value < D[pos])) pos++;
   return child(pos);
 }
 
-void Bucket::internal_erase(int pos, int stride) {
+void internal_erase(int pos, int stride) {
   N--;
   while (pos < N) {
     D[pos] = D[pos + 1];
