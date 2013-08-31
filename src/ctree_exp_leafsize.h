@@ -91,7 +91,7 @@ class Bucket {
   bool is_full() const;
   bool is_leaf() const;
   int data(int i) const;
-  Bucket* child(int i) const;
+  int child(int i) const;
   Bucket* get_parent() const;
   Bucket* next_bucket() const;
   int debug(int depth) const;
@@ -178,11 +178,10 @@ Bucket* Bucket::next_bucket() const {
   assert(is_leaf());
   return bucket_allocator.get(next);
 }
-Bucket* Bucket::child(int i) const {
+int Bucket::child(int i) const {
   assert(!is_leaf());
   assert(i >= 0 && i <= N);
-  int j = (*child_allocator.get(C))[i];
-  return bucket_allocator.get(j);
+  return (*child_allocator.get(C))[i];
 }
 int Bucket::data(int i) const {
   assert(i >= 0 && i < N);
@@ -258,9 +257,10 @@ class CTree {
   void insert(int value) {
     // fprintf(stderr, "ins %d\n", value);
     // if (value == 711)  debug();
-    Bucket *b = bucket_allocator.get(root);
-    while (!b->is_leaf()) b = b->child(value);
-    b->leaf_insert(value);
+    int b = root;
+    while (!bucket_allocator.get(b)->is_leaf())
+      b = bucket_allocator.get(b)->child(value);
+    bucket_allocator.get(b)->leaf_insert(value);
     // root->debug(0);
   }
 
