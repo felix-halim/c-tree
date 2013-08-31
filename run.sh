@@ -64,6 +64,9 @@ fhnet)
 	scp results.csv felixhalim@felix-halim.net:~/public_html/research/ctree/results.csv
 	;;
 
+clean)
+
+	rm -fr bin/*;;
 
 bench)
 

@@ -35,7 +35,7 @@ class Allocator {
  public:
 
   Allocator() {
-    D = new T[cap = 256];
+    D = new T[cap = 1];
     N = 0;
   }
 
@@ -210,12 +210,12 @@ void Bucket::leaf_insert(int value) {
       next = tail = bucket_allocator.alloc();
       bucket_allocator.get(tail)->init_leaf(parent, INTERNAL_BSIZE);
     } else {
-      Bucket *t = bucket_allocator.get(tail);
-      if (t->is_full()) {
-        assert(t->next == -1);
-        t->next = bucket_allocator.alloc();
-        bucket_allocator.get(t->next)->init_leaf(parent, LEAF_BSIZE); // Doubling?
-        tail = t->next;
+      if (bucket_allocator.get(tail)->is_full()) {
+        // assert(bucket_allocator.get(tail)->next == -1);
+        int idx = bucket_allocator.alloc();
+        bucket_allocator.get(idx)->init_leaf(parent, LEAF_BSIZE); // Doubling?
+        bucket_allocator.get(tail)->next = idx;
+        tail = idx;
       }
     }
     Bucket *b = bucket_allocator.get(tail);
