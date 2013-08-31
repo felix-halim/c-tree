@@ -43,9 +43,9 @@ class Allocator {
     if (free_indices.empty()) {
       if (N == cap) {
         fprintf(stderr, "double %d\n", cap);
-        cap *= 2;
         T *newD = new T[cap * 2];
         memcpy(newD, D, sizeof(T) * cap);
+        cap *= 2;
         delete[] D;
         D = newD;
       }
