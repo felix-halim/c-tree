@@ -12,6 +12,7 @@
 using namespace std;
 using namespace ctree;
 
+double t1 = 0, t2 = 0, t3 = 0;
 CTree c;
 
 void init(int *arr, int N) {
@@ -20,7 +21,6 @@ void init(int *arr, int N) {
   }
   // assert(c.check());
   while (c.optimize());
-  locked = 1;
   // // c.debug();
   // fprintf(stderr, "depth = %d, slack = %d\n", c.max_depth(), c.slack());
 }
@@ -44,5 +44,5 @@ int query(int value) {
 void results(double insert_time, double query_time, int checksum) {
   assert(c.check());
   printf("%.6lf,%.6lf,%d,", insert_time, query_time, checksum);
-  printf("\"%s\",%d,%d,%d,%d,%d,%.6lf,%.6lf,%.6lf\n", c.version, nLeaves, nCap, nInternals, c.max_depth(), c.slack(), c.t1, c.t2, c.t3);
+  // printf("\"%s\",%d,%d,%d,%d,%d,%.6lf,%.6lf,%.6lf\n", c.version, nLeaves, nCap, nInternals, c.max_depth(), c.slack(), c.t1, c.t2, c.t3);
 }
