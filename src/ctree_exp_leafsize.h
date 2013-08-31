@@ -1,3 +1,7 @@
+/*
+use leaf chained as separate allocator
+*/
+
 #ifndef _CTREE_H_
 #define _CTREE_H_
 
@@ -40,26 +44,29 @@ class Allocator {
  public:
 
   Allocator() {
-    D = new T[cap = 100000000/INTERNAL_BSIZE*2];
+    D = new T[cap = 100000000/INTERNAL_BSIZE*4];
     N = 0;
+    for (int i = 0; i < 1000000; i++) {
+      free_indices.push(N++);
+    }
   }
 
-  int alloc() {
-    if (free_indices.empty()) {
-      if (N == cap) {
-        fprintf(stderr, "double %d\n", cap);
-        T *newD = new T[cap * 4];
-        memcpy(newD, D, sizeof(T) * cap);
-        cap *= 4;
-        delete[] D;
-        D = newD;
-      }
-      return N++;
-    } else {
+  int alloc(bool priority) {
+    if (priority) {
+      assert(!free_indices.empty());
       int idx = free_indices.top();
       free_indices.pop();
       return idx;
     }
+    if (N == cap) {
+      fprintf(stderr, "double %d\n", cap);
+      T *newD = new T[cap * 4];
+      memcpy(newD, D, sizeof(T) * cap);
+      cap *= 4;
+      delete[] D;
+      D = newD;
+    }
+    return N++;
   }
 
   void destroy(int idx) {
@@ -350,7 +357,7 @@ class CTree {
 
       // debug(10);
 
-      new_bucket = bucket_allocator.alloc();
+      new_bucket = bucket_allocator.alloc(true);
       BUCKET(new_bucket)->init(BUCKET(b)->parent, INTERNAL_BSIZE);
       int chain[2] { b, new_bucket };
 
@@ -480,8 +487,8 @@ class CTree {
   }
 
   int internal_split(int b) {
-    int nb = bucket_allocator.alloc();
-    int nbc = child_allocator.alloc();
+    int nb = bucket_allocator.alloc(true);
+    int nbc = child_allocator.alloc(true);
     BUCKET(nb)->init(BUCKET(b)->parent, LEAF_BSIZE, nbc);
     int *C = CHILDREN(b);
     int *nbC = CHILDREN(nb);
@@ -531,8 +538,8 @@ class CTree {
       // Replace root
       // fprintf(stderr, "OLD ROOT %d\n", root);
       assert(parent == -1);
-      int new_root = bucket_allocator.alloc();
-      int c = child_allocator.alloc();
+      int new_root = bucket_allocator.alloc(true);
+      int c = child_allocator.alloc(true);
       BUCKET(new_root)->init(-1, INTERNAL_BSIZE, c); // New internal bucket.
       CHILDREN(new_root)[0] = root;
       BUCKET(root)->parent = new_root;
@@ -693,7 +700,7 @@ class CTree {
     // fprintf(stderr, "batch %d\n", N);
     int i = 0;
     while (i + INTERNAL_BSIZE <= N) {
-      int idx = bucket_allocator.alloc();
+      int idx = bucket_allocator.alloc(false);
       BUCKET(idx)->init(-1, INTERNAL_BSIZE);
       for (int j = 0; j < INTERNAL_BSIZE; j++) {
         bool ok = BUCKET(idx)->append(arr[i++]);
@@ -718,7 +725,7 @@ class CTree {
     // if (value == 711)  debug();
 
     if (b == -1) {
-      b = bucket_allocator.alloc();
+      b = bucket_allocator.alloc(true);
       BUCKET(b)->init(-1, LEAF_BSIZE);
       BUCKET(b)->append(value);
       return;
@@ -742,7 +749,7 @@ class CTree {
     // assert(BUCKET(BUCKET(b)->tail)->next == -1);
     int tail = BUCKET(b)->tail;
     if (tail == -1 || BUCKET(tail)->is_full()) {
-      tail = bucket_allocator.alloc();
+      tail = bucket_allocator.alloc(false);
       Bucket *B = BUCKET(b);
       Bucket *nb = BUCKET(tail);
       nb->init(B->parent, INTERNAL_BSIZE);
