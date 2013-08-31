@@ -557,6 +557,7 @@ class CTree {
           root = c;
           BUCKET(root)->parent = -1;
         }
+        fprintf(stderr, "optimize\n");
       }
       return false;
     }
@@ -578,16 +579,16 @@ class CTree {
         changed = true;
       }
     }
-    // for (int i = 0; i < BUCKET(b)->N; i++) {
-    //   int L = child(b, i);
-    //   int R = child(b, i + 1);
-    //   assert(BUCKET(L)->is_leaf() == BUCKET(R)->is_leaf());
-    //   if (BUCKET(L)->is_leaf()) {
-    //     if (shift_leaves(b, i)) changed = 1;
-    //   } else {
-    //     if (shift_internals(b, i)) changed = 1;
-    //   }
-    // }
+    for (int i = 0; i < BUCKET(b)->N; i++) {
+      int L = child(b, i);
+      int R = child(b, i + 1);
+      assert(BUCKET(L)->is_leaf() == BUCKET(R)->is_leaf());
+      if (BUCKET(L)->is_leaf()) {
+        if (shift_leaves(b, i)) changed = 1;
+      } else {
+        if (shift_internals(b, i)) changed = 1;
+      }
+    }
     // fprintf(stderr, "internal %d %d\n", b, changed);
     return changed;
   }
