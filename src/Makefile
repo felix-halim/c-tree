@@ -1,4 +1,5 @@
 CXX      = g++
+# CXX      = clang++-mp-3.4
 ODIR     = ../bin
 DEPFILE  = .depends
 CXXFLAGS = -O3 -g -std=c++0x# -stdlib=libc++
