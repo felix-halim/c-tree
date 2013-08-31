@@ -14,8 +14,8 @@ using namespace chrono;
 
 namespace ctree {
 
-#define INTERNAL_BSIZE        256  // Must be power of two.
-#define LEAF_BSIZE            256  // Must be power of two.
+#define INTERNAL_BSIZE        64  // Must be power of two.
+#define LEAF_BSIZE            64  // Must be power of two.
 #define LEAF_CHAINED_BSIZE  2048  // Must be power of two.
 
 template<typename Func>
@@ -35,7 +35,7 @@ class Allocator {
  public:
 
   Allocator() {
-    D = new T[cap = 1024];
+    D = new T[cap = 1];
     N = 0;
   }
 
@@ -68,7 +68,7 @@ class Allocator {
 
 
 struct Bucket {
-  int D;       // Pointer to data_allocator (if cap == LEAF_BSIZE), or chained_data_allocator otherwise.
+  int D[LEAF_BSIZE];       // Pointer to data_allocator (if cap == LEAF_BSIZE), or chained_data_allocator otherwise.
   int C;       // Pointer to the child bucket in child_allocator.
   int P;       // Pending insert if positive or pending delete if negative.
   int N;       // Number of data elements in this bucket pointed by D.
@@ -79,7 +79,6 @@ struct Bucket {
 };
 
 Allocator<Bucket> bucket_allocator;
-Allocator<int[LEAF_BSIZE]> data_allocator;
 Allocator<int[INTERNAL_BSIZE + 1]> child_allocator;
 int nLeaves, nInternals, nCap, nDes, locked;
 
@@ -96,18 +95,11 @@ void init(int b, int parent, int cap) {
 }
 
 void init_leaf(int b, int parent, int cap) {
-  if (bucket_allocator.get(b)->cap == LEAF_BSIZE) {
-    bucket_allocator.get(b)->D = data_allocator.alloc();
-  } else {
-    bucket_allocator.get(b)->D = data_allocator.alloc();
-    // D = chained_data_allocator.alloc();
-  }
   bucket_allocator.get(b)->C = -1;
   init(b, parent, cap);
 }
 
 void init_internal(int b, int parent, int cap) {
-  bucket_allocator.get(b)->D = data_allocator.alloc();
   bucket_allocator.get(b)->C = child_allocator.alloc();
   init(b, parent, cap);
 }
@@ -133,43 +125,32 @@ int child(Bucket *b, int i) {
   return (*child_allocator.get(b->C))[i];
 }
 
-int data(Bucket *b, int i) {
-  assert(i >= 0 && i < b->N);
-  return (*data_allocator.get(b->D))[i];
-}
-
-void set_data(Bucket *b, int i, int value) {
-  assert(i >= 0 && i < b->N);
-  (*data_allocator.get(b->D))[i] = value;
-}
-
 void leaf_insert(int b, int value) {
   // assert(leaf_check());
 
   assert(is_leaf(bucket_allocator.get(b)));
   assert(bucket_allocator.get(b)->N >= 0);
   if (!is_full(bucket_allocator.get(b))) {
-    (*data_allocator.get(bucket_allocator.get(b)->D))[bucket_allocator.get(b)->N++] = value;
-    bucket_allocator.get(b)->P++;
+    Bucket *B = bucket_allocator.get(b);
+    B->D[B->N++] = value;
+    B->P++;
   } else {
-    if (bucket_allocator.get(b)->tail == -1) {
-      assert(bucket_allocator.get(b)->cap == INTERNAL_BSIZE);
+    if (bucket_allocator.get(b)->tail == -1 || is_full(bucket_allocator.get(bucket_allocator.get(b)->tail))) {
+      // assert(bucket_allocator.get(b)->cap == INTERNAL_BSIZE);
+      // assert(bucket_allocator.get(bucket_allocator.get(b)->tail)->next == -1);
       int idx = bucket_allocator.alloc();
       init_leaf(idx, bucket_allocator.get(b)->parent, INTERNAL_BSIZE);
-      bucket_allocator.get(b)->next =
-      bucket_allocator.get(b)->tail = idx;
-    } else {
-      if (is_full(bucket_allocator.get(bucket_allocator.get(b)->tail))) {
-        assert(bucket_allocator.get(bucket_allocator.get(b)->tail)->next == -1);
-        int idx = bucket_allocator.alloc();
-        init_leaf(idx, bucket_allocator.get(b)->parent, LEAF_BSIZE); // Doubling?
+      if (bucket_allocator.get(b)->next == -1) {
+        bucket_allocator.get(b)->next =
+        bucket_allocator.get(b)->tail = idx;
+      } else {
         bucket_allocator.get(bucket_allocator.get(b)->tail)->next = idx;
         bucket_allocator.get(b)->tail = idx;
       }
     }
     int tail = bucket_allocator.get(b)->tail;
     Bucket *b = bucket_allocator.get(tail);
-    (*data_allocator.get(b->D))[b->N++] = value;
+    b->D[b->N++] = value;
   }
   // assert(leaf_check());
 }
