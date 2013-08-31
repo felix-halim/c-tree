@@ -151,6 +151,50 @@ class CTree {
     return make_pair(0,0);
   }
 
+  void batch_insert(int *arr, int N) {
+    Bucket *b = bucket_allocator.get(root);
+    if (b->is_leaf()) {
+      while (N && b->append(arr[--N]));
+      while (N >= INTERNAL_BSIZE) {
+        int idx = bucket_allocator.alloc();
+        b = bucket_allocator.get(idx);
+        b->init(-1, INTERNAL_BSIZE);
+        for (int i = 0; i < INTERNAL_BSIZE; i++) {
+          bool ok = b->append(arr[--N]);
+          assert(ok);
+        }
+        b = bucket_allocator.get(root);
+        if (b->next == -1) {
+          b->next = b->tail = idx;
+        } else {
+          bucket_allocator.get(b->tail)->next = idx;
+          b->tail = idx;
+        }
+      }
+
+      if (N > 0) {
+        int idx = bucket_allocator.alloc();
+        b = bucket_allocator.get(idx);
+        b->init(-1, INTERNAL_BSIZE);
+        while (N) {
+          bool ok = b->append(arr[--N]);
+          assert(ok);
+        }
+        b = bucket_allocator.get(root);
+        if (b->next == -1) {
+          b->next = b->tail = idx;
+        } else {
+          bucket_allocator.get(b->tail)->next = idx;
+          b->tail = idx;
+        }
+      }
+    } else {
+      for (int i = 0; i < N; i++) {
+        insert(arr[i]);
+      }
+    }
+  }
+
   void insert(int value) {
     // fprintf(stderr, "ins %d\n", value);
     // if (value == 711)  debug();
