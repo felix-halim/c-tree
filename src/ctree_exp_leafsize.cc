@@ -16,9 +16,10 @@ double t1 = 0, t2 = 0, t3 = 0;
 CTree c;
 
 void init(int *arr, int N) {
-  for (int i = 0; i < N; i++) {
-    c.insert(arr[i]);
-  }
+  c.batch_insert(arr, N);
+  // for (int i = 0; i < N; i++) {
+  //   c.insert(arr[i]);
+  // }
   // assert(c.check());
   while (c.optimize());
   // // c.debug();
