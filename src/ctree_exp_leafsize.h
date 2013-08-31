@@ -128,10 +128,10 @@ int child(Bucket *b, int i) {
 void leaf_insert(int b, int value) {
   // assert(leaf_check());
 
-  assert(is_leaf(bucket_allocator.get(b)));
-  assert(bucket_allocator.get(b)->N >= 0);
-  if (!is_full(bucket_allocator.get(b))) {
-    Bucket *B = bucket_allocator.get(b);
+  // assert(is_leaf(bucket_allocator.get(b)));
+  // assert(bucket_allocator.get(b)->N >= 0);
+  Bucket *B = bucket_allocator.get(b);
+  if (!is_full(B)) {
     B->D[B->N++] = value;
     B->P++;
   } else {
