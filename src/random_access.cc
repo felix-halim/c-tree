@@ -70,10 +70,10 @@ int main(int argc, char *argv[]) {
       arr[i] = rng.nextInt();
     }
   });
-  vector<int> arr2;
+  int *arr2;
   double t2 = time_it([&]{
-    for (int i = 0; i < 100000000; i++)
-      arr2.push_back(arr[i]);
+    arr2 = new int[100000000];
+    memcpy(arr2, arr, sizeof(int) * 100000000);
   });
   fprintf(stderr, "t1 = %.6lf, t2 = %.6lf, %d\n", t1, t2, arr2[rng.nextInt(100000000)]);
   linear_alloc(atoi(argv[1]));
