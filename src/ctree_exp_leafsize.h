@@ -1,4 +1,5 @@
 /*
+tansfer leaf
 use leaf chained as separate allocator
 */
 
@@ -46,7 +47,7 @@ class Allocator {
   Allocator() {
     D = new T[cap = 100000000/INTERNAL_BSIZE*4];
     N = 0;
-    for (int i = 0; i < 1000000; i++) {
+    for (int i = 0; i < 100000; i++) {
       free_indices.push(N++);
     }
   }
@@ -205,6 +206,11 @@ class CTree {
     root = -1;
   }
 
+  void delete_bucket(int b) {
+    BUCKET(b)->destroy();
+    bucket_allocator.destroy(b);
+  }
+
   int child(int b, int i) {
     assert(BUCKET(b)->C != -1);
     return CHILDREN(b)[i];
@@ -304,7 +310,7 @@ class CTree {
         new_bucket = nb;
       }
 
-      delete_leaf(b);
+      delete_bucket(b);
       */
     } else {
       // fprintf(stderr, "split N = %d\n", BUCKET(b)->N);
@@ -407,8 +413,8 @@ class CTree {
       assert(Nb == -1);
 
       // fprintf(stderr, "splited\n");
-      if (Lb != -1) distribute_values(Lb, pivot, chain), bucket_allocator.destroy(Lb);
-      if (Rb != -1) distribute_values(Rb, pivot, chain), bucket_allocator.destroy(Rb);
+      if (Lb != -1) distribute_values(Lb, pivot, chain), delete_bucket(Lb);
+      if (Rb != -1) distribute_values(Rb, pivot, chain), delete_bucket(Rb);
       promotedValue = pivot;
     }
     // assert(leaf_check());
@@ -458,7 +464,7 @@ class CTree {
     if (!BUCKET(L)->is_full() && !BUCKET(R)->N) {
       leaf_insert(L, BUCKET(b)->D[pos]);
       internal_erase(b, CHILDREN(b), pos, 1);
-      bucket_allocator.destroy(R);
+      delete_bucket(R);
       return true; // R is empty, compaction is done.
     }
     return changed;
@@ -480,7 +486,7 @@ class CTree {
     if (!BUCKET(L)->is_full() && !BUCKET(R)->N) {
       internal_insert(L, BUCKET(b)->D[pos], child(R, 0));
       internal_erase(b, CHILDREN(b), pos, 1);
-      bucket_allocator.destroy(R);
+      delete_bucket(R);
       return true; // R is empty, compaction is done.
     }
     return changed;
@@ -560,7 +566,7 @@ class CTree {
           fprintf(stderr, "PROMOTE ROOT\n");
           assert(!BUCKET(root)->is_leaf());
           int c = child(root, 0);
-          bucket_allocator.destroy(root);
+          delete_bucket(root);
           root = c;
           BUCKET(root)->parent = -1;
         }
@@ -638,12 +644,27 @@ class CTree {
     return sz;
   }
 
-  int max_depth() {
-    return 1;
+  int max_depth(int b = -1) {
+    if (b == -1) b = root;
+    if (BUCKET(b)->is_leaf()) return 1;
+    int ret = -1;
+    for (int i = 0; i <= BUCKET(b)->N; i++) {
+      int d = max_depth(CHILDREN(b)[i]);
+      assert(ret == -1 || ret == d);
+      ret = d;
+    }
+    return ret + 1;
   }
 
-  int slack() {
-    return 1;
+  int slack(int b = -1, int last = 0) {
+    if (b == -1) b = root;
+    int ret = BUCKET(b)->cap - BUCKET(b)->N;
+    // if (ret > 10) fprintf(stderr, "slack = %d, for leaf = %d, last = %d\n", ret, b->is_leaf(), last);
+    if (BUCKET(b)->is_leaf()) return ret;
+    for (int i = 0; i <= BUCKET(b)->N; i++) {
+      ret += slack(CHILDREN(b)[i], i >= BUCKET(b)->N);
+    }
+    return ret;
   }
 
   int size() {
@@ -897,39 +918,6 @@ class CTree {
 
   const char *version = "Exp LEAF_BSIZE 2048";
 
-  CTree() {
-    root = new_leaf(NULL, INTERNAL_BSIZE);
-  }
-
-  void debug() {
-    root->debug(0);
-    // fprintf(stderr, "\n");
-  }
-
-
-  int max_depth(Bucket *b = NULL) {
-    if (!b) b = root;
-    if (b->is_leaf()) return 1;
-    int ret = -1;
-    for (int i = 0; i <= b->size(); i++) {
-      int d = max_depth(((Bucket*) b)->child(i));
-      assert(ret == -1 || ret == d);
-      ret = d;
-    }
-    return ret + 1;
-  }
-
-  int slack(Bucket *b = NULL, int last = 0) {
-    if (!b) b = root;
-    int ret = b->capacity() - b->size();
-    // if (ret > 10) fprintf(stderr, "slack = %d, for leaf = %d, last = %d\n", ret, b->is_leaf(), last);
-    if (b->is_leaf()) return ret;
-    for (int i = 0; i <= b->size(); i++) {
-      ret += slack(((Bucket*) b)->child(i), i >= b->size());
-    }
-    return ret;
-  }
-
   double t1 = 0, t2 = 0, t3 = 0;
 
   bool compact_leaves(Bucket *ib, int rpos) {
@@ -946,7 +934,7 @@ class CTree {
     if (!L->is_full() && !M->size()) {
       L->leaf_insert(ib->data(lpos));
       ib->internal_erase(lpos, 1);
-      delete_leaf(M);
+      delete_bucket(M);
       return true; // M is empty, compaction is done.
     }
 
@@ -962,7 +950,7 @@ class CTree {
     assert(!R->is_full());
     R->leaf_insert(ib->data(rpos));
     ib->internal_erase(rpos, 0);
-    delete_leaf(M);
+    delete_bucket(M);
     return true;
   }
 
@@ -1096,7 +1084,7 @@ class CTree {
       assert(!b->size());
       Bucket *parent = (Bucket*) b->get_parent();
       if (b->is_leaf()) {
-        delete_leaf((Bucket*) b);
+        delete_bucket((Bucket*) b);
       } else {
         delete b;
       }
