@@ -12,6 +12,8 @@
 using namespace std;
 using namespace chrono;
 
+int nLeaves, nInternals, nCap, nDes, locked;
+
 namespace ctree {
 
 #define INTERNAL_BSIZE        64  // Must be power of two.
@@ -35,14 +37,14 @@ class Allocator {
  public:
 
   Allocator() {
-    D = new T[cap = 100000000];
+    D = new T[cap = 100000000/INTERNAL_BSIZE];
     N = 0;
   }
 
   int alloc() {
     if (free_indices.empty()) {
       if (N == cap) {
-        // fprintf(stderr, "double %d\n", cap);
+        fprintf(stderr, "double %d\n", cap);
         T *newD = new T[cap * 4];
         memcpy(newD, D, sizeof(T) * cap);
         cap *= 4;
@@ -61,7 +63,7 @@ class Allocator {
     free_indices.push(idx);
   }
 
-  T* get(int idx) {
+  T* get(int idx) const {
     return &D[idx];
   }
 };
@@ -76,84 +78,51 @@ struct Bucket {
   int parent;  // Pointer to the parent bucket in bucket_allocator.
   int next;    // Pointer to the next chained bucket in bucket_allocator.
   int tail;    // Pointer to the last chained bucket in bucket_allocator.
+
+  void init(int parent, int cap, int C = -1) {
+    this->C = C;
+    this->cap = cap;
+    this->parent = parent;
+    P = 0;
+    N = 0;
+    next = -1;
+    tail = -1;
+
+    nCap += cap;
+    nLeaves++;
+  }
+
+  bool is_full() const { return N == cap; }
+  bool is_leaf() const { return C == -1; }
+
+  int child(int i, Allocator<int[INTERNAL_BSIZE + 1]> const &child_allocator) const {
+    assert(!is_leaf());
+    assert(i >= 0 && i <= N);
+    return (*child_allocator.get(C))[i];
+  }
+
+  bool append(int value) {
+    assert(is_leaf());
+    if (is_full()) return false;
+    D[N++] = value;
+    P++;
+    return true;
+  }
+
+  void destroy() {
+    assert(cap > 0);
+    nCap -= cap;
+    nLeaves--;
+    nDes++;
+    cap = 0;
+  }
 };
 
-Allocator<Bucket> bucket_allocator;
-Allocator<int[INTERNAL_BSIZE + 1]> child_allocator;
-int nLeaves, nInternals, nCap, nDes, locked;
-
-void init(int b, int parent, int cap) {
-  bucket_allocator.get(b)->P = 0;
-  bucket_allocator.get(b)->N = 0;
-  bucket_allocator.get(b)->cap = cap;
-  bucket_allocator.get(b)->parent = parent;
-  bucket_allocator.get(b)->next = -1;
-  bucket_allocator.get(b)->tail = b;
-
-  nCap += cap;
-  nLeaves++;
-}
-
-void init_leaf(int b, int parent, int cap) {
-  bucket_allocator.get(b)->C = -1;
-  init(b, parent, cap);
-}
-
-void init_internal(int b, int parent, int cap) {
-  bucket_allocator.get(b)->C = child_allocator.alloc();
-  init(b, parent, cap);
-}
-
-void destroy(int b) {
-  nCap -= bucket_allocator.get(b)->cap;
-  nLeaves--;
-  nDes++;
-}
-
-
-bool is_full(Bucket *b) { return b->N == b->cap; }
-bool is_leaf(Bucket *b) { return b->C == -1; }
-
-int next_bucket(Bucket* b) {
-  assert(is_leaf(b));
-  return b->next;
-}
-
-int child(Bucket *b, int i) {
-  assert(!is_leaf(b));
-  assert(i >= 0 && i <= b->N);
-  return (*child_allocator.get(b->C))[i];
-}
-
-void leaf_insert(int b, int value) {
-  // assert(leaf_check());
-
-  // assert(is_leaf(bucket_allocator.get(b)));
-  // assert(bucket_allocator.get(b)->N >= 0);
-  Bucket *B = bucket_allocator.get(b);
-  B = bucket_allocator.get(B->tail);
-  if (is_full(B)) {
-    // assert(bucket_allocator.get(b)->cap == INTERNAL_BSIZE);
-    // assert(bucket_allocator.get(bucket_allocator.get(b)->tail)->next == -1);
-    int idx = bucket_allocator.alloc();
-    B = bucket_allocator.get(b);
-    init_leaf(idx, B->parent, INTERNAL_BSIZE);
-
-    if (B->next == -1) {
-      B->next = B->tail = idx;
-    } else {
-      bucket_allocator.get(B->tail)->next = idx;
-      B->tail = idx;
-    }
-    B = bucket_allocator.get(idx);
-  }
-  B->D[B->N++] = value;
-  B->P++;
-  // assert(leaf_check());
-}
 
 
 class CTree {
+  Allocator<Bucket> bucket_allocator;
+  Allocator<int[INTERNAL_BSIZE + 1]> child_allocator;
   int root;
 
  public:
@@ -162,7 +131,7 @@ class CTree {
 
   CTree() {
     root = bucket_allocator.alloc();
-    init_leaf(root, -1, LEAF_BSIZE);
+    bucket_allocator.get(root)->init(-1, LEAF_BSIZE);
   }
 
   bool optimize() {
@@ -186,9 +155,32 @@ class CTree {
     // fprintf(stderr, "ins %d\n", value);
     // if (value == 711)  debug();
     int b = root;
-    while (!is_leaf(bucket_allocator.get(b)))
-      b = child(bucket_allocator.get(b), value);
-    leaf_insert(b, value);
+    while (!bucket_allocator.get(b)->is_leaf())
+      b = bucket_allocator.get(b)->child(value, child_allocator);
+
+    if (!bucket_allocator.get(b)->append(value)) {
+    // fprintf(stderr, "ins %d\n", value);
+      // assert(bucket_allocator.get(b)->cap == INTERNAL_BSIZE);
+      // assert(bucket_allocator.get(bucket_allocator.get(b)->tail)->next == -1);
+      int tail = bucket_allocator.get(b)->tail;
+      if (tail == -1 || bucket_allocator.get(tail)->is_full()) {
+        int idx = bucket_allocator.alloc();
+        Bucket *B = bucket_allocator.get(b);
+        Bucket *nb = bucket_allocator.get(idx);
+        nb->init(B->parent, INTERNAL_BSIZE);
+        nb->append(value);
+
+        if (B->tail == -1) {
+          B->next = B->tail = idx;
+        } else {
+          bucket_allocator.get(B->tail)->next = idx;
+          B->tail = idx;
+        }
+      } else {
+        bucket_allocator.get(tail)->append(value);
+      }
+    }
+
     // root->debug(0);
   }
 
