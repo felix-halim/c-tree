@@ -166,10 +166,7 @@ class CTree {
       if (tail == -1 || bucket_allocator.get(tail)->is_full()) {
         tail = bucket_allocator.alloc();
         Bucket *B = bucket_allocator.get(b);
-        Bucket *nb = bucket_allocator.get(tail);
-        nb->init(B->parent, INTERNAL_BSIZE);
-        nb->append(value);
-
+        bucket_allocator.get(tail)->init(B->parent, INTERNAL_BSIZE);
         if (B->tail == -1) {
           B->next = B->tail = tail;
         } else {
