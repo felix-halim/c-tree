@@ -4,7 +4,7 @@
 #include <vector>
 #include <functional>
 #include <algorithm>
-#include "ctree.h"
+#include "ctree_exp_leafsize.h"
 #include "random.h"
 
 using namespace std;
@@ -91,6 +91,7 @@ vector<pair<string,function<void()>>> tests {
     CTree c;
     REP(i, N) c.insert(arr[i]);
     c.debug();
+    c.optimize();
 
     random_shuffle(arr, arr + N);
     int csum = 0;
@@ -112,7 +113,7 @@ vector<pair<string,function<void()>>> tests {
 
     CTree c;
     REP(i, N) c.insert(arr[i]);
-    // c.optimize();
+    c.optimize();
     c.debug();
 
     random_shuffle(arr, arr + N);
@@ -135,7 +136,7 @@ vector<pair<string,function<void()>>> tests {
 
     CTree c;
     REP(i, N) c.insert(arr[i]);
-    // c.optimize();
+    c.optimize();
     c.debug();
 
     random_shuffle(arr, arr + N);
@@ -150,7 +151,7 @@ vector<pair<string,function<void()>>> tests {
     fprintf(stderr, "csum = %d\n", csum);
   }},
 
-  { "ctree correctness", [] {
+  { "ctree erase correctness", [] {
     return;
     Random rng;
     CTree c;
@@ -191,6 +192,7 @@ vector<pair<string,function<void()>>> tests {
       REP(i, 1000000)
         c.insert(rng.nextInt());
     });
+    c.optimize();
     // c.debug();
 
     double query_time = time_it([&] {
@@ -209,7 +211,7 @@ vector<pair<string,function<void()>>> tests {
 
 int main() {
   for (auto it : tests) {
-    // if (strstr(it.first.c_str(), "erase")) continue;
+    if (strstr(it.first.c_str(), "erase")) continue;
     printf("%s ... ", it.first.c_str());
     it.second();
     puts(PASSED);
