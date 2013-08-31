@@ -40,7 +40,7 @@ class Allocator {
  public:
 
   Allocator() {
-    D = new T[cap = 100000000/INTERNAL_BSIZE];
+    D = new T[cap = 100000000/INTERNAL_BSIZE*2];
     N = 0;
   }
 
@@ -67,6 +67,7 @@ class Allocator {
   }
 
   T* get(int idx) const {
+    assert(idx != -1);
     return &D[idx];
   }
 };
@@ -102,7 +103,7 @@ struct Bucket {
   }
 
   bool is_full() const { return N == cap; }
-  bool is_leaf() const { return P != -1; }
+  bool is_leaf() const { return C == -1; }
 
   bool append(int value) {
     assert(is_leaf());
@@ -111,6 +112,30 @@ struct Bucket {
     P++;
     return true;
   }
+
+  void leaf_optimize() {
+    assert(P >= 0);
+    sort(D, D + N);
+    P = 0;
+  }
+
+  int leaf_lower_pos(int value) {
+    if (P) leaf_optimize();
+    // assert(leaf_check());
+    int pos = 0;
+    while (pos < N && D[pos] < value) pos++;
+    // assert(leaf_check());
+    // leaf_debug();
+    // fprintf(stderr, "leaf_lower_pos = %d, pos = %d, %d %d\n", value, pos, L, R);
+    return pos;
+  }
+
+  int internal_lower_pos(int value) {
+    int pos = 0;
+    while (pos < N && D[pos] < value) pos++;
+    return pos;
+  }
+
 
   int leaf_promote_first() {
     // TODO: optimize
@@ -275,12 +300,13 @@ class CTree {
       delete_leaf(b);
       */
     } else {
-      // fprintf(stderr, "split N = %d\n", N);
+      // fprintf(stderr, "split N = %d\n", BUCKET(b)->N);
       // Reservoir sampling (http://en.wikipedia.org/wiki/Reservoir_sampling).
       assert(BUCKET(b)->N + BUCKET(BUCKET(b)->tail)->N >= 11);
       while (BUCKET(b)->N < 11) {
         BUCKET(b)->D[BUCKET(b)->N++] = BUCKET(BUCKET(b)->tail)->D[--BUCKET(BUCKET(b)->tail)->N];
       }
+      // fprintf(stderr, "tail N = %d\n", BUCKET(b)->N);
       int R[11];
       Random rng(140384); // TODO: use randomized seed.
       for (int i = 0; i < 11; i++) {
@@ -291,10 +317,12 @@ class CTree {
       }
       assert(BUCKET(b)->N >= 0);
 
+      // fprintf(stderr, "random N = %d\n", BUCKET(b)->N);
+
       int Nb = b;
 
       // Replace elements with gradually decreasing probability.
-      for (int i = 1; BUCKET(Nb)->next; i++) {
+      for (int i = 1; BUCKET(Nb)->next != -1; i++) {
         Nb = BUCKET(Nb)->next;
         assert(i > 0);
         int j = rng.nextInt(i);
@@ -305,7 +333,6 @@ class CTree {
           swap(R[j], BUCKET(Nb)->D[k]);
         }
       }
-      // fprintf(stderr, "split2 N = %d\n", q.size());
 
       for (int i = 0; i < 11; i++) {
         // fprintf(stderr, "R[%d] = %d\n", i, R[i]);
@@ -318,7 +345,7 @@ class CTree {
         BUCKET(b)->D[BUCKET(b)->N++] = R[i];
       }
       BUCKET(b)->D[BUCKET(b)->N++] = BUCKET(Nb)->D[--BUCKET(Nb)->N];
-      // fprintf(stderr, "queue size = %lu\n", q.size());
+      // fprintf(stderr, "pivot = %d\n", pivot);
       // fprintf(stderr, "split3 N = %d, pivot = %d\n", next->N, pivot);
 
       // debug(10);
@@ -381,6 +408,7 @@ class CTree {
   }
 
   void internal_insert(int b, int value, int nb) {
+    // fprintf(stderr, "ii %d\n", b);
     int *C = CHILDREN(b);
     assert(!BUCKET(b)->is_leaf());
     assert(!BUCKET(b)->is_full());
@@ -453,9 +481,10 @@ class CTree {
 
   int internal_split(int b) {
     int nb = bucket_allocator.alloc();
+    int nbc = child_allocator.alloc();
+    BUCKET(nb)->init(BUCKET(b)->parent, LEAF_BSIZE, nbc);
     int *C = CHILDREN(b);
     int *nbC = CHILDREN(nb);
-    BUCKET(nb)->init(BUCKET(b)->parent, LEAF_BSIZE);
     CHILDREN(nb)[0] = C[BUCKET(b)->N / 2];
     for (int i = BUCKET(b)->N / 2, j = 0; i < BUCKET(b)->N; i++) {
       BUCKET(nb)->D[j++] = BUCKET(b)->D[i];
@@ -464,21 +493,17 @@ class CTree {
     }
     BUCKET(b)->N /= 2;
     BUCKET(nb)->N = BUCKET(b)->N;
-
-    // for (int i = N + 1; i <= nb->capacity(); i++) nb->C[i] = NULL;
-    // for (int i = N + 1; i <= cap; i++) C[i] = NULL;
-
     // assert(check());
     return nb;
   }
 
   bool split_chain(int b) {
-    // fprintf(stderr, "split_chain %d, %d\n", b->size(), b->next_bucket());
-    if (!BUCKET(b)->next == -1) return false;
+    if (BUCKET(b)->next == -1) return false;
     assert(!locked);
 
     int promotedValue;
     int nb;
+    // fprintf(stderr, "split_chain %d, %d\n", BUCKET(b)->N, BUCKET(b)->next);
     leaf_split(b, promotedValue, nb);
     // fprintf(stderr, "promotedValue = %d\n", promotedValue);
 
@@ -504,14 +529,19 @@ class CTree {
     }
     if (nb != -1) {
       // Replace root
-      fprintf(stderr, "NEW ROOT\n");
+      // fprintf(stderr, "OLD ROOT %d\n", root);
       assert(parent == -1);
       int new_root = bucket_allocator.alloc();
-      BUCKET(new_root)->init(-1, INTERNAL_BSIZE);
+      int c = child_allocator.alloc();
+      BUCKET(new_root)->init(-1, INTERNAL_BSIZE, c); // New internal bucket.
       CHILDREN(new_root)[0] = root;
-      internal_insert(root, promotedValue, nb);
+      BUCKET(root)->parent = new_root;
+      internal_insert(new_root, promotedValue, nb);
       root = new_root;
+      // fprintf(stderr, "NEW ROOT %d\n", root);
     }
+    // fprintf(stderr, "\n\n\ndone split %d\n", b);
+    // debug();
     return true;
   }
 
@@ -531,31 +561,73 @@ class CTree {
       return false;
     }
 
-    Bucket *B = BUCKET(b);
-    if (B->is_leaf()) {
+    if (BUCKET(b)->is_leaf()) {
+      // fprintf(stderr, "split_chain %d\n", b);
       bool splitted = split_chain(b);
+      // fprintf(stderr, "split_chain %d\n", b);
       while (split_chain(b));
+      // fprintf(stderr, "split_chain %d %d\n", b, splitted);
       return splitted;
     }
 
     bool changed = false;
-    for (int i = 0; i <= B->N; i++) {
+    // fprintf(stderr, "internal %d\n", b);
+    for (int i = 0; i <= BUCKET(b)->N; i++) {
       if (optimize(child(b, i))) {
         i = -1;
         changed = true;
       }
     }
-    for (int i = 0; i < B->N; i++) {
-      int L = child(b, i);
-      int R = child(b, i + 1);
-      assert(BUCKET(L)->is_leaf() == BUCKET(R)->is_leaf());
-      if (BUCKET(L)->is_leaf()) {
-        if (shift_leaves(b, i)) changed = 1;
-      } else {
-        if (shift_internals(b, i)) changed = 1;
-      }
-    }
+    // for (int i = 0; i < BUCKET(b)->N; i++) {
+    //   int L = child(b, i);
+    //   int R = child(b, i + 1);
+    //   assert(BUCKET(L)->is_leaf() == BUCKET(R)->is_leaf());
+    //   if (BUCKET(L)->is_leaf()) {
+    //     if (shift_leaves(b, i)) changed = 1;
+    //   } else {
+    //     if (shift_internals(b, i)) changed = 1;
+    //   }
+    // }
+    // fprintf(stderr, "internal %d %d\n", b, changed);
     return changed;
+  }
+
+  void debug_data(int b) {
+    if (BUCKET(b)->is_leaf()) {
+      fprintf(stderr, "N = %d (p=%d, LEAF), ", BUCKET(b)->N, BUCKET(b)->P);
+    } else {
+      fprintf(stderr, "N = %d, ", BUCKET(b)->N);
+    }
+    fprintf(stderr, "[");
+    for (int i = 0; i < BUCKET(b)->N; i++) {
+      fprintf(stderr, "%d ", BUCKET(b)->D[i]);
+    }
+    fprintf(stderr, "]");
+  }
+
+  int debug(int b = -1, int depth = 0) {
+    for (int i = 0; i < depth; i++) fprintf(stderr, "  ");
+    if (b == -1) b = root;
+    int sz = 0;
+    if (BUCKET(b)->is_leaf()) {
+      while (true) {
+        sz += BUCKET(b)->N;
+        debug_data(b);
+        if (BUCKET(b)->next == -1) break;
+        fprintf(stderr, "------ ");
+        b = BUCKET(b)->next;
+      }
+      fprintf(stderr, "\n");
+    } else {
+      debug_data(b);
+      fprintf(stderr, "\n");
+      for (int i = 0; i <= BUCKET(b)->N; i++) {
+        sz += debug(CHILDREN(b)[i], depth + 1);
+      }
+      for (int i = 0; i < depth; i++) fprintf(stderr, "  ");
+      fprintf(stderr, "size = %d\n", sz);
+    }
+    return sz;
   }
 
   int max_depth() {
@@ -578,8 +650,26 @@ class CTree {
   }
 
   pair<bool, int> lower_bound(int value) {
-    // Bucket *b = BUCKET(root);
-    return make_pair(0,0);
+    // fprintf(stderr, "lower_bound %d\n", value);
+    return lower_bound_rec(root, value);
+  }
+
+  pair<bool, int> lower_bound_rec(int b, int value) {
+    if (BUCKET(b)->is_leaf()) {
+      assert(!split_chain(b));
+      int pos = BUCKET(b)->leaf_lower_pos(value);
+      return  (pos < BUCKET(b)->N) ? make_pair(true, BUCKET(b)->D[pos]) : make_pair(false, 0);
+    } else {
+      int pos = BUCKET(b)->internal_lower_pos(value);
+      if (pos < BUCKET(b)->N && BUCKET(b)->D[pos] == value) {
+        return make_pair(true, value); // Found in the internal bucket.
+      }
+      auto res = lower_bound_rec(CHILDREN(b)[pos], value);
+      if (!res.first && pos < BUCKET(b)->N) {
+        res = make_pair(true, BUCKET(b)->D[pos]);
+      }
+      return res;
+    }
   }
 
   void add_chain(int &head, int next) {
@@ -599,7 +689,7 @@ class CTree {
   }
 
   void batch_insert(int *arr, int N) {
-    fprintf(stderr, "batch %d\n", N);
+    // fprintf(stderr, "batch %d\n", N);
     int i = 0;
     while (i + INTERNAL_BSIZE <= N) {
       int idx = bucket_allocator.alloc();
@@ -611,11 +701,11 @@ class CTree {
       // fprintf(stderr, "chain %d\n", i);
       add_chain(root, idx);
     }
-    fprintf(stderr, "done %d\n", i);
+    // fprintf(stderr, "done %d\n", i);
     while (i < N) {
       insert(arr[i++]);
     }
-    fprintf(stderr, "done %d\n", i);
+    // fprintf(stderr, "done %d\n", i);
   }
 
   void insert(int value) {
@@ -623,7 +713,7 @@ class CTree {
   }
 
   void insert(int &b, int value) {
-    fprintf(stderr, "ins %d\n", value);
+    // fprintf(stderr, "ins %d\n", value);
     // if (value == 711)  debug();
 
     if (b == -1) {
@@ -694,28 +784,6 @@ void optimize() {
   }
 }
 
-int debug(int depth) {
-  for (int i = 0; i < depth; i++) fprintf(stderr, "  ");
-  Bucket *b = (Bucket *) this;
-  int sz = 0;
-  while (b) {
-    sz += b->size();
-    ((Bucket*) b)->leaf_debug();
-    if ((b = b->next_bucket())) {
-      fprintf(stderr, "------ ");
-    }
-  }
-  fprintf(stderr, "\n");
-  if (!is_leaf()) {
-    for (int i = 0; i <= ((Bucket*) this)->size(); i++) {
-      sz += ((Bucket*) this)->child(i)->debug(depth + 1);
-    }
-  }
-  for (int i = 0; i < depth; i++) fprintf(stderr, "  ");
-  fprintf(stderr, "size = %d\n", sz);
-  return sz;
-}
-
 bool check(int lo, int hi) {
   if (is_leaf()) return ((Bucket*) this)->leaf_check(lo, true, hi, true);
   return check(lo);
@@ -739,15 +807,6 @@ bool check(int lo) {
   }
   return true;
 }
-
-
-void leaf_debug() {
-  fprintf(stderr, "N = %d (p=%d, LEAF), ", N, P);
-  for (int i = 0; i < N; i++) {
-    fprintf(stderr, "%d ", D[i]);
-  }
-}
-
 
 pair<bool,int> leaf_erase_largest() {
   assert(!next);
@@ -814,31 +873,6 @@ Bucket* transfer_to(Bucket *b, int pivot) {
 int leaf_promote_last() {
   if (P > 0) leaf_optimize();
   return D[--N];
-}
-
-void leaf_optimize() {
-  assert(P >= 0);
-  sort(D, D + N);
-  P = 0;
-}
-
-int leaf_lower_pos(int value) {
-  if (P) leaf_optimize();
-  // assert(leaf_check());
-  int pos = 0;
-  while (pos < N && D[pos] < value) pos++;
-  // assert(leaf_check());
-  // leaf_debug();
-  // fprintf(stderr, "leaf_lower_pos = %d, pos = %d, %d %d\n", value, pos, L, R);
-  return pos;
-}
-
-
-
-int internal_lower_pos(int value) {
-  int pos = 0;
-  while (pos < N && D[pos] < value) pos++;
-  return pos;
 }
 
 Bucket*& child_bucket(int value) {
@@ -1045,31 +1079,6 @@ class CTree {
     return ret;
   }
 
-  pair<bool, int> lower_bound(int value) {
-    return lower_bound_rec(root, value);
-  }
-
-  pair<bool, int> lower_bound_rec(Bucket *b, int value) {
-    if (b->is_leaf()) {
-      Bucket *Lb = (Bucket*) b;
-      assert(!split_chain(Lb));
-
-      int pos = Lb->leaf_lower_pos(value);
-      return  (pos < b->size()) ? make_pair(true, b->data(pos)) : make_pair(false, 0);
-
-    } else {
-      Bucket *ib = (Bucket*) b;
-      int pos = ib->internal_lower_pos(value);
-      if (pos < ib->size() && ib->data(pos) == value) {
-        return make_pair(true, value); // Found in the internal bucket.
-      }
-      auto res = lower_bound_rec(ib->child(pos), value);
-      if (!res.first && pos < ib->size()) {
-        res = make_pair(true, ib->data(pos));
-      }
-      return res;
-    }
-  }
 
   pair<bool, int> erase_largest(Bucket *b) {
     assert(b->is_leaf());
