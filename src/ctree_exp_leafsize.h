@@ -805,11 +805,13 @@ class CTree {
         if (slack >= INTERNAL_BSIZE)
           return leaf_compact(b, start, i);
       } else {
+        return false;
         // if (slack) fprintf(stderr, "gathered slack = %d, %d\n", slack, i - start);
         slack = 0;
         start = i + 1;
       }
     }
+    fprintf(stderr, "gathered slack = %d\n", slack);
     return false;
   }
 
@@ -848,12 +850,12 @@ class CTree {
         ret = make_pair(true, BUCKET(p.first)->D[pos]);
 
         // OPTIONAL optimization:
-        /*
+        
         int parent = BUCKET(p.first)->parent;
         if (parent != -1) {
           leaf_compact(parent);
         }
-        */
+        
       } else {
         int b = BUCKET(p.first)->parent;
         while (b != -1) {
