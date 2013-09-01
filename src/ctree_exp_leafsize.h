@@ -834,7 +834,7 @@ class CTree {
     return make_pair(b, 0);
   }
 
-  pair<bool, int> lower_bound(int value) {
+  pair<bool, int> lower_bound2(int value) {
     // assert(check());
     // fprintf(stderr, "lower_bound %d\n", value);
     pair<int, int> p = find_bucket(value, true);
@@ -850,18 +850,17 @@ class CTree {
         ret = make_pair(true, BUCKET(p.first)->D[pos]);
 
         // OPTIONAL optimization:
-        
-        int parent = BUCKET(p.first)->parent;
-        if (parent != -1) {
-          leaf_compact(parent);
-        }
-        
+        // int parent = BUCKET(p.first)->parent;
+        // if (parent != -1) {
+        //   leaf_compact(parent);
+        // }
       } else {
         int b = BUCKET(p.first)->parent;
         while (b != -1) {
           pos = BUCKET(b)->internal_lower_pos(value);
           if (pos < BUCKET(b)->N) {
             ret = make_pair(true, BUCKET(b)->D[pos]);
+            // fprintf(stderr, "x");
             break;
           }
           b = BUCKET(b)->parent;
@@ -874,27 +873,29 @@ class CTree {
   }
 
 
-  pair<bool, int> lower_bound_optimized(int value) {
+  pair<bool, int> lower_bound(int value) {
     // fprintf(stderr, "lower_bound %d\n", value);
     return lower_bound_rec(root, value);
   }
 
   pair<bool, int> lower_bound_rec(int b, int value) {
     if (BUCKET(b)->is_leaf()) {
-      assert(!split_chain(b));
-      int pos = BUCKET(b)->leaf_lower_pos(value);
-      return  (pos < BUCKET(b)->N) ? make_pair(true, BUCKET(b)->D[pos]) : make_pair(false, 0);
-    } else {
-      int pos = BUCKET(b)->internal_lower_pos(value);
-      if (pos < BUCKET(b)->N && BUCKET(b)->D[pos] == value) {
-        return make_pair(true, value); // Found in the internal bucket.
+      if (split_chain(b)) {
+        b = BUCKET(b)->parent;
+      } else {
+        int pos = BUCKET(b)->leaf_lower_pos(value);
+        return  (pos < BUCKET(b)->N) ? make_pair(true, BUCKET(b)->D[pos]) : make_pair(false, 0);
       }
-      auto res = lower_bound_rec(CHILDREN(b)[pos], value);
-      if (!res.first && pos < BUCKET(b)->N) {
-        res = make_pair(true, BUCKET(b)->D[pos]);
-      }
-      return res;
     }
+    int pos = BUCKET(b)->internal_lower_pos(value);
+    if (pos < BUCKET(b)->N && BUCKET(b)->D[pos] == value) {
+      return make_pair(true, value); // Found in the internal bucket.
+    }
+    auto res = lower_bound_rec(CHILDREN(b)[pos], value);
+    if (!res.first && pos < BUCKET(b)->N) {
+      res = make_pair(true, BUCKET(b)->D[pos]);
+    }
+    return res;
   }
 
   void add_chain(int head, int next) {
