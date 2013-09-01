@@ -17,7 +17,7 @@ CTree c;
 
 void init(int *arr, int N) {
   // c.load("ctree"); return;
-  
+
   c.batch_insert(arr, N);
   // fprintf(stderr, "doi \n" );
   // for (int i = 0; i < N; i++) {
@@ -50,5 +50,5 @@ int query(int value) {
 void results(double insert_time, double query_time, int checksum) {
   assert(c.check());
   printf("%.6lf,%.6lf,%d,", insert_time, query_time, checksum);
-  printf("\"%s\",%d,%d,%d,%d,%d,%.6lf,%.6lf,%.6lf\n", c.version, nLeaves, nCap, nInternals, c.max_depth(), c.slack(), t1, t2, t3);
+  printf("\"%s\",%d,%d,%d,%d,%d,%.6lf,%.6lf,%.6lf\n", version, nLeaves, nCap, nInternals, c.max_depth(), c.slack(), t1, t2, t3);
 }

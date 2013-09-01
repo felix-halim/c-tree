@@ -208,6 +208,7 @@ struct Bucket {
   }
 };
 
+const char *version = "57/2048";
 
 class CTree {
   Allocator<Bucket> bucket_allocator;
@@ -217,16 +218,10 @@ class CTree {
 
  public:
 
-  static constexpr char *version = "57/2048";
-
   CTree() {
-    fprintf(stderr, "here\n");
     bucket_allocator.init(100000000 / INTERNAL_BSIZE * 2);
-    fprintf(stderr, "here\n");
     chained_bucket_allocator.init(100000000 / LEAF_CHAINED_BSIZE + 1000000);
-    fprintf(stderr, "here\n");
     child_allocator.init(100000000 / INTERNAL_BSIZE * 2);
-    fprintf(stderr, "here\n");
 
     root = bucket_allocator.alloc();
     leaf_init(root, -1, LEAF_BSIZE);
@@ -508,7 +503,7 @@ class CTree {
     // assert(leaf_check());
   }
 
-  void internal_insert(int b, int value, int nb) {
+  void internal_insert(int b, int value, int nb, int left = 0) {
     // fprintf(stderr, "ii %d\n", b);
     int *C = CHILDREN(b);
     assert(!BUCKET(b)->is_leaf());
@@ -520,7 +515,12 @@ class CTree {
       i--;
     }
     BUCKET(b)->D[i + 1] = value;
-    C[i + 2] = nb;
+    if (left == -1) {
+      C[i + 2] = C[i + 1];
+      C[i + 1] = nb;
+    } else {
+      C[i + 2] = nb;
+    }
     BUCKET(b)->N++;
     // fprintf(stderr, "set parent %d  -> %d\n", nb, b);
     BUCKET(nb)->parent = b;
@@ -576,12 +576,34 @@ class CTree {
       BUCKET(b)->D[pos] = BUCKET(R)->internal_promote_first(CHILDREN(R));
       changed = true;
     }
-    if (!BUCKET(L)->is_full() && !BUCKET(R)->N) {
-      internal_insert(L, BUCKET(b)->D[pos], child(R, 0));
-      internal_erase(b, CHILDREN(b), pos, 1);
-      delete_bucket(R);
-      return true; // R is empty, compaction is done.
+    // if (!BUCKET(L)->is_full() && !BUCKET(R)->N) {
+    //   internal_insert(L, BUCKET(b)->D[pos], child(R, 0));
+    //   internal_erase(b, CHILDREN(b), pos, 1);
+    //   delete_bucket(R);
+    //   return true; // R is empty, compaction is done.
+    // }
+    return changed;
+  }
+
+  bool internal_shift_right(int b, int pos, int numMove = INTERNAL_BSIZE + 1) {
+    int L = child(b, pos);
+    int R = child(b, pos + 1);
+    assert(!BUCKET(L)->is_leaf());
+    assert(!BUCKET(R)->is_leaf());
+    assert(BUCKET(L)->next == -1);
+    assert(BUCKET(R)->next == -1);
+
+    // Move from L to R as many as possible.
+    bool changed = false;
+    while (!BUCKET(R)->is_full() && BUCKET(L)->N && numMove-- > 0) {
+      internal_insert(R, BUCKET(b)->D[pos], child(L, BUCKET(L)->N), -1);
+      BUCKET(b)->D[pos] = BUCKET(L)->internal_promote_last();
+      changed = true;
     }
+    // if (!BUCKET(R)->is_full());
+    // R->internal_insert(ib->data(rpos), L->child(L->size()), -1);
+    // ib->internal_erase(rpos, 0);
+    // delete L;
     return changed;
   }
 
@@ -645,8 +667,13 @@ class CTree {
             nb = -1;
             // assert(check());
             break;
-          // } else if (internal_transfer_right()) {
-          //   break;
+          } else if (pos < BUCKET(pp)->N && promotedValue < BUCKET(parent)->D[BUCKET(parent)->N - 1] && internal_shift_right(pp, pos, 1)) {
+            // assert(check());
+            assert(!BUCKET(parent)->is_full());
+            internal_insert(parent, promotedValue, nb);
+            nb = -1;
+            // assert(check());
+            break;
           }
         }
         
