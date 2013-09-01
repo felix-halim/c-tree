@@ -46,7 +46,7 @@ class Allocator {
   T *D;
   int N;
 
-  Allocator(int initial_cap) {
+  void init(int initial_cap) {
     D = new T[cap = initial_cap];
     N = 0;
   }
@@ -210,16 +210,24 @@ struct Bucket {
 
 
 class CTree {
-  Allocator<Bucket> bucket_allocator { 100000000 / INTERNAL_BSIZE * 2 };
-  Allocator<ChainedBucket> chained_bucket_allocator { 100000000 / LEAF_CHAINED_BSIZE + 1000000 };
-  Allocator<int[INTERNAL_BSIZE + 1]> child_allocator { 100000000 / INTERNAL_BSIZE * 2 };
+  Allocator<Bucket> bucket_allocator;
+  Allocator<ChainedBucket> chained_bucket_allocator;
+  Allocator<int[INTERNAL_BSIZE + 1]> child_allocator;
   int root;
 
  public:
 
-  const char *version = "57/2048";
+  static constexpr char *version = "57/2048";
 
   CTree() {
+    fprintf(stderr, "here\n");
+    bucket_allocator.init(100000000 / INTERNAL_BSIZE * 2);
+    fprintf(stderr, "here\n");
+    chained_bucket_allocator.init(100000000 / LEAF_CHAINED_BSIZE + 1000000);
+    fprintf(stderr, "here\n");
+    child_allocator.init(100000000 / INTERNAL_BSIZE * 2);
+    fprintf(stderr, "here\n");
+
     root = bucket_allocator.alloc();
     leaf_init(root, -1, LEAF_BSIZE);
   }
