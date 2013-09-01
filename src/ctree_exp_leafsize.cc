@@ -17,6 +17,7 @@ CTree c;
 
 void init(int *arr, int N) {
   c.batch_insert(arr, N);
+  fprintf(stderr, "doi \n" );
   // for (int i = 0; i < N; i++) {
   //   c.insert(arr[i]);
   // }

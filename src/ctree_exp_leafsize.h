@@ -26,6 +26,7 @@ namespace ctree {
 #define LEAF_CHAINED_BSIZE  2048  // Must be power of two.
 
 #define BUCKET(b) bucket_allocator.get(b)
+#define CBUCKET(b) chained_bucket_allocator.get(b)
 #define CHILDREN(b) (*child_allocator.get(BUCKET(b)->C))
 
 template<typename Func>
@@ -39,38 +40,19 @@ double time_it(Func f) {
 template<typename T>
 class Allocator {
   priority_queue<int, vector<int>, greater<int>> free_indices;
-  int N, cap;
+  int cap;
   T *D;
 
  public:
 
-  Allocator() {
-    D = new T[cap = 100000000/INTERNAL_BSIZE*4];
+  int N;
+
+  Allocator(int initial_cap) {
+    D = new T[cap = initial_cap];
     N = 0;
-    // for (int i = 0; i < 100000; i++) {
-    //   free_indices.push(N++);
-    // }
   }
 
-  int alloc2(bool priority) {
-    if (priority) {
-      assert(!free_indices.empty());
-      int idx = free_indices.top();
-      free_indices.pop();
-      return idx;
-    }
-    if (N == cap) {
-      fprintf(stderr, "double %d\n", cap);
-      T *newD = new T[cap * 4];
-      memcpy(newD, D, sizeof(T) * cap);
-      cap *= 4;
-      delete[] D;
-      D = newD;
-    }
-    return N++;
-  }
-
-  int alloc(bool priority) {
+  int alloc() {
     if (free_indices.empty()) {
       if (N == cap) {
         fprintf(stderr, "double %d\n", cap);
@@ -93,10 +75,31 @@ class Allocator {
 
   T* get(int idx) const {
     assert(idx != -1);
+    assert(idx >= 0);
+    assert(idx < N);
     return &D[idx];
   }
 };
 
+struct ChainedBucket {
+  int N;
+  int next;
+  int D[LEAF_CHAINED_BSIZE];
+
+  int detach_and_get_next() {
+    int ret = next;
+    next = -1;
+    return ret;
+  }
+
+  bool is_full() const { return N == LEAF_CHAINED_BSIZE; }
+
+  bool append(int value) {
+    if (is_full()) return false;
+    D[N++] = value;
+    return true;
+  }
+};
 
 struct Bucket {
   int C;       // Pointer to children.
@@ -192,8 +195,9 @@ struct Bucket {
 
 
 class CTree {
-  Allocator<Bucket> bucket_allocator;
-  Allocator<int[INTERNAL_BSIZE + 1]> child_allocator;
+  Allocator<Bucket> bucket_allocator { 100000000 / INTERNAL_BSIZE * 4};
+  Allocator<ChainedBucket> chained_bucket_allocator { 100000000 / LEAF_CHAINED_BSIZE + 1000000 };
+  Allocator<int[INTERNAL_BSIZE + 1]> child_allocator { 100000000 / INTERNAL_BSIZE * 4 };
   int root;
 
  public:
@@ -201,7 +205,15 @@ class CTree {
   const char *version = "Exp LEAF_BSIZE 2048";
 
   CTree() {
-    root = -1;
+    root = bucket_allocator.alloc();
+    leaf_init(root, -1, LEAF_BSIZE);
+  }
+
+  void chained_leaf_init(int b) {
+    CBUCKET(b)->N = 0;
+    CBUCKET(b)->next = -1;
+    nCap += LEAF_CHAINED_BSIZE;
+    nLeaves++;
   }
 
   void leaf_init(int b, int parent, int cap) {
@@ -218,7 +230,7 @@ class CTree {
   }
 
   void internal_init(int b, int parent, int cap, int left_child) {
-    BUCKET(b)->C = child_allocator.alloc(true);
+    BUCKET(b)->C = child_allocator.alloc();
     BUCKET(b)->cap = cap;
     BUCKET(b)->parent = parent;
     BUCKET(b)->P = 0;
@@ -237,6 +249,10 @@ class CTree {
   void delete_bucket(int b) {
     BUCKET(b)->destroy();
     bucket_allocator.destroy(b);
+  }
+
+  void delete_chained_bucket(int b) {
+    chained_bucket_allocator.destroy(b);
   }
 
   int child(int b, int i) {
@@ -273,10 +289,10 @@ class CTree {
 
   void distribute_values(int b, int pivot, int chain[2]) {
     // fprintf(stderr, "has left\n");
-    while (BUCKET(b)->N) {
-      int i = !(BUCKET(b)->D[--BUCKET(b)->N] < pivot);
+    while (CBUCKET(b)->N) {
+      int i = !(CBUCKET(b)->D[--CBUCKET(b)->N] < pivot);
       // fprintf(stderr, "proc left %d, i = %d\n", N, i);
-      leaf_insert(chain[i], BUCKET(b)->D[BUCKET(b)->N]);
+      leaf_insert(chain[i], CBUCKET(b)->D[CBUCKET(b)->N]);
     }
   }
 
@@ -293,11 +309,12 @@ class CTree {
 
   void leaf_split(int b, int &promotedValue, int &new_bucket) {
     // assert(leaf_check());
+    // fprintf(stderr, "b = %d / %d\n", b, bucket_allocator.N);
     assert(BUCKET(b)->next != -1);
     assert(BUCKET(b)->cap == INTERNAL_BSIZE); // The first bucket must be the smallest capacity.
     new_bucket = -1;
 
-    if (BUCKET(BUCKET(b)->next)->next == -1) {
+    if (CBUCKET(BUCKET(b)->next)->next == -1 && 0) {
       int nb = BUCKET(b)->detach_and_get_next(); BUCKET(nb)->detach_and_get_next();
 
       if (BUCKET(b)->N + BUCKET(nb)->N <= INTERNAL_BSIZE) {
@@ -339,7 +356,7 @@ class CTree {
         BUCKET(b)->D[BUCKET(b)->N++] = R[3];
         BUCKET(nb)->D[BUCKET(nb)->N++] = R[4];
 
-        int nb2 = bucket_allocator.alloc(true);
+        int nb2 = bucket_allocator.alloc();
         leaf_init(nb2, BUCKET(b)->parent, INTERNAL_BSIZE);
         transfer_to(b, nb2, pivot);
         transfer_to(nb, nb2, pivot);
@@ -355,9 +372,9 @@ class CTree {
     } else {
       // fprintf(stderr, "split N = %d\n", BUCKET(b)->N);
       // Reservoir sampling (http://en.wikipedia.org/wiki/Reservoir_sampling).
-      assert(BUCKET(b)->N + BUCKET(BUCKET(b)->tail)->N >= 11);
+      assert(BUCKET(b)->N + CBUCKET(BUCKET(b)->tail)->N >= 11);
       while (BUCKET(b)->N < 11) {
-        BUCKET(b)->D[BUCKET(b)->N++] = BUCKET(BUCKET(b)->tail)->D[--BUCKET(BUCKET(b)->tail)->N];
+        BUCKET(b)->D[BUCKET(b)->N++] = CBUCKET(BUCKET(b)->tail)->D[--CBUCKET(BUCKET(b)->tail)->N];
       }
       // fprintf(stderr, "tail N = %d\n", BUCKET(b)->N);
       int R[11];
@@ -372,19 +389,20 @@ class CTree {
 
       // fprintf(stderr, "random N = %d\n", BUCKET(b)->N);
 
-      int Nb = b;
+      int Nb = BUCKET(b)->next;
 
       // Replace elements with gradually decreasing probability.
-      for (int i = 1; BUCKET(Nb)->next != -1; i++) {
-        Nb = BUCKET(Nb)->next;
+      for (int i = 1; Nb != -1; i++) {
         assert(i > 0);
         int j = rng.nextInt(i);
         if (j < 11) {
-          assert(BUCKET(Nb)->N > 0);
-          int k = rng.nextInt(BUCKET(Nb)->N);
+          assert(CBUCKET(Nb)->N > 0);
+          int k = rng.nextInt(CBUCKET(Nb)->N);
           // fprintf(stderr, "swap %d  <>  %d,   %d %d\n", R[j], Nb->D[k], j, k);
-          swap(R[j], BUCKET(Nb)->D[k]);
+          swap(R[j], CBUCKET(Nb)->D[k]);
         }
+        if (CBUCKET(Nb)->next == -1) break;
+        Nb = CBUCKET(Nb)->next;
       }
 
       for (int i = 0; i < 11; i++) {
@@ -397,54 +415,61 @@ class CTree {
       for (int i = 0; i < 10; i++) {
         BUCKET(b)->D[BUCKET(b)->N++] = R[i];
       }
-      BUCKET(b)->D[BUCKET(b)->N++] = BUCKET(Nb)->D[--BUCKET(Nb)->N];
+      BUCKET(b)->D[BUCKET(b)->N++] = CBUCKET(Nb)->D[--CBUCKET(Nb)->N];
       // fprintf(stderr, "pivot = %d\n", pivot);
       // fprintf(stderr, "split3 N = %d, pivot = %d\n", next->N, pivot);
 
       // debug(10);
 
-      new_bucket = bucket_allocator.alloc(true);
+      new_bucket = bucket_allocator.alloc();
       leaf_init(new_bucket, BUCKET(b)->parent, INTERNAL_BSIZE);
       int chain[2] { b, new_bucket };
 
       // Split the first bucket (this bucket).
       for (int i = 0; i < BUCKET(b)->N; i++) {
-        // fprintf(stderr, "hihi %d < %d\n", i, N);
+        // fprintf(stderr, "hihi %d < %d\n", i, BUCKET(b)->N);
         if (BUCKET(b)->D[i] >= pivot) {
           leaf_insert(chain[1], BUCKET(b)->D[i]);
           BUCKET(b)->D[i--] = BUCKET(b)->D[--BUCKET(b)->N];
         }
       }
 
+      // fprintf(stderr, "fision\n");
       Nb = BUCKET(b)->detach_and_get_next();
 
       int Lb = -1, Rb = -1;
       // TODO: optimize locality.
-      int hi[LEAF_BSIZE], nhi = 0;
-      int lo[LEAF_BSIZE], nlo = 0;
+      int hi[LEAF_CHAINED_BSIZE], nhi = 0;
+      int lo[LEAF_CHAINED_BSIZE], nlo = 0;
       while (true) {
+        // fprintf(stderr, "Lb = %d, Rb = %d\n", Lb, Rb);
         if (nhi && nlo) {
+          // fprintf(stderr, "a\n");
           assert(Lb != -1 && Rb != -1);
-          fusion(BUCKET(Lb)->D, BUCKET(Rb)->D, hi, lo, nhi, nlo);
+          fusion(CBUCKET(Lb)->D, CBUCKET(Rb)->D, hi, lo, nhi, nlo);
           if (!nhi) { _add(chain[0], Lb); Lb = -1; }
           if (!nlo) { _add(chain[1], Rb); Rb = -1; }
         } else if (Lb == -1) {
+          // fprintf(stderr, "b\n");
           if (Nb == -1) break;
           Lb = Nb;
-          Nb = BUCKET(Nb)->detach_and_get_next();
-          if (!BUCKET(Lb)->is_full()) break;
+          Nb = CBUCKET(Nb)->detach_and_get_next();
+          if (!CBUCKET(Lb)->is_full()) break;
         } else if (!nhi) {
           assert(Lb != -1);
-          mark_hi(BUCKET(Lb)->D, BUCKET(Lb)->N, pivot, hi, nhi);
+          // fprintf(stderr, "c %d\n", CBUCKET(Lb)->N);
+          mark_hi(CBUCKET(Lb)->D, CBUCKET(Lb)->N, pivot, hi, nhi);
           if (!nhi){ _add(chain[0], Lb); Lb = -1; }
         } else if (Rb == -1) {
+          // fprintf(stderr, "d\n");
           if (Nb == -1) break;
           Rb = Nb;
-          Nb = BUCKET(Nb)->detach_and_get_next();
-          if (!BUCKET(Rb)->is_full()) break;
+          Nb = CBUCKET(Nb)->detach_and_get_next();
+          if (!CBUCKET(Rb)->is_full()) break;
         } else if (!nlo) {
+          // fprintf(stderr, "e\n");
           assert(Rb != -1);
-          mark_lo(BUCKET(Rb)->D, BUCKET(Rb)->N, pivot, lo, nlo);
+          mark_lo(CBUCKET(Rb)->D, CBUCKET(Rb)->N, pivot, lo, nlo);
           if (!nlo){ _add(chain[1], Rb); Rb = -1; }
         } else {
           assert(0);
@@ -453,8 +478,8 @@ class CTree {
       assert(Nb == -1);
 
       // fprintf(stderr, "splited\n");
-      if (Lb != -1) distribute_values(Lb, pivot, chain), delete_bucket(Lb);
-      if (Rb != -1) distribute_values(Rb, pivot, chain), delete_bucket(Rb);
+      if (Lb != -1) distribute_values(Lb, pivot, chain), delete_chained_bucket(Lb);
+      if (Rb != -1) distribute_values(Rb, pivot, chain), delete_chained_bucket(Rb);
       promotedValue = pivot;
     }
     // assert(leaf_check());
@@ -534,7 +559,7 @@ class CTree {
   }
 
   int internal_split(int b) {
-    int nb = bucket_allocator.alloc(true);
+    int nb = bucket_allocator.alloc();
     int *C = CHILDREN(b);
     internal_init(nb, BUCKET(b)->parent, LEAF_BSIZE, C[BUCKET(b)->N / 2]);
     int *nbC = CHILDREN(nb);
@@ -589,7 +614,7 @@ class CTree {
       // fprintf(stderr, "OLD ROOT %d\n", root);
       assert(parent == -1);
       assert(BUCKET(root)->parent == -1);
-      int new_root = bucket_allocator.alloc(true);
+      int new_root = bucket_allocator.alloc();
       internal_init(new_root, -1, INTERNAL_BSIZE, root); // New internal bucket.
       internal_insert(new_root, promotedValue, nb);
       root = new_root;
@@ -743,7 +768,9 @@ class CTree {
 
   pair<bool, int> lower_bound(int value) {
     // assert(check());
+    // fprintf(stderr, "lower_bound %d\n", value);
     pair<int, int> p = find_bucket(value, true);
+    // fprintf(stderr, "lower_bound1 %d\n", value);
 
     // Found in internal bucket.
     pair<bool, int> ret = make_pair(false, 0);
@@ -794,31 +821,28 @@ class CTree {
     }
   }
 
-  void add_chain(int &head, int next) {
-    assert(BUCKET(next)->is_leaf());
-    if (head == -1) {
-      head = next;
+  void add_chain(int head, int next) {
+    // assert(BUCKET(next)->is_leaf());
+    assert(head != -1);
+    Bucket *b = BUCKET(head);
+    assert(b->is_leaf());
+    if (b->next == -1) {
+      b->next = b->tail = next;
     } else {
-      Bucket *b = BUCKET(head);
-      assert(b->is_leaf());
-      if (b->next == -1) {
-        b->next = b->tail = next;
-      } else {
-        BUCKET(b->tail)->next = next;
-        b->tail = next;
-      }
+      CBUCKET(b->tail)->next = next;
+      b->tail = next;
     }
   }
 
   void batch_insert(int *arr, int N) {
     // fprintf(stderr, "batch %d\n", N);
     int i = 0;
-    while (i + INTERNAL_BSIZE <= N) {
-      int idx = bucket_allocator.alloc(false);
-      leaf_init(idx, -1, INTERNAL_BSIZE);
-      for (int j = 0; j < INTERNAL_BSIZE; j++) {
-        bool ok = BUCKET(idx)->append(arr[i++]);
-        assert(ok);
+    while (i + LEAF_CHAINED_BSIZE <= N) {
+      int idx = chained_bucket_allocator.alloc();
+      chained_leaf_init(idx);
+      ChainedBucket *b = CBUCKET(idx);
+      for (int j = 0; j < LEAF_CHAINED_BSIZE; j++) {
+        b->D[b->N++] = arr[i++];
       }
       // fprintf(stderr, "chain %d\n", i);
       add_chain(root, idx);
@@ -837,14 +861,7 @@ class CTree {
   void insert(int &b, int value) {
     // fprintf(stderr, "ins %d\n", value);
     // if (value == 711)  debug();
-
-    if (b == -1) {
-      b = bucket_allocator.alloc(true);
-      leaf_init(b, -1, LEAF_BSIZE);
-      BUCKET(b)->append(value);
-      return;
-    }
-
+    assert(b != -1);
     while (true) {
       Bucket *B = BUCKET(b);
       if (B->is_leaf()) break;
@@ -862,19 +879,13 @@ class CTree {
     // assert(BUCKET(b)->cap == INTERNAL_BSIZE);
     // assert(BUCKET(BUCKET(b)->tail)->next == -1);
     int tail = BUCKET(b)->tail;
-    if (tail == -1 || BUCKET(tail)->is_full()) {
-      tail = bucket_allocator.alloc(false);
-      leaf_init(tail, BUCKET(b)->parent, INTERNAL_BSIZE);
-      BUCKET(tail)->append(value);
-
-      if (BUCKET(b)->tail == -1) {
-        BUCKET(b)->next = BUCKET(b)->tail = tail;
-      } else {
-        BUCKET(BUCKET(b)->tail)->next = tail;
-        BUCKET(b)->tail = tail;
-      }
+    if (tail == -1 || CBUCKET(tail)->is_full()) {
+      tail = chained_bucket_allocator.alloc();
+      chained_leaf_init(tail);
+      CBUCKET(tail)->append(value);
+      add_chain(b, tail);
     } else {
-      BUCKET(tail)->append(value);
+      CBUCKET(tail)->append(value);
     }
   }
 
