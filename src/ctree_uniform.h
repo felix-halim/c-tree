@@ -514,7 +514,7 @@ class CTree {
     for (int i = 0; i < 11; i++) R[i] = B->remove_random_data(rng);
 
     // Replace R with the next buckets in the chain using reservoir sampling.
-    for (int i = 1, Nb = B->next(); Nb; i++) {
+    for (int i = 1, Nb = B->next(); Nb && i < 20; i++) {
       int j = rng.nextInt(i);
       if (j < 11) LEAF_BUCKET(Nb)->swap_random_data_with(R[j], rng);
       Nb = LEAF_BUCKET(Nb)->next();
