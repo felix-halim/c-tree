@@ -332,6 +332,7 @@ class CTree {
     assert(BUCKET(b)->cap == INTERNAL_BSIZE); // The first bucket must be the smallest capacity.
     new_bucket = -1;
 
+/*
     if (CBUCKET(BUCKET(b)->next)->next == -1 && 0) {
       int nb = BUCKET(b)->detach_and_get_next(); BUCKET(nb)->detach_and_get_next();
 
@@ -388,6 +389,7 @@ class CTree {
       delete_bucket(nb);
 
     } else {
+*/
       // fprintf(stderr, "split N = %d\n", BUCKET(b)->N);
       // Reservoir sampling (http://en.wikipedia.org/wiki/Reservoir_sampling).
       assert(BUCKET(b)->N + CBUCKET(BUCKET(b)->tail)->N >= 11);
@@ -499,7 +501,7 @@ class CTree {
       if (Lb != -1) distribute_values(Lb, pivot, chain), delete_chained_bucket(Lb);
       if (Rb != -1) distribute_values(Rb, pivot, chain), delete_chained_bucket(Rb);
       promotedValue = pivot;
-    }
+    // }
     // assert(leaf_check());
   }
 
@@ -986,7 +988,7 @@ class CTree {
     leaf_insert(root, value);
   }
 
-  void insert(int &b, int value) {
+  void insert2(int &b, int value) {
     // fprintf(stderr, "ins %d\n", value);
     // if (value == 711)  debug();
     assert(b != -1);
