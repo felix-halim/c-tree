@@ -515,7 +515,7 @@ class CTree {
     if (!stride) C[pos] = C[pos + 1];
   }
 
-  bool leaf_shift_left(int b, int pos) {
+  int leaf_shift_left(int b, int pos) {
     int L = child(b, pos);
     int R = child(b, pos + 1);
     assert(BUCKET(L)->is_leaf());
@@ -524,17 +524,17 @@ class CTree {
     if (BUCKET(R)->next != -1) return false;
 
     // Move from M to L as many as possible.
-    bool changed = false;
+    int changed = 0;
     while (!BUCKET(L)->is_full() && BUCKET(R)->N) {
       leaf_insert(L, BUCKET(b)->D[pos]);
       BUCKET(b)->D[pos] = BUCKET(R)->leaf_promote_first();
-      changed = true;
+      changed = 1;
     }
     if (!BUCKET(L)->is_full() && !BUCKET(R)->N) {
       leaf_insert(L, BUCKET(b)->D[pos]);
       internal_erase(b, CHILDREN(b), pos, 1);
       delete_bucket(R);
-      return true; // R is empty, compaction is done.
+      return 2; // R is empty, compaction is done.
     }
     return changed;
   }
@@ -781,10 +781,12 @@ class CTree {
   }
 
   bool leaf_compact(int b, int start, int end) {
+    int last = 0;
     for (int i = start; i < end; i++) {
-      leaf_shift_left(b, i);
-      // fprintf(stderr, "leaf_shift_left %d\n", p.first);
+      last = leaf_shift_left(b, i);
     }
+    assert(last == 2);
+    fprintf(stderr, "saved 1 leaf %d\n", b);
     return true;
   }
 
