@@ -629,7 +629,7 @@ class CTree {
         // fprintf(stderr, "parful\n");
 
         // Optional optimization:
-        /*
+        
         assert(!BUCKET(parent)->is_leaf());
         int pp = BUCKET(parent)->parent;
         if (pp != -1) {
@@ -649,7 +649,7 @@ class CTree {
           //   break;
           }
         }
-        */
+        
         int inb = internal_split(parent);
         int promotedValueInternal = BUCKET(parent)->internal_promote_last();
         if (promotedValue >= promotedValueInternal) {
@@ -839,7 +839,7 @@ class CTree {
     return false;
   }
 
-  inline pair<int, int> find_bucket(int value, bool include_internal) {
+  pair<int, int> find_bucket(int value, bool include_internal) {
     int b = root;
     while (true) {
       // fprintf(stderr, "find_bucket %d\n", b);
