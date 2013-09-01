@@ -21,8 +21,8 @@ int nLeaves, nInternals, nCap, nDes, locked;
 
 namespace ctree {
 
-#define INTERNAL_BSIZE       500  // Must be power of two.
-#define LEAF_BSIZE           500  // Must be power of two.
+#define INTERNAL_BSIZE       60  // Must be power of two.
+#define LEAF_BSIZE           60  // Must be power of two.
 #define LEAF_CHAINED_BSIZE  2048  // Must be power of two.
 
 #define BUCKET(b) bucket_allocator.get(b)
@@ -664,7 +664,6 @@ class CTree {
   }
 
   bool optimize(int b = -1) {
-    assert(0);
     if (b == -1) {
       if (root == -1) return false;
       while (optimize(root)) {
