@@ -605,6 +605,9 @@ class CTree {
     while (parent != -1 && nb != -1) {
       if (BUCKET(parent)->is_full()) {
         // fprintf(stderr, "parful\n");
+
+        // Optional optimization:
+        /*
         assert(!BUCKET(parent)->is_leaf());
         int pp = BUCKET(parent)->parent;
         if (pp != -1) {
@@ -624,6 +627,7 @@ class CTree {
           //   break;
           }
         }
+        */
         int inb = internal_split(parent);
         int promotedValueInternal = BUCKET(parent)->internal_promote_last();
         if (promotedValue >= promotedValueInternal) {
@@ -760,7 +764,7 @@ class CTree {
 
   int slack(int b = -1, int last = 0) {
     if (b == -1) b = root;
-    int ret = BUCKET(b)->cap - BUCKET(b)->N;
+    int ret = BUCKET(b)->slack();
     // if (ret > 10) fprintf(stderr, "slack = %d, for leaf = %d, last = %d\n", ret, b->is_leaf(), last);
     if (BUCKET(b)->is_leaf()) return ret;
     for (int i = 0; i <= BUCKET(b)->N; i++) {
@@ -801,6 +805,7 @@ class CTree {
         if (slack >= INTERNAL_BSIZE)
           return leaf_compact(b, start, i);
       } else {
+        // if (slack) fprintf(stderr, "gathered slack = %d, %d\n", slack, i - start);
         slack = 0;
         start = i + 1;
       }
@@ -843,10 +848,12 @@ class CTree {
         ret = make_pair(true, BUCKET(p.first)->D[pos]);
 
         // OPTIONAL optimization:
+        /*
         int parent = BUCKET(p.first)->parent;
         if (parent != -1) {
           leaf_compact(parent);
         }
+        */
       } else {
         int b = BUCKET(p.first)->parent;
         while (b != -1) {
