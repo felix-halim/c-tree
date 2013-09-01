@@ -273,36 +273,25 @@ class CTree {
     chained_bucket_allocator.destroy(b);
   }
 
-  int child(int b, int i) {
-    assert(BUCKET(b)->C != -1);
-    return CHILDREN(b)[i];
-  }
-
-
-  void mark_hi(int *D, int N, int P, int *hi, int &nhi) {
+  static void mark_hi(int *D, int N, int P, int *hi, int &nhi) {
     for (int i = 0; i < N; i++) {
       hi[nhi] = i;
       nhi += D[i] >= P;
     }
   }
 
-  void mark_lo(int *D, int N, int P, int *lo, int &nlo) {
+  static void mark_lo(int *D, int N, int P, int *lo, int &nlo) {
     for (int i = 0; i < N; i++) {
       lo[nlo] = i;
       nlo += D[i] < P;
     }
   }
 
-  void fusion(int *Lp, int *Rp, int *hi, int *lo, int &nhi, int &nlo) {
+  static void fusion(int *Lp, int *Rp, int *hi, int *lo, int &nhi, int &nlo) {
     int m = std::min(nhi, nlo); assert(m > 0);
     int *hip = hi + nhi - 1, *lop = lo + nlo - 1;
     nhi -= m; nlo -= m;
     while (m--) std::swap(Lp[*(hip--)], Rp[*(lop--)]);
-  }
-
-  void _add(int b, int nb) {
-    assert(b != -1);
-    add_chain(b, nb);
   }
 
   void distribute_values(int b, int pivot, int chain[2]) {
@@ -314,6 +303,7 @@ class CTree {
     }
   }
 
+/*
   int transfer_to(int src, int des, int pivot) {
     int oldN = BUCKET(src)->N;
     BUCKET(src)->N = 0;
@@ -324,7 +314,7 @@ class CTree {
     }
     return des;
   }
-
+*/
   void leaf_split(int b, int &promotedValue, int &new_bucket) {
     // assert(leaf_check());
     // fprintf(stderr, "b = %d / %d\n", b, bucket_allocator.N);
@@ -467,8 +457,8 @@ class CTree {
           // fprintf(stderr, "a\n");
           assert(Lb != -1 && Rb != -1);
           fusion(CBUCKET(Lb)->D, CBUCKET(Rb)->D, hi, lo, nhi, nlo);
-          if (!nhi) { _add(chain[0], Lb); Lb = -1; }
-          if (!nlo) { _add(chain[1], Rb); Rb = -1; }
+          if (!nhi) { add_chain(chain[0], Lb); Lb = -1; }
+          if (!nlo) { add_chain(chain[1], Rb); Rb = -1; }
         } else if (Lb == -1) {
           // fprintf(stderr, "b\n");
           if (Nb == -1) break;
@@ -479,7 +469,7 @@ class CTree {
           assert(Lb != -1);
           // fprintf(stderr, "c %d\n", CBUCKET(Lb)->N);
           mark_hi(CBUCKET(Lb)->D, CBUCKET(Lb)->N, pivot, hi, nhi);
-          if (!nhi){ _add(chain[0], Lb); Lb = -1; }
+          if (!nhi){ add_chain(chain[0], Lb); Lb = -1; }
         } else if (Rb == -1) {
           // fprintf(stderr, "d\n");
           if (Nb == -1) break;
@@ -490,7 +480,7 @@ class CTree {
           // fprintf(stderr, "e\n");
           assert(Rb != -1);
           mark_lo(CBUCKET(Rb)->D, CBUCKET(Rb)->N, pivot, lo, nlo);
-          if (!nlo){ _add(chain[1], Rb); Rb = -1; }
+          if (!nlo){ add_chain(chain[1], Rb); Rb = -1; }
         } else {
           assert(0);
         }
@@ -539,6 +529,7 @@ class CTree {
     if (!stride) C[pos] = C[pos + 1];
   }
 
+/*
   int leaf_shift_left(int b, int pos) {
     int L = child(b, pos);
     int R = child(b, pos + 1);
@@ -608,7 +599,7 @@ class CTree {
     // delete L;
     return changed;
   }
-
+*/
   int internal_split(int b) {
     int nb = bucket_allocator.alloc();
     int *C = CHILDREN(b);
@@ -721,7 +712,7 @@ class CTree {
         if (BUCKET(root)->N == 0) {
           fprintf(stderr, "PROMOTE ROOT\n");
           assert(!BUCKET(root)->is_leaf());
-          int c = child(root, 0);
+          int c = CHILDREN(root)[0];
           delete_bucket(root);
           root = c;
           BUCKET(root)->parent = -1;
@@ -743,7 +734,7 @@ class CTree {
     bool changed = false;
     // fprintf(stderr, "internal %d\n", b);
     for (int i = 0; i <= BUCKET(b)->N; i++) {
-      if (optimize(child(b, i))) {
+      if (optimize(CHILDREN(b)[i])) {
         i = -1;
         changed = true;
       }
@@ -837,6 +828,7 @@ class CTree {
     return ret;
   }
 
+/*
   bool leaf_compact(int b, int start, int end) {
     int last = 0;
     for (int i = start; i < end; i++) {
@@ -867,7 +859,7 @@ class CTree {
     fprintf(stderr, "gathered slack = %d\n", slack);
     return false;
   }
-
+*/
   pair<int, int> find_bucket(int value, bool include_internal) {
     int b = root;
     while (true) {
