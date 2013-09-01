@@ -766,7 +766,7 @@ class CTree {
     if (b == -1) b = root;
     int ret = BUCKET(b)->slack();
     // if (ret > 10) fprintf(stderr, "slack = %d, for leaf = %d, last = %d\n", ret, b->is_leaf(), last);
-    if (BUCKET(b)->is_leaf()) return 0;
+    if (BUCKET(b)->is_leaf()) return ret; else ret = 0;
     for (int i = 0; i <= BUCKET(b)->N; i++) {
       ret += slack(CHILDREN(b)[i], i >= BUCKET(b)->N);
     }
