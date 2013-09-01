@@ -196,9 +196,9 @@ struct Bucket {
 
 
 class CTree {
-  Allocator<Bucket> bucket_allocator { 100000000 / INTERNAL_BSIZE * 4};
+  Allocator<Bucket> bucket_allocator { 1 };
   Allocator<ChainedBucket> chained_bucket_allocator { 100000000 / LEAF_CHAINED_BSIZE + 1000000 };
-  Allocator<int[INTERNAL_BSIZE + 1]> child_allocator { 100000000 / INTERNAL_BSIZE * 4 };
+  Allocator<int[INTERNAL_BSIZE + 1]> child_allocator { 1 };
   int root;
 
  public:
