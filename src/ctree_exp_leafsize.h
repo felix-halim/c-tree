@@ -983,7 +983,7 @@ class CTree {
   }
 
   void insert(int value) {
-    insert(root, value);
+    leaf_insert(root, value);
   }
 
   void insert(int &b, int value) {
