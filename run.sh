@@ -29,32 +29,24 @@ lfhv)
 
 batch_noup)
 
-	S=3
-	for (( Q = 1; Q <= 1000000000; Q*=10 ))
-	do
-	#	./run.sh noup comb $Q | tee -a $out; sleep $S
-		./run.sh noup ctree $Q | tee -a $out; sleep $S
-	#	./run.sh noup ctree_exp_leafsize $Q | tee -a $out; sleep $S
-	#	./run.sh noup ctree_eager $Q | tee -a $out; sleep $S
-	#	./run.sh noup comb2 $Q | tee -a $out; sleep $S
-	#	./run.sh noup btree_google $Q | tee -a $out; sleep $S
-	#	./run.sh noup sort $Q | tee -a $out; sleep $S
-	#	./run.sh noup btree_stx $Q | tee -a $out; sleep $S
-	done
+	#	./run.sh noup comb | tee -a $out
+	#	./run.sh noup ctree | tee -a $out
+		./run.sh noup ctree_exp_leafsize | tee -a $out
+	#	./run.sh noup ctree_eager | tee -a $out
+	#	./run.sh noup comb2 | tee -a $out
+	#	./run.sh noup btree_google | tee -a $out
+	#	./run.sh noup sort | tee -a $out
+	#	./run.sh noup btree_stx | tee -a $out
 	;;
 
 
 batch_lfhv)
 
-	S=1
-	for (( Q = 1; Q <= 100000000; Q*=10 ))
-	do
-	#	./run.sh lfhv comb $Q | tee -a $out; sleep $S
-		./run.sh lfhv ctree $Q | tee -a $out; sleep $S
-	#	./run.sh lfhv comb2 $Q | tee -a $out; sleep $S
-	#	./run.sh lfhv btree_google $Q | tee -a $out; sleep $S
-	#	./run.sh lfhv btree_stx $Q | tee -a $out; sleep $S
-	done
+	#	./run.sh lfhv comb | tee -a $out
+		./run.sh lfhv ctree | tee -a $out
+	#	./run.sh lfhv comb2 | tee -a $out
+	#	./run.sh lfhv btree_google | tee -a $out
+	#	./run.sh lfhv btree_stx | tee -a $out
 	;;
 
 

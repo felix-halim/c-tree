@@ -33,13 +33,13 @@ int query(int value);        // Query for lower bound, returns 0 if not found.
 void results(double insert_time, double query_time, int checksum);
 
 int main(int argc, char *argv[]) {
-  char *hostname = argv[1];
-  int N = atoi(argv[2]);
   char *prog = argv[0];
   while (true) {
     char *p = strstr(prog, "/");
     if (p) prog = p + 1; else break;
   }
+  char *hostname = argv[1];
+  int N = atoi(argv[2]);
 
   Random r(140384);
   int *iarr = new int[N];

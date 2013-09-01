@@ -514,11 +514,13 @@ class CTree {
     if (!stride) C[pos] = C[pos + 1];
   }
 
-  bool shift_leaves(int b, int pos) {
+  bool leaf_shift_left(int b, int pos) {
     int L = child(b, pos);
     int R = child(b, pos + 1);
-    assert(BUCKET(L)->next == -1);
-    assert(BUCKET(R)->next == -1);
+    assert(BUCKET(L)->is_leaf());
+    assert(BUCKET(R)->is_leaf());
+    if (BUCKET(L)->next != -1) return false;
+    if (BUCKET(R)->next != -1) return false;
 
     // Move from M to L as many as possible.
     bool changed = false;
@@ -696,7 +698,7 @@ class CTree {
       int R = child(b, i + 1);
       assert(BUCKET(L)->is_leaf() == BUCKET(R)->is_leaf());
       if (BUCKET(L)->is_leaf()) {
-        if (shift_leaves(b, i)) changed = 1;
+        if (leaf_shift_left(b, i)) changed = 1;
       } else {
         if (internal_shift_left(b, i)) changed = 1;
       }
@@ -809,7 +811,14 @@ class CTree {
     } else {
       int pos = BUCKET(p.first)->leaf_lower_pos(value);
       if (pos < BUCKET(p.first)->N) {
-        ret = make_pair(true, BUCKET(p.first)->D[pos]); 
+        ret = make_pair(true, BUCKET(p.first)->D[pos]);
+
+        // OPTIONAL optimization:
+        int parent = BUCKET(p.first)->parent;
+        pos = internal_find_child_pos(parent, p.first);
+        if (pos > 0 && leaf_shift_left(parent, pos - 1)) {
+          // fprintf(stderr, "leaf_shift_left %d\n", p.first);
+        }
       } else {
         int b = BUCKET(p.first)->parent;
         while (b != -1) {
