@@ -652,30 +652,30 @@ class CTree {
 
         // Optional optimization:
         
-        assert(!BUCKET(parent)->is_leaf());
-        int pp = BUCKET(parent)->parent;
-        if (pp != -1) {
-          assert(!BUCKET(pp)->is_leaf());
-          int pos = internal_find_child_pos(pp, parent);
-          // assert(check());
+        // assert(!BUCKET(parent)->is_leaf());
+        // int pp = BUCKET(parent)->parent;
+        // if (pp != -1) {
+        //   assert(!BUCKET(pp)->is_leaf());
+        //   int pos = internal_find_child_pos(pp, parent);
+        //   // assert(check());
 
-          if (pos > 0 && BUCKET(parent)->D[0] < promotedValue && internal_shift_left(pp, pos - 1, 1)) {
-            // fprintf(stderr, "shift left %d, p = %d, b = %d, root = %d, pos = %d / %d\n", pp, parent, b, root, pos, BUCKET(pp)->N);
-            assert(!BUCKET(parent)->is_full());
-            // assert(check());
-            internal_insert(parent, promotedValue, nb);
-            nb = -1;
-            // assert(check());
-            break;
-          } else if (pos < BUCKET(pp)->N && promotedValue < BUCKET(parent)->D[BUCKET(parent)->N - 1] && internal_shift_right(pp, pos, 1)) {
-            // assert(check());
-            assert(!BUCKET(parent)->is_full());
-            internal_insert(parent, promotedValue, nb);
-            nb = -1;
-            // assert(check());
-            break;
-          }
-        }
+        //   if (pos > 0 && BUCKET(parent)->D[0] < promotedValue && internal_shift_left(pp, pos - 1, 1)) {
+        //     // fprintf(stderr, "shift left %d, p = %d, b = %d, root = %d, pos = %d / %d\n", pp, parent, b, root, pos, BUCKET(pp)->N);
+        //     assert(!BUCKET(parent)->is_full());
+        //     // assert(check());
+        //     internal_insert(parent, promotedValue, nb);
+        //     nb = -1;
+        //     // assert(check());
+        //     break;
+        //   } else if (pos < BUCKET(pp)->N && promotedValue < BUCKET(parent)->D[BUCKET(parent)->N - 1] && internal_shift_right(pp, pos, 1)) {
+        //     // assert(check());
+        //     assert(!BUCKET(parent)->is_full());
+        //     internal_insert(parent, promotedValue, nb);
+        //     nb = -1;
+        //     // assert(check());
+        //     break;
+        //   }
+        // }
         
         int inb = internal_split(parent);
         int promotedValueInternal = BUCKET(parent)->internal_promote_last();
