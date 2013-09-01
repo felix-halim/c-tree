@@ -35,13 +35,11 @@ void results(double insert_time, double query_time, int checksum);
 int main(int argc, char *argv[]) {
   char *hostname = argv[1];
   int N = atoi(argv[2]);
-  int Q = atoi(argv[3]);
   char *prog = argv[0];
   while (true) {
     char *p = strstr(prog, "/");
     if (p) prog = p + 1; else break;
   }
-  printf("%lu,\"%s\",\"%s\",%d,%d,", system_clock::to_time_t(system_clock::now()), hostname, prog, N, Q);
 
   Random r(140384);
   int *iarr = new int[N];
@@ -49,15 +47,21 @@ int main(int argc, char *argv[]) {
 
   int csum = 0;
   double insert_time = time_it([&] { init(iarr, N); });
-  double query_time = time_it([&]{
-    for (int i = 0; i < Q; i++)
-      csum = csum * 13 + query(r.nextInt());
-  });
 
-  results(insert_time, query_time, csum);
+  double query_time = 0;
+  for (int Q = 1, cur = 0; Q <= 1000000000; Q *= 10) {
+    int nQ = Q - cur; cur = Q;
+    
+    query_time += time_it([&]{
+      for (int i = 0; i < nQ; i++)
+        csum = csum * 13 + query(r.nextInt());
+    });
 
-  if (N == 100000000 && checksum.count(Q) && checksum[Q] != csum) {
-    fprintf(stderr, "\033[1;31mFAILED\033[0m checksum %d != %d\n", checksum[Q], csum);
+    printf("%lu,\"%s\",\"%s\",%d,%d,", system_clock::to_time_t(system_clock::now()), hostname, prog, N, Q);
+    results(insert_time, query_time, csum);
+    if (N == 100000000 && checksum.count(Q) && checksum[Q] != csum) {
+      fprintf(stderr, "\033[1;31mFAILED\033[0m checksum %d != %d\n", checksum[Q], csum);
+    }
   }
   return 0;
 }
