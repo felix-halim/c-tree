@@ -45,16 +45,16 @@ int main(int argc, char *argv[]) {
   int *iarr = new int[N];
   for (int i = 0; i < N; i++) iarr[i] = r.nextInt();
 
-  int csum = 0;
   double insert_time = time_it([&] { init(iarr, N); });
 
+  int csum = 0;
   double query_time = 0;
   for (int Q = 1, cur = 0; Q <= 1000000000; Q *= 10) {
     int nQ = Q - cur; cur = Q;
-    
-    query_time += time_it([&]{
-      for (int i = 0; i < nQ; i++)
+    query_time += time_it([&] {
+      for (int i = 0; i < nQ; i++) {
         csum = csum * 13 + query(r.nextInt());
+      }
     });
 
     printf("%lu,\"%s\",\"%s\",%d,%d,", system_clock::to_time_t(system_clock::now()), hostname, prog, N, Q);

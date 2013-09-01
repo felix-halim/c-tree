@@ -46,39 +46,42 @@ void erase(int value);       // Deletes the value. The value guaranteed to exist
 void results(double insert_time, double query_time, int checksum);
 
 int main(int argc, char *argv[]) {
-  char *hostname = argv[1];
-  int N = atoi(argv[2]);
-  int Q = atoi(argv[3]);
   char *prog = argv[0];
   while (true) {
     char *p = strstr(prog, "/");
     if (p) prog = p + 1; else break;
   }
-  printf("%lu,\"%s\",\"%s\",%d,%d,", system_clock::to_time_t(system_clock::now()), hostname, prog, N, Q);
+  char *hostname = argv[1];
+  int N = atoi(argv[2]);
 
-  Random r(140384);
+  Random rng(140384);
   int *iarr = new int[N];
-  for (int i = 0; i < N; i++) iarr[i] = r.nextInt();
+  for (int i = 0; i < N; i++) iarr[i] = rng.nextInt();
+
+  double insert_time = time_it([&] { init(iarr, N); });
 
   int csum = 0;
-  double insert_time = time_it([&] { init(iarr, N); });
-  double query_time = time_it([&] {
-    for (int i = 0; i < Q; i++) {
-      csum = csum * 13 + query(r.nextInt());
-      if (i % 1000 == 0) {
-        for (int j = 0; j < 1000; j++) {
-          int k = ((r.nextInt() % N) + N) % N;
-          erase(iarr[k]);
-          insert(iarr[k] = r.nextInt());
+  double query_time = 0;
+  for (int Q = 1, cur = 0; Q <= 1000000000; Q *= 10) {
+    int nQ = Q - cur; cur = Q;
+    query_time += time_it([&] {
+      for (int i = 0; i < nQ; i++) {
+        csum = csum * 13 + query(rng.nextInt());
+        if (i % 1000 == 0) {
+          for (int j = 0; j < 1000; j++) {
+            int k = ((rng.nextInt() % N) + N) % N;
+            erase(iarr[k]);
+            insert(iarr[k] = rng.nextInt());
+          }
         }
       }
-    }
-  });
-
-  results(insert_time, query_time, csum);
-  if (N == 10000000 && checksum7.count(Q) && checksum7[Q] != csum)
-    fprintf(stderr, "Checksum mismatch %d != %d\n", checksum7[Q], csum);
-  if (N == 100000000 && checksum8.count(Q) && checksum8[Q] != csum)
-    fprintf(stderr, "Checksum mismatch %d != %d\n", checksum8[Q], csum);
+    });
+    printf("%lu,\"%s\",\"%s\",%d,%d,", system_clock::to_time_t(system_clock::now()), hostname, prog, N, Q);
+    results(insert_time, query_time, csum);
+    if (N == 10000000 && checksum7.count(Q) && checksum7[Q] != csum)
+      fprintf(stderr, "\033[1;31mFAILED\033[0m checksum %d != %d\n", checksum7[Q], csum);
+    if (N == 100000000 && checksum8.count(Q) && checksum8[Q] != csum)
+      fprintf(stderr, "\033[1;31mFAILED\033[0m checksum %d != %d\n", checksum8[Q], csum);
+  }
   return 0;
 }

@@ -4,7 +4,7 @@
 #include <vector>
 #include <functional>
 #include <algorithm>
-#include "ctree_exp_leafsize.h"
+#include "ctree_uniform.h"
 #include "random.h"
 
 using namespace std;
@@ -211,7 +211,7 @@ vector<pair<string,function<void()>>> tests {
 
 int main() {
   for (auto it : tests) {
-    if (strstr(it.first.c_str(), "erase")) continue;
+    // if (strstr(it.first.c_str(), "erase")) continue;
     printf("%s ... ", it.first.c_str());
     it.second();
     puts(PASSED);

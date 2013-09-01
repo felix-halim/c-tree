@@ -13,7 +13,7 @@ using namespace std;
 using namespace ctree;
 
 double t1 = 0, t2 = 0, t3 = 0;
-CTree c(100000000);
+CTree c;
 
 void init(int *arr, int N) {
   // c.load("ctree"); return;
