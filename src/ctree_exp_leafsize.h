@@ -21,8 +21,8 @@ int nLeaves, nInternals, nCap, nDes, locked;
 
 namespace ctree {
 
-#define INTERNAL_BSIZE        57  // Must be power of two.
-#define LEAF_BSIZE            57  // Must be power of two.
+#define INTERNAL_BSIZE        56  // Must be power of two.
+#define LEAF_BSIZE            56  // Must be power of two.
 #define LEAF_CHAINED_BSIZE  2048  // Must be power of two.
 
 #define BUCKET(b) bucket_allocator.get(b)
@@ -202,7 +202,7 @@ class CTree {
 
  public:
 
-  const char *version = "Exp LEAF_BSIZE 2048";
+  const char *version = "57/2048";
 
   CTree() {
     root = bucket_allocator.alloc();

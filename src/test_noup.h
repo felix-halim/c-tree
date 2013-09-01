@@ -56,6 +56,8 @@ int main(int argc, char *argv[]) {
 
   results(insert_time, query_time, csum);
 
-  assert(N != 100000000 || !checksum.count(Q) || checksum[Q] == csum);
+  if (N == 100000000 && checksum.count(Q) && checksum[Q] != csum) {
+    fprintf(stderr, "\033[1;31mFAILED\033[0m checksum %d != %d\n", checksum[Q], csum);
+  }
   return 0;
 }
