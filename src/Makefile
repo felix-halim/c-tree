@@ -13,6 +13,8 @@ all: \
 	$(ODIR)/comb2_lfhv \
 	$(ODIR)/ctree_exp_leafsize_noup \
 	$(ODIR)/ctree_exp_leafsize_lfhv \
+	$(ODIR)/ctree_uniform_noup \
+	$(ODIR)/ctree_uniform_lfhv \
 	$(ODIR)/ctree_eager_noup \
 	$(ODIR)/ctree_noup \
 	$(ODIR)/ctree_lfhv \
@@ -45,6 +47,12 @@ $(ODIR)/ctree_exp_leafsize_noup: ctree_exp_leafsize.cc ctree_exp_leafsize.h rand
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DNOUP -Wall -o $@ $<
 
 $(ODIR)/ctree_exp_leafsize_lfhv: ctree_exp_leafsize.cc ctree_exp_leafsize.h random.h test_noup.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
+
+$(ODIR)/ctree_uniform_noup: ctree_uniform.cc ctree_uniform.h random.h test_noup.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DNOUP -Wall -o $@ $<
+
+$(ODIR)/ctree_uniform_lfhv: ctree_uniform.cc ctree_uniform.h random.h test_noup.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
 
 $(ODIR)/ctree_noup: ctree.cc ctree.h random.h test_noup.h
