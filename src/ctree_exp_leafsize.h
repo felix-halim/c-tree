@@ -536,15 +536,17 @@ class CTree {
     return changed;
   }
 
-  bool shift_internals(int b, int pos) {
+  bool internal_shift_left(int b, int pos, int numMove = INTERNAL_BSIZE + 1) {
     int L = child(b, pos);
     int R = child(b, pos + 1);
+    assert(!BUCKET(L)->is_leaf());
+    assert(!BUCKET(R)->is_leaf());
     assert(BUCKET(L)->next == -1);
     assert(BUCKET(R)->next == -1);
 
     // Move from R to L as many as possible.
     bool changed = false;
-    while (!BUCKET(L)->is_full() && BUCKET(R)->N) {
+    while (!BUCKET(L)->is_full() && BUCKET(R)->N && numMove-- > 0) {
       internal_insert(L, BUCKET(b)->D[pos], child(R, 0));
       BUCKET(b)->D[pos] = BUCKET(R)->internal_promote_first(CHILDREN(R));
       changed = true;
@@ -574,6 +576,15 @@ class CTree {
     return nb;
   }
 
+  int internal_find_child_pos(int b, int c) {
+    int *C = CHILDREN(b);
+    for (int i = 0; i <= BUCKET(b)->N; i++) {
+      if (C[i] == c) return i;
+    }
+    assert(0);
+    return 0;
+  }
+
   bool split_chain(int b) {
     // assert(check());
     if (BUCKET(b)->next == -1) return false;
@@ -591,6 +602,25 @@ class CTree {
     while (parent != -1 && nb != -1) {
       if (BUCKET(parent)->is_full()) {
         // fprintf(stderr, "parful\n");
+        assert(!BUCKET(parent)->is_leaf());
+        int pp = BUCKET(parent)->parent;
+        if (pp != -1) {
+          assert(!BUCKET(pp)->is_leaf());
+          int pos = internal_find_child_pos(pp, parent);
+          // assert(check());
+
+          if (pos > 0 && BUCKET(parent)->D[0] < promotedValue && internal_shift_left(pp, pos - 1, 1)) {
+            // fprintf(stderr, "shift left %d, p = %d, b = %d, root = %d, pos = %d / %d\n", pp, parent, b, root, pos, BUCKET(pp)->N);
+            assert(!BUCKET(parent)->is_full());
+            // assert(check());
+            internal_insert(parent, promotedValue, nb);
+            nb = -1;
+            // assert(check());
+            break;
+          // } else if (internal_transfer_right()) {
+          //   break;
+          }
+        }
         int inb = internal_split(parent);
         int promotedValueInternal = BUCKET(parent)->internal_promote_last();
         if (promotedValue >= promotedValueInternal) {
@@ -668,7 +698,7 @@ class CTree {
       if (BUCKET(L)->is_leaf()) {
         if (shift_leaves(b, i)) changed = 1;
       } else {
-        if (shift_internals(b, i)) changed = 1;
+        if (internal_shift_left(b, i)) changed = 1;
       }
     }
     // fprintf(stderr, "internal %d %d\n", b, changed);
@@ -920,7 +950,7 @@ class CTree {
     assert(BUCKET(b)->N >=0 && BUCKET(b)->N <= BUCKET(b)->cap);
     if (BUCKET(b)->is_leaf()) return leaf_check(b, lo, true, 0, false);
     if (BUCKET(CHILDREN(b)[0])->parent != b) return leaf_debug("parent mismatch", BUCKET(CHILDREN(b)[0])->parent, b);
-    check(CHILDREN(b)[0], lo, BUCKET(b)->D[0]);
+    if (BUCKET(b)->N && !check(CHILDREN(b)[0], lo, BUCKET(b)->D[0])) return false;
     for (int i = 0; i < BUCKET(b)->N; i++) {
       // fprintf(stderr, "%d cek anak ke-%d\n", b, i);
       assert(i == 0 || BUCKET(b)->D[i - 1] <= BUCKET(b)->D[i]);
