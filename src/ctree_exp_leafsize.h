@@ -23,7 +23,7 @@ namespace ctree {
 
 #define INTERNAL_BSIZE       50  // Must be power of two.
 #define LEAF_BSIZE           50  // Must be power of two.
-#define LEAF_CHAINED_BSIZE  2048  // Must be power of two.
+#define LEAF_CHAINED_BSIZE  4098  // Must be power of two.
 
 #define BUCKET(b) bucket_allocator.get(b)
 #define CBUCKET(b) chained_bucket_allocator.get(b)
