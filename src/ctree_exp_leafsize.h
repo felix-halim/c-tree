@@ -21,8 +21,8 @@ int nLeaves, nInternals, nCap, nDes, locked;
 
 namespace ctree {
 
-#define INTERNAL_BSIZE       50  // Must be power of two.
-#define LEAF_BSIZE           50  // Must be power of two.
+#define INTERNAL_BSIZE       64  // Must be power of two.
+#define LEAF_BSIZE           64  // Must be power of two.
 #define LEAF_CHAINED_BSIZE  4098  // Must be power of two.
 
 #define BUCKET(b) bucket_allocator.get(b)
