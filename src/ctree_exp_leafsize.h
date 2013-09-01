@@ -879,7 +879,38 @@ class CTree {
     return make_pair(b, 0);
   }
 
-  pair<bool, int> lower_bound(int value) {
+  pair<bool, int> lower_bound2(int value) {
+    // assert(check());
+    // fprintf(stderr, "lower_bound %d\n", value);
+
+    int b = root;
+    while (true) {
+      // fprintf(stderr, "find_bucket %d\n", b);
+      if (BUCKET(b)->is_leaf()) {
+        if (!split_chain(b)) {
+          while (b != -1) {
+            int pos = BUCKET(b)->internal_lower_pos(value);
+            if (pos < BUCKET(b)->N) {
+              return make_pair(true, BUCKET(b)->D[pos]);
+            }
+            b = BUCKET(b)->parent;
+          }
+        }
+        b = BUCKET(b)->parent;
+        assert(b != -1);
+      } else {
+        int pos = BUCKET(b)->internal_lower_pos(value);
+        if (pos < BUCKET(b)->N && BUCKET(b)->D[pos] == value) {
+          return make_pair(true, value);
+        }
+        b = CHILDREN(b)[pos];    // Search the child.
+      }
+    }
+
+    return make_pair(false, 0);
+  }
+
+  pair<bool, int> lower_bound3(int value) {
     // assert(check());
     // fprintf(stderr, "lower_bound %d\n", value);
     pair<int, int> p = find_bucket(value, true);
