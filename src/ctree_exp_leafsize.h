@@ -711,16 +711,19 @@ class CTree {
         changed = true;
       }
     }
-    for (int i = 0; i < BUCKET(b)->N; i++) {
-      int L = child(b, i);
-      int R = child(b, i + 1);
-      assert(BUCKET(L)->is_leaf() == BUCKET(R)->is_leaf());
-      if (BUCKET(L)->is_leaf()) {
-        if (leaf_shift_left(b, i)) changed = 1;
-      } else {
-        if (internal_shift_left(b, i)) changed = 1;
-      }
-    }
+
+    // OPTIONAL:
+    // for (int i = 0; i < BUCKET(b)->N; i++) {
+    //   int L = child(b, i);
+    //   int R = child(b, i + 1);
+    //   assert(BUCKET(L)->is_leaf() == BUCKET(R)->is_leaf());
+    //   if (BUCKET(L)->is_leaf()) {
+    //     if (leaf_shift_left(b, i)) changed = 1;
+    //   } else {
+    //     if (internal_shift_left(b, i)) changed = 1;
+    //   }
+    // }
+
     // fprintf(stderr, "internal %d %d\n", b, changed);
     return changed;
   }

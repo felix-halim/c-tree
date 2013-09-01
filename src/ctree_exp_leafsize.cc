@@ -24,7 +24,7 @@ void init(int *arr, int N) {
   //   c.insert(arr[i]);
   // }
   // assert(c.check());
-  // c.optimize();
+  c.optimize();
   // c.save("ctree");
   // locked = 1;
   // // c.debug();
