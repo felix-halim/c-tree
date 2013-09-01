@@ -21,8 +21,8 @@ int nLeaves, nInternals, nCap, nDes, locked;
 
 namespace ctree {
 
-#define INTERNAL_BSIZE        56  // Must be power of two.
-#define LEAF_BSIZE            56  // Must be power of two.
+#define INTERNAL_BSIZE       128  // Must be power of two.
+#define LEAF_BSIZE           128  // Must be power of two.
 #define LEAF_CHAINED_BSIZE  2048  // Must be power of two.
 
 #define BUCKET(b) bucket_allocator.get(b)
@@ -834,7 +834,7 @@ class CTree {
     return make_pair(b, 0);
   }
 
-  pair<bool, int> lower_bound2(int value) {
+  pair<bool, int> lower_bound(int value) {
     // assert(check());
     // fprintf(stderr, "lower_bound %d\n", value);
     pair<int, int> p = find_bucket(value, true);
@@ -873,7 +873,7 @@ class CTree {
   }
 
 
-  pair<bool, int> lower_bound(int value) {
+  pair<bool, int> lower_bound2(int value) {
     // fprintf(stderr, "lower_bound %d\n", value);
     return lower_bound_rec(root, value);
   }
