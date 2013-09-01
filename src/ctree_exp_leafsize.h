@@ -113,6 +113,7 @@ struct Bucket {
 
   bool is_full() const { return N == cap; }
   bool is_leaf() const { return C == -1; }
+  int slack() const { return cap - N; }
 
   bool append(int value) {
     assert(is_leaf());
@@ -779,6 +780,32 @@ class CTree {
     return ret;
   }
 
+  bool leaf_compact(int b, int start, int end) {
+    for (int i = start; i < end; i++) {
+      leaf_shift_left(b, i);
+      // fprintf(stderr, "leaf_shift_left %d\n", p.first);
+    }
+    return true;
+  }
+
+  bool leaf_compact(int b) {
+    int slack = 0, start = 1;
+    Bucket *B = BUCKET(CHILDREN(b)[0]);
+    if (B->next == -1) slack += B->slack(), start = 0;
+    for (int i = 1; i <= BUCKET(b)->N; i++) {
+      B = BUCKET(CHILDREN(b)[i]);
+      if (B->next != -1) {
+        slack += B->slack();
+        if (slack >= INTERNAL_BSIZE)
+          return leaf_compact(b, start, i);
+      } else {
+        slack = 0;
+        start = i + 1;
+      }
+    }
+    return false;
+  }
+
   pair<int, int> find_bucket(int value, bool include_internal) {
     int b = root;
     while (true) {
@@ -815,9 +842,8 @@ class CTree {
 
         // OPTIONAL optimization:
         int parent = BUCKET(p.first)->parent;
-        pos = internal_find_child_pos(parent, p.first);
-        if (pos > 0 && leaf_shift_left(parent, pos - 1)) {
-          // fprintf(stderr, "leaf_shift_left %d\n", p.first);
+        if (parent != -1) {
+          leaf_compact(parent);
         }
       } else {
         int b = BUCKET(p.first)->parent;
