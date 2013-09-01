@@ -39,17 +39,31 @@ double time_it(Func f) {
 
 template<typename T>
 class Allocator {
+ public:
+
   priority_queue<int, vector<int>, greater<int>> free_indices;
   int cap;
   T *D;
-
- public:
-
   int N;
 
   Allocator(int initial_cap) {
     D = new T[cap = initial_cap];
     N = 0;
+  }
+
+  void save(string fn) {
+    FILE *out = fopen(fn.c_str(), "wb");
+    fwrite(&N, sizeof(int), 1, out);
+    fwrite(D, sizeof(T), N, out);
+    fclose(out);
+  }
+
+  void load(string fn) {
+    FILE *f = fopen(fn.c_str(), "rb");
+    fread(&N, sizeof(int), 1, f);
+    D = new T[cap = N];
+    fread(D, sizeof(T), N, f);
+    fclose(f);
   }
 
   int alloc() {
@@ -814,7 +828,7 @@ class CTree {
     return false;
   }
 
-  pair<int, int> find_bucket(int value, bool include_internal) {
+  inline pair<int, int> find_bucket(int value, bool include_internal) {
     int b = root;
     while (true) {
       // fprintf(stderr, "find_bucket %d\n", b);
@@ -1004,6 +1018,17 @@ class CTree {
       if (!check(CHILDREN(b)[i + 1], BUCKET(b)->D[i], (i + 1 < BUCKET(b)->N) ? BUCKET(b)->D[i + 1] : 2147483647)) return false;
     }
     return true;
+  }
+
+  void save(string fn) {
+    child_allocator.save(fn + ".child");
+    bucket_allocator.save(fn + ".bucket");
+    fprintf(stderr, "chained size = %d, free = %lu\n", chained_bucket_allocator.N, chained_bucket_allocator.free_indices.size());
+  }
+
+  void load(string fn) {
+    child_allocator.load(fn + ".child");
+    bucket_allocator.load(fn + ".bucket");
   }
 };
 

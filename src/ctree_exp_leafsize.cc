@@ -16,13 +16,16 @@ double t1 = 0, t2 = 0, t3 = 0;
 CTree c;
 
 void init(int *arr, int N) {
+  // c.load("ctree"); return;
+  
   c.batch_insert(arr, N);
   // fprintf(stderr, "doi \n" );
   // for (int i = 0; i < N; i++) {
   //   c.insert(arr[i]);
   // }
   // assert(c.check());
-  c.optimize();
+  // c.optimize();
+  // c.save("ctree");
   // locked = 1;
   // // c.debug();
   // fprintf(stderr, "depth = %d, slack = %d\n", c.max_depth(), c.slack());
