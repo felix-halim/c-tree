@@ -494,8 +494,8 @@ class CTree {
       int N = LEAF_BUCKET(leafb)->copy_data_to(D);
       N += LEAF_BUCKET(new_leafb)->copy_data_to(D + N);
       assert(N <= LEAF_BSIZE * 2);
-      sort(D, D + N);
       int H = N / 2;
+      nth_element(D, D + H, D + N);
       LEAF_BUCKET(leafb)->copy_data_from(D, H);
       promotedValue = D[H++];
       LEAF_BUCKET(new_leafb)->copy_data_from(D + H, N - H);
