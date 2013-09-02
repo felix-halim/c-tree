@@ -13,7 +13,6 @@ using namespace std;
 using namespace chrono;
 
 int nLeaves, nInternals, nCap, locked;
-const char *version = "Uniform 64";
 
 namespace ctree {
 
@@ -778,39 +777,34 @@ class CTree {
   }
 
   bool optimize(int b = 0) {
-    // if (b == 0) {
-    //   if (root == 0) return false;
-    //   while (optimize(root)) {
-    //     if (BUCKET(root)->size() == 0) {
-    //       fprintf(stderr, "PROMOTE ROOT\n");
-    //       assert(!BUCKET(root)->is_leaf());
-    //       int c = CHILDREN(root)[0];
-    //       delete_bucket(root);
-    //       root = c;
-    //       BUCKET(root)->parent = 0;
-    //     }
-    //     fprintf(stderr, "optimize\n");
-    //   }
-    //   return false;
-    // }
+    if (b == 0) {
+      if (root == 0) return false;
+      while (optimize(root)) {
+        if (!is_leaf(root) && INTERNAL_BUCKET(root)->size() == 0) {
+          // fprintf(stderr, "PROMOTE ROOT\n");
+          int c = INTERNAL_BUCKET(root)->child(0);
+          delete_leaf_bucket(root);
+          root = c;
+          set_parent(root, 0);
+        }
+        // fprintf(stderr, "optimize\n");
+      }
+      return false;
+    }
 
-    // if (BUCKET(b)->is_leaf()) {
-    //   // fprintf(stderr, "split_chain %d\n", b);
-    //   bool splitted = split_chain(b);
-    //   // fprintf(stderr, "split_chain %d\n", b);
-    //   while (split_chain(b));
-    //   // fprintf(stderr, "split_chain %d %d\n", b, splitted);
-    //   return splitted;
-    // }
+    if (is_leaf(b)) {
+      bool splitted = split_chain(b);
+      while (split_chain(b));
+      return splitted;
+    }
 
-    // bool changed = false;
-    // // fprintf(stderr, "internal %d\n", b);
-    // for (int i = 0; i <= BUCKET(b)->size(); i++) {
-    //   if (optimize(CHILDREN(b)[i])) {
-    //     i = -1;
-    //     changed = true;
-    //   }
-    // }
+    bool changed = false;
+    for (int i = 0; i <= INTERNAL_BUCKET(b)->size(); i++) {
+      if (optimize(INTERNAL_BUCKET(b)->child(i))) {
+        i = -1;
+        changed = true;
+      }
+    }
 
     // OPTIONAL:
     // for (int i = 0; i < BUCKET(b)->size(); i++) {
@@ -825,8 +819,7 @@ class CTree {
     // }
 
     // fprintf(stderr, "internal %d %d\n", b, changed);
-    // return changed;
-    return false;
+    return changed;
   }
 
   int debug(int b = 0, int depth = 0) {

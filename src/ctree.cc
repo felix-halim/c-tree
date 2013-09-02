@@ -23,7 +23,7 @@ void init(int *arr, int N) {
   //   c.insert(arr[i]);
   // }
   // assert(c.check());
-  // c.optimize();
+  c.optimize();
   // c.save("ctree");
   // locked = 1;
   // // c.debug();
@@ -49,7 +49,7 @@ int query(int value) {
 void results(double insert_time, double query_time, int checksum) {
   assert(c.check());
   printf("%.6lf,%.6lf,%d,", insert_time, query_time, checksum);
-  printf("\"%s\",%d,%d,%d,", version, nLeaves, nCap, nInternals);
+  printf("\"%s\",%d,%d,%d,", "Eager", nLeaves, nCap, nInternals);
   printf("%d,%d,%d,%d,", c.max_depth(), c.slack(), INTERNAL_BSIZE, LEAF_BSIZE);
   c.print_allocators();
   puts("");
