@@ -761,12 +761,11 @@ class CTree {
     root = new_leaf_bucket(0);
   }
 
-  void print_stats() {
-    fprintf(stderr, "L = %d, cap = %d, I = %d, D = %d, S = %d, IF = %lu, LF = %lu, IA = %d, LA = %d\n",
-      nLeaves, nCap, nInternals, max_depth(), slack(),
+  void print_allocators() {
+    printf("%lu,%d,%lu,%d",
       internal_bucket_allocator.free_indices.size(),
-      leaf_bucket_allocator.free_indices.size(),
       internal_bucket_allocator.N,
+      leaf_bucket_allocator.free_indices.size(),
       leaf_bucket_allocator.N);
   }
 

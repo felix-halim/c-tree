@@ -29,9 +29,9 @@ lfhv)
 
 batch_noup)
 
+	./run.sh noup ctree_uniform | tee -a $out
 	./run.sh noup comb | tee -a $out
 	./run.sh noup ctree | tee -a $out
-	./run.sh noup ctree_uniform | tee -a $out
 	./run.sh noup ctree_exp_leafsize | tee -a $out
 	./run.sh noup ctree_eager | tee -a $out
 	./run.sh noup comb2 | tee -a $out
