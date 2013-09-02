@@ -20,14 +20,6 @@ namespace ctree {
 #define INTERNAL_BSIZE  64  // Must be power of two.
 #define LEAF_BSIZE      64  // Must be power of two.
 
-template<typename Func>
-double time_it(Func f) {
-  auto t0 = high_resolution_clock::now();
-  f();
-  auto t1 = high_resolution_clock::now();
-  return duration_cast<microseconds>(t1 - t0).count() * 1e-6;
-}
-
 template<typename T>
 class Allocator {
  public:
@@ -57,6 +49,7 @@ class Allocator {
     fclose(f);
   }
 
+  // TODO: mmap support
   int alloc() {
     if (free_indices.empty()) {
       if (N == cap) {
@@ -257,18 +250,24 @@ class Bucket {
     tailp = tail;
   }
 
-  pair<bool,int> leaf_erase_largest() {
+  int leaf_erase_pos(int pos) {
+    assert(is_valid());
+    assert(pos >= 0 && pos < N);
+    swap(D[pos], D[--N]);
+    return D[N];
+  }
+
+  pair<bool, int> leaf_largest() {
     assert(nextp == 0);
     // fprintf(stderr, "leaf_erase_largest\n");
-    if (N == 0) return make_pair(false, D[0]);
+    if (N == 0) return make_pair(false, 0);
     int largest_pos = 0, pos = 1;
     while (pos < N) {
-      if (D[pos] > D[largest_pos])
+      if (D[pos] >= D[largest_pos])
         largest_pos = pos;
       pos++;
     }
-    swap(D[largest_pos], D[--N]);
-    return make_pair(true, D[N]);
+    return make_pair(true, largest_pos);
   }
 
   bool leaf_erase(int v) {
@@ -527,7 +526,6 @@ class CTree {
       if (i != 5) B->append(R[i]);
     }
     // fprintf(stderr, "pivot = %d\n", pivot);
-    // debug(10);
     return R[5];
   }
 
@@ -545,32 +543,26 @@ class CTree {
     int hi[LEAF_BSIZE], nhi = 0;
     int lo[LEAF_BSIZE], nlo = 0;
     while (true) {
-      // fprintf(stderr, "Lb = %d, Rb = %d\n", Lb, Rb);
       if (nhi && nlo) {
-        // fprintf(stderr, "a\n");
         assert(Lb != 0 && Rb != 0);
         LEAF_BUCKET(Lb)->fusion(LEAF_BUCKET(Rb), hi, lo, nhi, nlo);
         if (!nhi) { add_chain(chain[0], Lb); Lb = 0; }
         if (!nlo) { add_chain(chain[1], Rb); Rb = 0; }
       } else if (Lb == 0) {
-        // fprintf(stderr, "b\n");
         if (Nb == 0) break;
         Lb = Nb;
         Nb = LEAF_BUCKET(Nb)->detach_and_get_next();
         if (!LEAF_BUCKET(Lb)->is_full()) break;
       } else if (!nhi) {
         assert(Lb != 0);
-        // fprintf(stderr, "c %d\n", LEAF_BUCKET(Lb)->size());
         LEAF_BUCKET(Lb)->mark_hi(pivot, hi, nhi);
         if (!nhi){ add_chain(chain[0], Lb); Lb = 0; }
       } else if (Rb == 0) {
-        // fprintf(stderr, "d\n");
         if (Nb == 0) break;
         Rb = Nb;
         Nb = LEAF_BUCKET(Nb)->detach_and_get_next();
         if (!LEAF_BUCKET(Rb)->is_full()) break;
       } else if (!nlo) {
-        // fprintf(stderr, "e\n");
         assert(Rb != 0);
         LEAF_BUCKET(Rb)->mark_lo(pivot, lo, nlo);
         if (!nlo){ add_chain(chain[1], Rb); Rb = 0; }
@@ -596,8 +588,6 @@ class CTree {
   }
 
   void leaf_split(int leafb, int &promotedValue, int &new_leafb) {
-    // assert(leaf_check());
-    // fprintf(stderr, "b = %d / %d\n", b, leaf_bucket_allocator.N);
     assert(LEAF_BUCKET(leafb)->next() != 0);
     new_leafb = 0;
     if (!LEAF_BUCKET(LEAF_BUCKET(leafb)->next())->next()) {
@@ -671,7 +661,6 @@ class CTree {
     // assert(check());
     // fprintf(stderr, "nb = %d\n", nb);
     if (nb != 0) {
-      // Replace root
       // fprintf(stderr, "OLD ROOT %d\n", root);
       assert(parent == 0);
       if (is_leaf(root)) {
@@ -702,19 +691,19 @@ class CTree {
     while (leafb != 0) {
       ret += LEAF_BUCKET(leafb)->size();
       leafb = LEAF_BUCKET(leafb)->next();
-      // fprintf(stderr, "size = %d, leafb = %d\n", ret, leafb);
     }
     return ret;
   }
 
   pair<int, int> find_bucket(int value, bool include_internal) {
-    int b = root;
+    int b = root, splitted = 0;
     // fprintf(stderr, "find_bucket %d\n", b);
     while (true) {
       if (is_leaf(b)) {
         if (!split_chain(b)) break;
         b = LEAF_BUCKET(b)->parent();
         assert(b != 0);
+        splitted = 1;
       } else {
         int pos = INTERNAL_BUCKET(b)->internal_lower_pos(value);
         if (include_internal && INTERNAL_BUCKET(b)->equal(pos, value)) {
@@ -723,7 +712,7 @@ class CTree {
         b = INTERNAL_BUCKET(b)->child(pos);    // Search the child.
       }
     }
-    return make_pair(b, 0);
+    return make_pair(b, splitted);
   }
 
   void add_chain(int head, int next) {
@@ -917,7 +906,6 @@ class CTree {
           pos = ib->internal_lower_pos(value);
           if (pos < ib->size()) {
             ret = make_pair(true, ib->data(pos));
-            // fprintf(stderr, "x");
             break;
           }
           b = ib->parent();
@@ -958,10 +946,13 @@ class CTree {
     // fprintf(stderr, "inserted %d elements\n", size());
   }
 
-  pair<bool, int> erase_largest(int b) {
+  // Returns bucket, pos of the largest.
+  pair<int, int> find_largest(int b) {
     assert(is_leaf(b));
-    auto res = LEAF_BUCKET(b)->leaf_erase_largest();
-    if (res.first) return res;
+    auto res = LEAF_BUCKET(b)->leaf_largest();
+    if (res.first) return make_pair(b, res.second);
+
+    // This bucket happends to be empty, search ancestors.
     while (b) {
       assert(LEAF_BUCKET(b)->size() == 0);
       int parent = LEAF_BUCKET(b)->parent();
@@ -971,10 +962,10 @@ class CTree {
         delete_internal_bucket(b);
       }
       if (INTERNAL_BUCKET(parent)->size() > 0)
-        return make_pair(true, INTERNAL_BUCKET(parent)->internal_promote_last());
+        return make_pair(parent, 0);
       b = parent;
     }
-    return res;
+    return make_pair(0, 0);
   }
 
   bool erase(int value) {
@@ -983,26 +974,30 @@ class CTree {
     // debug();
 
     pair<int, int> p = find_bucket(value, true);
-    if (is_leaf(p.first)) {
-      return LEAF_BUCKET(p.first)->leaf_erase(value); // May return false.
-    }
+    if (is_leaf(p.first)) return LEAF_BUCKET(p.first)->leaf_erase(value);
 
-    int upper = find_bucket(value, false).first;
+    // Found in an internal node, delete the largest node <= value.
+    auto upper = find_bucket(value, false);
+    auto res = find_largest(upper.first);
+    assert(res.first); // There must be at least one element.
 
-    // The buckets may have moved.
-    p = find_bucket(value, true);
-
-    IBucket *ib = INTERNAL_BUCKET(p.first);
-    int pos = p.second;
-    assert(ib->data(pos) == value);
-
-    auto res = erase_largest(upper);
-    // fprintf(stderr, "ii res = %d, largest = %d\n", res.first, res.second);
-    if (!res.first) {
-      ib->internal_erase(pos, 0);
+    if (is_leaf(res.first)) {
+      res.second = LEAF_BUCKET(res.first)->leaf_erase_pos(res.second);
+    } else if (res.first == p.first) {
+      // Found in the same internal node as p.first, just delete it.
+      INTERNAL_BUCKET(p.first)->internal_erase(p.second, 0);
+      fprintf(stderr, "yay\n");
+      return true;
     } else {
-      ib->set_data(pos, res.second);
+      res.second = INTERNAL_BUCKET(res.first)->internal_promote_last();
     }
+    // fprintf(stderr, "ii res = %d, largest = %d\n", res.first, res.second);
+
+    // res.second is now contains the largest value just deleted.
+    // The buckets may have moved.
+    if (upper.second) p = find_bucket(value, true);
+    assert(INTERNAL_BUCKET(p.first)->data(p.second) == value);
+    INTERNAL_BUCKET(p.first)->set_data(p.second, res.second);
     // assert(check());
     return true;
   }
