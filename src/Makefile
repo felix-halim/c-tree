@@ -40,9 +40,6 @@ $(ODIR)/comb2_lfhv: comb2.cc comb2.h random.h test_lfhv.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
 
 
-$(ODIR)/ctree_eager_noup: ctree_eager.cc ctree_eager.h random.h test_noup.h
-	$(CXX) $(CXXFLAGS) $(FLAGS) -DNOUP -Wall -o $@ $<
-
 $(ODIR)/ctree_exp_leafsize_noup: ctree_exp_leafsize.cc ctree_exp_leafsize.h random.h test_noup.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DNOUP -Wall -o $@ $<
 
@@ -84,6 +81,8 @@ $(ODIR)/ctree_tests: ctree_tests.cc ctree.h random.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
 
 
+$(ODIR)/ctree_eager_noup: ctree.cc ctree.h random.h test_noup.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DNOUP -DINTERNAL_BSIZE=64 -DLEAF_BSIZE=128 -DEAGER -Wall -o $@ $<
 
 $(ODIR)/ctree_32_32_noup: ctree.cc ctree.h random.h test_noup.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DNOUP -DINTERNAL_BSIZE=32 -DLEAF_BSIZE=32 -Wall -o $@ $<

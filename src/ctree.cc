@@ -23,7 +23,9 @@ void init(int *arr, int N) {
   //   c.insert(arr[i]);
   // }
   // assert(c.check());
-  c.optimize();
+  #ifdef EAGER
+    c.optimize();
+  #endif
   // c.save("ctree");
   // locked = 1;
   // // c.debug();
