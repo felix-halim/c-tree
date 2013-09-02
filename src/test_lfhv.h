@@ -25,6 +25,7 @@ map<int,int> checksum7 {
   { 1000000, -1937611658 },
   { 10000000, 1647471467 },
   { 100000000, -527620924 },
+  { 1000000000, 2144904532 },
 };
 
 map<int,int> checksum8 {
@@ -37,6 +38,7 @@ map<int,int> checksum8 {
   { 1000000, 425986485 },
   { 10000000, -1248377164 },
   { 100000000, -1370805606 },
+  { 1000000000, -1643017426 },
 };
 
 void init(int *arr, int N);  // Initializes the initial values of N integers.

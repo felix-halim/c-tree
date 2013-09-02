@@ -51,5 +51,5 @@ void results(double insert_time, double query_time, int checksum) {
   assert(c.check());
   printf("%.6lf,%.6lf,%d,", insert_time, query_time, checksum);
   printf("\"%s\",%d,%d,%d,%d,%d,%.6lf,%.6lf,%.6lf\n", version, nLeaves, nCap, nInternals, c.max_depth(), c.slack(), t1, t2, t3);
-  c.print_stats();
+  // c.print_stats();
 }

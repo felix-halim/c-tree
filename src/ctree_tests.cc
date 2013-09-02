@@ -11,6 +11,14 @@ using namespace std;
 using namespace ctree;
 using namespace chrono;
 
+template<typename Func>
+double time_it(Func f) {
+  auto t0 = high_resolution_clock::now();
+  f();
+  auto t1 = high_resolution_clock::now();
+  return duration_cast<microseconds>(t1 - t0).count() * 1e-6;
+}
+
 #define REP(i, n) for (int i = 0, _n = n; i < _n; i++)
 #define PASSED "\033[92mPASSED\033[0m"
 #define FAILED "\033[91mFAILED\033[0m"
@@ -152,16 +160,16 @@ vector<pair<string,function<void()>>> tests {
   }},
 
   { "ctree erase correctness", [] {
-    return;
     Random rng;
     CTree c;
     multiset<int> mset;
-    REP(i, 1000000) {
+    REP(i, 10000) {
       if (!(i & (i + 1))) printf("."), fflush(stdout);
-      int num = rng.nextInt(100000);
-      if (mset.size() > 100000) {
+      int num = rng.nextInt(100);
+      if (mset.size() > 100) {
         auto it = mset.find(num);
         bool ok = c.erase(num);
+        // c.debug();
         if (it != mset.end()) {
           mset.erase(it);
           ASSERT_TRUE(ok);
@@ -173,6 +181,7 @@ vector<pair<string,function<void()>>> tests {
           mset.insert(num);
           c.insert(num);
         } else if (mset.count(num)) {
+          // c.debug();
           auto it = c.lower_bound(num);
           ASSERT_TRUE(it.first);
           ASSERT_TRUE(it.second == num);

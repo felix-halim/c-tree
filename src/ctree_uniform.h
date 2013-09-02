@@ -254,26 +254,27 @@ class Bucket {
     assert(is_valid());
     assert(pos >= 0 && pos < N);
     swap(D[pos], D[--N]);
+    P = 1;
     return D[N];
   }
 
-  pair<bool, int> leaf_largest() {
+  int leaf_largest_pos() {
     assert(nextp == 0);
     // fprintf(stderr, "leaf_erase_largest\n");
-    if (N == 0) return make_pair(false, 0);
     int largest_pos = 0, pos = 1;
     while (pos < N) {
       if (D[pos] >= D[largest_pos])
         largest_pos = pos;
       pos++;
     }
-    return make_pair(true, largest_pos);
+    return largest_pos;
   }
 
   bool leaf_erase(int v) {
     for (int i = 0; i < N; i++) {
       if (D[i] == v) {
         D[i] = D[--N];
+        P = 1;
         return true;
       }
     }
@@ -695,6 +696,8 @@ class CTree {
     return ret;
   }
 
+  // Returns <bucket, pos> if found in internal node,
+  // Otherwise returns <bucket, splitted> for leaf node.
   pair<int, int> find_bucket(int value, bool include_internal) {
     int b = root, splitted = 0;
     // fprintf(stderr, "find_bucket %d\n", b);
@@ -946,28 +949,6 @@ class CTree {
     // fprintf(stderr, "inserted %d elements\n", size());
   }
 
-  // Returns bucket, pos of the largest.
-  pair<int, int> find_largest(int b) {
-    assert(is_leaf(b));
-    auto res = LEAF_BUCKET(b)->leaf_largest();
-    if (res.first) return make_pair(b, res.second);
-
-    // This bucket happends to be empty, search ancestors.
-    while (b) {
-      assert(LEAF_BUCKET(b)->size() == 0);
-      int parent = LEAF_BUCKET(b)->parent();
-      if (is_leaf(b)) {
-        delete_leaf_bucket(b);
-      } else {
-        delete_internal_bucket(b);
-      }
-      if (INTERNAL_BUCKET(parent)->size() > 0)
-        return make_pair(parent, 0);
-      b = parent;
-    }
-    return make_pair(0, 0);
-  }
-
   bool erase(int value) {
     // assert(check());
     // fprintf(stderr, "ERASE %d\n", value);
@@ -978,26 +959,47 @@ class CTree {
 
     // Found in an internal node, delete the largest node <= value.
     auto upper = find_bucket(value, false);
-    auto res = find_largest(upper.first);
-    assert(res.first); // There must be at least one element.
 
-    if (is_leaf(res.first)) {
-      res.second = LEAF_BUCKET(res.first)->leaf_erase_pos(res.second);
-    } else if (res.first == p.first) {
-      // Found in the same internal node as p.first, just delete it.
-      INTERNAL_BUCKET(p.first)->internal_erase(p.second, 0);
-      fprintf(stderr, "yay\n");
-      return true;
+    // It is possible that finding upper invalidated p's references.
+    if (upper.second) p = find_bucket(value, true); // Refresh.
+
+    // upper.first is the leaf bucket containing the value.
+    // upper.second signify whether a leaf_split happened when finding the bucket.
+    int b = upper.first;
+    int next_largest = 0;
+    assert(is_leaf(b));
+    if (LEAF_BUCKET(b)->size()) {
+      int pos = LEAF_BUCKET(b)->leaf_largest_pos();
+      next_largest = LEAF_BUCKET(b)->leaf_erase_pos(pos);
     } else {
-      res.second = INTERNAL_BUCKET(res.first)->internal_promote_last();
+      // Bucket b is empty, search ancestors.
+      while (true) {
+        assert(b != p.first);
+        assert(LEAF_BUCKET(b)->size() == 0);
+        int parent = LEAF_BUCKET(b)->parent();
+        assert(parent);
+        if (is_leaf(b)) {
+          delete_leaf_bucket(b);
+        } else {
+          delete_internal_bucket(b);
+        }
+        if (INTERNAL_BUCKET(parent)->size() > 0) {
+          if (parent == p.first) {
+            // Found in the same internal node as p.first, just delete it.
+            INTERNAL_BUCKET(p.first)->internal_erase(p.second, 0);
+            // fprintf(stderr, "yay\n");
+            return true;
+          }
+          next_largest = INTERNAL_BUCKET(parent)->internal_promote_last();
+          break;
+        }
+        b = parent;
+      }
     }
     // fprintf(stderr, "ii res = %d, largest = %d\n", res.first, res.second);
-
-    // res.second is now contains the largest value just deleted.
-    // The buckets may have moved.
-    if (upper.second) p = find_bucket(value, true);
     assert(INTERNAL_BUCKET(p.first)->data(p.second) == value);
-    INTERNAL_BUCKET(p.first)->set_data(p.second, res.second);
+    assert(next_largest <= value);
+    INTERNAL_BUCKET(p.first)->set_data(p.second, next_largest);
     // assert(check());
     return true;
   }
