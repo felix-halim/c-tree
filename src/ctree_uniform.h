@@ -17,8 +17,13 @@ const char *version = "Uniform 64";
 
 namespace ctree {
 
-#define INTERNAL_BSIZE   64  // Must be power of two.
-#define LEAF_BSIZE      256  // Must be power of two.
+#ifndef INTERNAL_BSIZE
+  #define INTERNAL_BSIZE 64
+#endif
+
+#ifndef LEAF_BSIZE
+  #define LEAF_BSIZE 256
+#endif
 
 template<typename T>
 class Allocator {
@@ -190,6 +195,9 @@ class Bucket {
   int leaf_lower_pos(int value) {
     assert(is_valid());
     leaf_sort();
+    if (LEAF_BSIZE >= 256) {
+      return std::lower_bound(D, D + N, value) - D;
+    }
     int pos = 0;
     while (pos < N && D[pos] < value) pos++;
     return pos;

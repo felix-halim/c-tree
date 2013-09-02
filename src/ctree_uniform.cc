@@ -49,7 +49,8 @@ int query(int value) {
 void results(double insert_time, double query_time, int checksum) {
   assert(c.check());
   printf("%.6lf,%.6lf,%d,", insert_time, query_time, checksum);
-  printf("\"%s\",%d,%d,%d,%d,%d,", version, nLeaves, nCap, nInternals, c.max_depth(), c.slack());
+  printf("\"%s\",%d,%d,%d,", version, nLeaves, nCap, nInternals);
+  printf("%d,%d,%d,%d,", c.max_depth(), c.slack(), INTERNAL_BSIZE, LEAF_BSIZE);
   c.print_allocators();
   puts("");
   // c.print_stats();
