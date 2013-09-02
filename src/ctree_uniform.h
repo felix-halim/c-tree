@@ -18,7 +18,7 @@ const char *version = "Uniform 64";
 namespace ctree {
 
 #define INTERNAL_BSIZE  64  // Must be power of two.
-#define LEAF_BSIZE      64  // Must be power of two.
+#define LEAF_BSIZE      128  // Must be power of two.
 
 template<typename T>
 class Allocator {
