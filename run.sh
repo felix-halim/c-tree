@@ -33,48 +33,50 @@ batch_ctree)	./run.sh noup ctree_32_32 | tee -a $out
 							./run.sh noup ctree_32_128 | tee -a $out
 							./run.sh noup ctree_32_256 | tee -a $out
 							./run.sh noup ctree_32_1024 | tee -a $out
-							./run.sh noup ctree_32_4096 | tee -a $out
 							./run.sh noup ctree_64_32 | tee -a $out
 							./run.sh noup ctree_64_64 | tee -a $out
 							./run.sh noup ctree_64_128 | tee -a $out
 							./run.sh noup ctree_64_256 | tee -a $out
 							./run.sh noup ctree_64_1024 | tee -a $out
-							./run.sh noup ctree_64_4096 | tee -a $out
 							./run.sh noup ctree_128_32 | tee -a $out
 							./run.sh noup ctree_128_64 | tee -a $out
 							./run.sh noup ctree_128_128 | tee -a $out
 							./run.sh noup ctree_128_256 | tee -a $out
 							./run.sh noup ctree_128_1024 | tee -a $out
-							./run.sh noup ctree_128_4096 | tee -a $out
 							./run.sh noup ctree_256_32 | tee -a $out
 							./run.sh noup ctree_256_64 | tee -a $out
 							./run.sh noup ctree_256_128 | tee -a $out
 							./run.sh noup ctree_256_256 | tee -a $out
 							./run.sh noup ctree_256_1024 | tee -a $out
-							./run.sh noup ctree_256_4096 | tee -a $out
 							./run.sh lfhv ctree_32_32 | tee -a $out
 							./run.sh lfhv ctree_32_64 | tee -a $out
 							./run.sh lfhv ctree_32_128 | tee -a $out
 							./run.sh lfhv ctree_32_256 | tee -a $out
 							./run.sh lfhv ctree_32_1024 | tee -a $out
-							./run.sh lfhv ctree_32_4096 | tee -a $out
 							./run.sh lfhv ctree_64_32 | tee -a $out
 							./run.sh lfhv ctree_64_64 | tee -a $out
 							./run.sh lfhv ctree_64_128 | tee -a $out
 							./run.sh lfhv ctree_64_256 | tee -a $out
 							./run.sh lfhv ctree_64_1024 | tee -a $out
-							./run.sh lfhv ctree_64_4096 | tee -a $out
 							./run.sh lfhv ctree_128_32 | tee -a $out
 							./run.sh lfhv ctree_128_64 | tee -a $out
 							./run.sh lfhv ctree_128_128 | tee -a $out
 							./run.sh lfhv ctree_128_256 | tee -a $out
 							./run.sh lfhv ctree_128_1024 | tee -a $out
-							./run.sh lfhv ctree_128_4096 | tee -a $out
 							./run.sh lfhv ctree_256_32 | tee -a $out
 							./run.sh lfhv ctree_256_64 | tee -a $out
 							./run.sh lfhv ctree_256_128 | tee -a $out
 							./run.sh lfhv ctree_256_256 | tee -a $out
 							./run.sh lfhv ctree_256_1024 | tee -a $out
+
+							./run.sh noup ctree_32_4096 | tee -a $out
+							./run.sh noup ctree_64_4096 | tee -a $out
+							./run.sh noup ctree_128_4096 | tee -a $out
+							./run.sh noup ctree_256_4096 | tee -a $out
+
+							./run.sh lfhv ctree_32_4096 | tee -a $out
+							./run.sh lfhv ctree_64_4096 | tee -a $out
+							./run.sh lfhv ctree_128_4096 | tee -a $out
 							./run.sh lfhv ctree_256_4096 | tee -a $out
 							;;
 
