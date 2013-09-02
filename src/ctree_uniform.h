@@ -22,7 +22,7 @@ namespace ctree {
 #endif
 
 #ifndef LEAF_BSIZE
-  #define LEAF_BSIZE 1024
+  #define LEAF_BSIZE 128
 #endif
 
 template<typename T>
