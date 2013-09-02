@@ -54,9 +54,9 @@ class Allocator {
     if (free_indices.empty()) {
       if (N == cap) {
         fprintf(stderr, "double %d\n", cap);
-        T *newD = new T[cap * 4];
+        T *newD = new T[cap * 2];
         memcpy(newD, D, sizeof(T) * cap);
-        cap *= 4;
+        cap *= 2;
         delete[] D;
         D = newD;
       }
@@ -757,7 +757,7 @@ class CTree {
   CTree() {
     int max_size = 100000000;
     leaf_bucket_allocator.init(max_size / LEAF_BSIZE * 2);
-    internal_bucket_allocator.init(max_size / LEAF_BSIZE / INTERNAL_BSIZE * 2);
+    internal_bucket_allocator.init(max_size / LEAF_BSIZE / INTERNAL_BSIZE * 3);
     root = new_leaf_bucket(0);
   }
 
