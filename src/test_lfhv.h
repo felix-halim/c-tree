@@ -84,6 +84,7 @@ int main(int argc, char *argv[]) {
       fprintf(stderr, "\033[1;31mFAILED\033[0m checksum %d != %d\n", checksum7[Q], csum);
     if (N == 100000000 && checksum8.count(Q) && checksum8[Q] != csum)
       fprintf(stderr, "\033[1;31mFAILED\033[0m checksum %d != %d\n", checksum8[Q], csum);
+    fflush(stdout);
     if (Q == 1000000000) break;
   }
   return 0;

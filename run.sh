@@ -1,5 +1,5 @@
 mkdir bin 2> /dev/null
-N=10000000
+N=100000000
 Q=1
 out=results.js
 
@@ -29,24 +29,26 @@ lfhv)
 
 batch_noup)
 
-	#	./run.sh noup comb | tee -a $out
-	#	./run.sh noup ctree | tee -a $out
-		./run.sh noup ctree_exp_leafsize | tee -a $out
-	#	./run.sh noup ctree_eager | tee -a $out
-	#	./run.sh noup comb2 | tee -a $out
-	#	./run.sh noup btree_google | tee -a $out
-	#	./run.sh noup sort | tee -a $out
-	#	./run.sh noup btree_stx | tee -a $out
+	./run.sh noup comb | tee -a $out
+	./run.sh noup ctree | tee -a $out
+	./run.sh noup ctree_uniform | tee -a $out
+	./run.sh noup ctree_exp_leafsize | tee -a $out
+	./run.sh noup ctree_eager | tee -a $out
+	./run.sh noup comb2 | tee -a $out
+	./run.sh noup btree_google | tee -a $out
+	./run.sh noup sort | tee -a $out
+	./run.sh noup btree_stx | tee -a $out
 	;;
 
 
 batch_lfhv)
 
-	#	./run.sh lfhv comb | tee -a $out
-		./run.sh lfhv ctree | tee -a $out
-	#	./run.sh lfhv comb2 | tee -a $out
-	#	./run.sh lfhv btree_google | tee -a $out
-	#	./run.sh lfhv btree_stx | tee -a $out
+	./run.sh lfhv comb | tee -a $out
+	./run.sh lfhv ctree | tee -a $out
+	./run.sh lfhv ctree_uniform | tee -a $out
+	./run.sh lfhv comb2 | tee -a $out
+	./run.sh lfhv btree_google | tee -a $out
+	./run.sh lfhv btree_stx | tee -a $out
 	;;
 
 
