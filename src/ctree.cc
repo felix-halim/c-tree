@@ -1,7 +1,7 @@
 #include <cstdio>
 #include <cassert>
 #include <algorithm>
-#include "ctree_uniform.h"
+#include "ctree.h"
 
 #ifdef NOUP
   #include "test_noup.h"
