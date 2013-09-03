@@ -2,12 +2,7 @@
 #include <cassert>
 #include <algorithm>
 #include "ctree.h"
-
-#ifdef NOUP
-  #include "test_noup.h"
-#else
-  #include "test_lfhv.h"
-#endif
+#include "test.h"
 
 using namespace std;
 using namespace ctree;
@@ -38,7 +33,15 @@ int query(int value) {
   return ret;
 }
 
-void results(double insert_time, double query_time, int checksum) {
-  printf("%.6lf,%.6lf,%d,", insert_time, query_time, checksum);
-  printf("\"%s\",%d,%d,%d,%d,%d,%.6lf,%.6lf,%.6lf\n", c.version, nLeaves, nCap, nInternals, c.max_depth(), c.slack(), c.t1, c.t2, c.t3);
+void results(Statistics &s) {
+  assert(c.check());
+  s.note = "With mini cracker indices";
+  s.n_leaves = nLeaves;
+  s.n_capacity = nCap;
+  s.n_internals = nInternals;
+  s.max_depth = c.max_depth();
+  s.slack = c.slack();
+  s.in_size = INTERNAL_BSIZE;
+  s.ln_size = LEAF_BSIZE;
+  // c.alloc_sizes(s.ia_free, s.ia_size, s.la_free, s.la_size);
 }

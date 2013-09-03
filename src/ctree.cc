@@ -2,12 +2,7 @@
 #include <cassert>
 #include <algorithm>
 #include "ctree.h"
-
-#ifdef NOUP
-  #include "test_noup.h"
-#else
-  #include "test_lfhv.h"
-#endif
+#include "test.h"
 
 using namespace std;
 using namespace ctree;
@@ -25,11 +20,10 @@ void init(int *arr, int N) {
   // assert(c.check());
   #ifdef EAGER
     c.optimize();
+    locked = 1;
   #endif
   // c.save("ctree");
-  // locked = 1;
   // // c.debug();
-  // fprintf(stderr, "depth = %d, slack = %d\n", c.max_depth(), c.slack());
 }
 
 void insert(int value) {
@@ -37,8 +31,12 @@ void insert(int value) {
 }
 
 void erase(int value) {
-  bool ok = c.erase(value);
-  assert(ok);
+  #ifdef NDEBUG
+    c.erase(value);
+  #else
+    bool ok = c.erase(value);
+    assert(ok);
+  #endif
 }
 
 int query(int value) {
@@ -48,12 +46,19 @@ int query(int value) {
   return ret;
 }
 
-void results(double insert_time, double query_time, int checksum) {
+void results(Statistics &s) {
   assert(c.check());
-  printf("%.6lf,%.6lf,%d,", insert_time, query_time, checksum);
-  printf("\"%s\",%d,%d,%d,", "Eager", nLeaves, nCap, nInternals);
-  printf("%d,%d,%d,%d,", c.max_depth(), c.slack(), INTERNAL_BSIZE, LEAF_BSIZE);
-  c.print_allocators();
-  puts("");
-  // c.print_stats();
+  #ifdef EAGER
+    s.note = "Eager";
+  #else
+    s.note = "Lazy";
+  #endif
+  s.n_leaves = nLeaves;
+  s.n_capacity = nCap;
+  s.n_internals = nInternals;
+  s.max_depth = c.max_depth();
+  s.slack = c.slack();
+  s.in_size = INTERNAL_BSIZE;
+  s.ln_size = LEAF_BSIZE;
+  c.alloc_sizes(s.ia_free, s.ia_size, s.la_free, s.la_size);
 }
