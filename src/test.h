@@ -121,7 +121,6 @@ int main(int argc, char *argv[]) {
   s.host = argv[1];
   s.N = atoi(argv[2]);
   int U = atoi(argv[3]);
-  s.workload = U ? "LFHV" : "NOUP";
   int MAX_Q = atoi(argv[4]);
 
   mt19937 gen(140384);
@@ -135,12 +134,31 @@ int main(int argc, char *argv[]) {
 
   s.checksum = 0;
   s.query_time = 0;
+
+  switch (U) {
+    case 0 : s.workload = "NOUP"; break;
+    case 1 : s.workload = "LFHV"; break;
+    case 2 : {
+      s.workload = "SKEW01";
+      auto mn = dis.min();
+      auto mx = dis.max();
+      fprintf(stderr, "old query domain %d %d\n", mn, mx);
+      long long sz = (long long) mx - mn;
+      mn = dis(gen) % (sz - sz / 100000000);
+      mx = mn + sz / 100000000;
+      dis = uniform_int_distribution<>(mn, mx);
+      fprintf(stderr, "new query domain %d %d\n", mn, mx);
+      break;
+    }
+    default : assert(0); abort(); break;
+  }
+
   for (s.Q = 1; ; s.Q *= 10) {
     s.query_time += time_it([&] {
       int nQ = s.Q - s.Q / 10; // nQ = how many queries needed.
       for (int i = 0; i < nQ; i++) {
         s.checksum = s.checksum * 13 + query(dis(gen));
-        if (U && i % 1000 == 0) {
+        if (U == 1 && i % 1000 == 0) {
           for (int j = 0; j < 1000; j++) {
             int k = disN(gen);
             erase(iarr[k]);
