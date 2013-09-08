@@ -53,9 +53,43 @@ map<int, unsigned long long> lfhv_checksum8 {
   { 1000000000, 4303073853386275283ULL },
 };
 
+map<int, map<int, unsigned long long>> skew_checksum7 {
+  {1,
+    {
+    { 1, 424586796ULL },
+    { 10, 4877741279594536584ULL },
+    { 100, 1651525396633200272ULL },
+    { 1000, 9361992673690044064ULL },
+    { 10000, 9112746061879768640ULL },
+    { 100000, 17238393772355088000ULL },
+    { 1000000, 16521600776326779136ULL },
+    { 10000000, 9870782629473069568ULL },
+    { 100000000, 18060091962719123456ULL },
+    { 1000000000, 18257314662972076032ULL },
+    }
+  }
+};
+
+map<int, map<int, unsigned long long>> skew_checksum8 {
+  {1,
+    {
+    { 1, 815231912ULL },
+    { 10, 9365553491223454448ULL },
+    { 100, 8165526824854516448ULL },
+    { 1000, 5393392765373772480ULL },
+    { 10000, 15925377051034456960ULL },
+    { 100000, 13777427989925339904ULL },
+    { 1000000, 4474280651906801152ULL },
+    { 10000000, 2911392226073029632ULL },
+    { 100000000, 18060091962719123456ULL },
+    { 1000000000, 18257314662972076032ULL },
+    }
+  }
+};
+
 struct Statistics {
   // Managed by test framework.
-  int N, Q;
+  int N, Q, selectivity, verified;
   string host;
   string algorithm;
   string workload;
@@ -84,6 +118,8 @@ struct Statistics {
     printf("\"%s\",", workload.c_str());
     printf("%d,", N);
     printf("%d,", Q);
+    printf("%d,", selectivity);
+    printf("%d,", verified);
     printf("%.6lf,", insert_time);
     printf("%.6lf,", query_time);
     printf("%llu,", checksum);
@@ -102,6 +138,35 @@ struct Statistics {
     puts("");
   }
 };
+
+template<typename M>
+bool checksum_match(M &m, int k, unsigned long long v) {
+  if (m.count(k)) {
+    if (m[k] == v) return true;
+    fprintf(stderr, "\033[1;31mFAILED\033[0m checksum %llu != %llu\n", m[k], v);
+  }
+  return false;
+}
+
+template<typename M>
+bool checksum_match2(M &m, int k1, int k2, unsigned long long v) {
+  if (m.count(k1) && m[k1].count(k2)) {
+    if (m[k1][k2] == v) return true;
+    fprintf(stderr, "\033[1;31mFAILED\033[0m checksum %llu != %llu\n", m[k1][k2], v);
+  }
+  return false;
+}
+
+int verify(int U, Statistics &s) {
+  switch (U) {
+    case 0 : return s.N == 100000000 && checksum_match(noup_checksum, s.Q, s.checksum);
+    case 1 : return (s.N == 10000000) ? checksum_match(lfhv_checksum7, s.Q, s.checksum) :
+                    (s.N == 100000000 ? checksum_match(lfhv_checksum8, s.Q, s.checksum) : 0);
+    case 2 : return (s.N == 10000000) ? checksum_match2(skew_checksum7, s.selectivity, s.Q, s.checksum) :
+                    (s.N == 100000000 ? checksum_match2(skew_checksum8, s.selectivity, s.Q, s.checksum) : 0);
+  }
+  return false;
+}
 
 void init(int *arr, int N);  // Initializes the initial values of N integers.
 void insert(int value);      // Inserts the value.
@@ -122,6 +187,8 @@ int main(int argc, char *argv[]) {
   s.N = atoi(argv[2]);
   int U = atoi(argv[3]);
   int MAX_Q = atoi(argv[4]);
+  s.selectivity = s.N;
+  if (argc > 5) s.selectivity = atoi(argv[5]);
 
   mt19937 gen(140384);
   uniform_int_distribution<> dis;
@@ -139,15 +206,17 @@ int main(int argc, char *argv[]) {
     case 0 : s.workload = "NOUP"; break;
     case 1 : s.workload = "LFHV"; break;
     case 2 : {
-      s.workload = "SKEW01";
+      s.workload = "SKEW";
       auto mn = dis.min();
       auto mx = dis.max();
-      fprintf(stderr, "old query domain %d %d\n", mn, mx);
+      // fprintf(stderr, "old query domain %d %d\n", mn, mx);
       long long sz = (long long) mx - mn;
-      mn = dis(gen) % (sz - sz / 100000000);
-      mx = mn + sz / 100000000;
-      dis = uniform_int_distribution<>(mn, mx);
-      fprintf(stderr, "new query domain %d %d\n", mn, mx);
+      if (s.selectivity < sz) {
+        mn = dis(gen) % (sz - s.selectivity);
+        mx = mn + s.selectivity;
+        dis = uniform_int_distribution<>(mn, mx);
+        // fprintf(stderr, "new query domain %d %d\n", mn, mx);
+      }
       break;
     }
     default : assert(0); abort(); break;
@@ -169,21 +238,9 @@ int main(int argc, char *argv[]) {
     });
 
     results(s);
+    s.verified = verify(U, s);
 
     s.print();
-
-    if (U) {
-      if (s.N == 10000000 && lfhv_checksum7.count(s.Q) && lfhv_checksum7[s.Q] != s.checksum) {
-        fprintf(stderr, "\033[1;31mFAILED\033[0m checksum %llu != %llu\n", lfhv_checksum7[s.Q], s.checksum);
-      }
-      if (s.N == 100000000 && lfhv_checksum8.count(s.Q) && lfhv_checksum8[s.Q] != s.checksum) {
-        fprintf(stderr, "\033[1;31mFAILED\033[0m checksum %llu != %llu\n", lfhv_checksum8[s.Q], s.checksum);
-      }
-    } else {
-      if (s.N == 100000000 && noup_checksum.count(s.Q) && noup_checksum[s.Q] != s.checksum) {
-        fprintf(stderr, "\033[1;31mFAILED\033[0m checksum %llu != %llu\n", noup_checksum[s.Q], s.checksum);
-      }
-    }
     fflush(stdout);
     if (s.Q >= MAX_Q) break;
   }
