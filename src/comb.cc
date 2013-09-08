@@ -1,12 +1,7 @@
 #include <cstdio>
 #include <cassert>
 #include "comb.h"
-
-#ifdef NOUP
-  #include "test_noup.h"
-#else
-  #include "test_lfhv.h"
-#endif
+#include "test.h"
 
 // Comb<int, std::less<int>, true, 3200, 125, 50> c;
 Comb<int> c;
@@ -22,8 +17,12 @@ void insert(int value) {
 
 void erase(int value) {
   // fprintf(stderr, "erase %d\n", value);
-  bool ok = c.erase(value);
-  assert(ok);
+  #ifdef NDEBUG
+    c.erase(value);
+  #else
+    bool ok = c.erase(value);
+    assert(ok);
+  #endif
 }
 
 int query(int value) {
@@ -33,6 +32,15 @@ int query(int value) {
   return ret;
 }
 
-void results(double insert_time, double query_time, int checksum) {
-  printf("%.6lf,%.6lf,%d\n", insert_time, query_time, checksum);
+void results(Statistics &s) {
+  assert(c.check());
+  s.note = "Lazy";
+  s.n_leaves = c.num_of_buckets();
+  s.n_capacity = c.num_of_buckets() * c.bucket_size();
+  s.n_internals = 1;
+  s.max_depth = 2;
+  s.slack = c.slack();
+  s.in_size = c.root_size();
+  s.ln_size = c.bucket_size();
+  // c.alloc_sizes(s.ia_free, s.ia_size, s.la_free, s.la_size);
 }

@@ -13,7 +13,16 @@ using namespace std;
 
 #include <sys/mman.h>
 
-#include "random.h"
+class Random {
+  mt19937 gen;
+  uniform_int_distribution<> dis;
+
+ public:
+  Random() : gen(140384) {}
+  Random(int seed) : gen(seed) {}
+  int nextInt() { return dis(gen); }
+  int nextInt(int N) { return dis(gen) % N; } // Poor I know.
+};
 
 template <typename T,
   typename CMP  = std::less<T>,
@@ -482,7 +491,7 @@ class Comb {
       B[i].clear_indexes();
       if (ntmp < 11){        // pick a random object from a stream!
         rtmp[ntmp++] = B[i].randomValue(rng);
-      } else if (rng.nextFloat()*ni < 11){
+      } else if (rng.nextInt(ni) < 11) {
         rtmp[rng.nextInt(11)] = B[i].randomValue(rng);
       }
     }
@@ -1043,6 +1052,20 @@ public:
   }
 
   void erase(iterator it1, iterator it2){ throw RangeError(); }
+
+  int bucket_size() {
+    return BLOCK_SIZE;
+  }
+
+  int slack() {
+    int ret = 0;
+    for (int i = 0; i < root_size(); i++) {
+      for (int idx = Pb[i]; idx != -1; idx = B[idx].next()) {
+        ret += B[idx].free();
+      }
+    }
+    return ret;
+  }
 
   bool check(){
     for (int i=0,cnt=0; i<root_size(); i++){

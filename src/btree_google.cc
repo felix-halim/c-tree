@@ -1,12 +1,7 @@
 #include <cstdio>
 #include <cassert>
 #include "google/btree_set.h"
-
-#ifdef NOUP
-  #include "test_noup.h"
-#else
-  #include "test_lfhv.h"
-#endif
+#include "test.h"
 
 btree::btree_multiset<int> b;
 
@@ -30,6 +25,15 @@ int query(int value) {
   return (it == b.end()) ? 0 : *it;
 }
 
-void results(double insert_time, double query_time, int checksum) {
-  printf("%.6lf,%.6lf,%d\n", insert_time, query_time, checksum);
+void results(Statistics &s) {
+  // assert(c.check());
+  s.note = "Google";
+  // s.n_leaves = c.num_of_buckets();
+  // s.n_capacity = c.num_of_buckets() * c.bucket_size();
+  // s.n_internals = 1;
+  // s.max_depth = 2;
+  // s.slack = c.slack();
+  // s.in_size = c.root_size();
+  // s.ln_size = c.bucket_size();
+  // c.alloc_sizes(s.ia_free, s.ia_size, s.la_free, s.la_size);
 }

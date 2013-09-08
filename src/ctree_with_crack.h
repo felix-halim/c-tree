@@ -7,12 +7,22 @@
 #include <queue>
 #include <chrono>
 #include <algorithm>
-#include "random.h"
 
 using namespace std;
 using namespace chrono;
 
 namespace ctree {
+
+class Random {
+  mt19937 gen;
+  uniform_int_distribution<> dis;
+
+ public:
+  Random() : gen(140384) {}
+  Random(int seed) : gen(seed) {}
+  int nextInt() { return dis(gen); }
+  int nextInt(int N) { return dis(gen) % N; } // Poor I know.
+};
 
 #define INTERNAL_BSIZE 64   // Must be power of two.
 #define LEAF_BSIZE 2048     // Must be power of two.
@@ -902,8 +912,6 @@ class CTree {
     }
     return ret;
   }
-
-  double t1 = 0, t2 = 0, t3 = 0;
 
   bool split_chain(LeafBucket *b) {
     // fprintf(stderr, "split_chain %d, %d\n", b->size(), b->next_bucket());

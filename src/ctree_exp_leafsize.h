@@ -12,7 +12,6 @@ use leaf chained as separate allocator
 #include <queue>
 #include <chrono>
 #include <algorithm>
-#include "random.h"
 
 using namespace std;
 using namespace chrono;
@@ -20,6 +19,17 @@ using namespace chrono;
 int nLeaves, nInternals, nCap, nDes, locked;
 
 namespace ctree {
+
+class Random {
+  mt19937 gen;
+  uniform_int_distribution<> dis;
+
+ public:
+  Random() : gen(140384) {}
+  Random(int seed) : gen(seed) {}
+  int nextInt() { return dis(gen); }
+  int nextInt(int N) { return dis(gen) % N; } // Poor I know.
+};
 
 #define INTERNAL_BSIZE       64  // Must be power of two.
 #define LEAF_BSIZE           64  // Must be power of two.

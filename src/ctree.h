@@ -7,7 +7,6 @@
 #include <queue>
 #include <chrono>
 #include <algorithm>
-#include "random.h"
 
 using namespace std;
 using namespace chrono;
@@ -15,6 +14,17 @@ using namespace chrono;
 int nLeaves, nInternals, nCap, locked;
 
 namespace ctree {
+
+class Random {
+  mt19937 gen;
+  uniform_int_distribution<> dis;
+
+ public:
+  Random() : gen(140384) {}
+  Random(int seed) : gen(seed) {}
+  int nextInt() { return dis(gen); }
+  int nextInt(int N) { return dis(gen) % N; } // Poor I know.
+};
 
 #ifndef INTERNAL_BSIZE
   #define INTERNAL_BSIZE 64
@@ -180,6 +190,7 @@ class Bucket {
   void leaf_sort() {
     assert(is_valid());
     if (P) {
+      assert(!locked);
       sort(D, D + N);
       P = 0;
     }
@@ -768,12 +779,11 @@ class CTree {
     root = new_leaf_bucket(0);
   }
 
-  void print_allocators() {
-    printf("%lu,%d,%lu,%d",
-      internal_bucket_allocator.free_indices.size(),
-      internal_bucket_allocator.N,
-      leaf_bucket_allocator.free_indices.size(),
-      leaf_bucket_allocator.N);
+  void alloc_sizes(int &ia_free, int &ia_size, int &la_free, int &la_size) {
+    ia_free = internal_bucket_allocator.free_indices.size();
+    ia_size = internal_bucket_allocator.N;
+    la_free = leaf_bucket_allocator.free_indices.size();
+    la_size = leaf_bucket_allocator.N;
   }
 
   bool optimize(int b = 0) {
@@ -795,6 +805,7 @@ class CTree {
     if (is_leaf(b)) {
       bool splitted = split_chain(b);
       while (split_chain(b));
+      LEAF_BUCKET(b)->leaf_sort();
       return splitted;
     }
 

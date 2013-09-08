@@ -7,190 +7,129 @@ CXXFLAGS = -O3 -g -DNDEBUGx -std=c++0x# -stdlib=libc++
 FLAGS    = -I.
 
 all: \
-	$(ODIR)/comb_noup \
-	$(ODIR)/comb_lfhv \
-	$(ODIR)/comb2_noup \
-	$(ODIR)/comb2_lfhv \
-	$(ODIR)/ctree_exp_leafsize_noup \
-	$(ODIR)/ctree_exp_leafsize_lfhv \
-	$(ODIR)/ctree_uniform_noup \
-	$(ODIR)/ctree_uniform_lfhv \
-	$(ODIR)/ctree_eager_noup \
-	$(ODIR)/ctree_noup \
-	$(ODIR)/ctree_lfhv \
-	$(ODIR)/btree_google_noup \
-	$(ODIR)/btree_google_lfhv \
-	$(ODIR)/btree_stx_noup \
-	$(ODIR)/btree_stx_lfhv \
-	$(ODIR)/sort_noup \
-	$(ODIR)/comb2_tests \
+	$(ODIR)/comb \
+	$(ODIR)/ctree \
+	$(ODIR)/ctree_eager \
+	$(ODIR)/ctree_with_crack \
+	$(ODIR)/ctree_exp_leafsize \
+	$(ODIR)/btree_google \
+	$(ODIR)/btree_stx \
+	$(ODIR)/sort \
 	$(ODIR)/ctree_tests
 
-$(ODIR)/comb_noup: comb.cc comb.h random.h test_noup.h
-	$(CXX) $(CXXFLAGS) $(FLAGS) -DNOUP -Wall -o $@ $<
-
-$(ODIR)/comb_lfhv: comb.cc comb.h random.h test_lfhv.h
+$(ODIR)/comb: comb.cc comb.h test.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
 
-
-$(ODIR)/comb2_noup: comb2.cc comb2.h random.h test_noup.h
-	$(CXX) $(CXXFLAGS) $(FLAGS) -DNOUP -Wall -o $@ $<
-
-$(ODIR)/comb2_lfhv: comb2.cc comb2.h random.h test_lfhv.h
+$(ODIR)/ctree_exp_leafsize: ctree_exp_leafsize.cc ctree_exp_leafsize.h test.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
 
-
-$(ODIR)/ctree_exp_leafsize_noup: ctree_exp_leafsize.cc ctree_exp_leafsize.h random.h test_noup.h
-	$(CXX) $(CXXFLAGS) $(FLAGS) -DNOUP -Wall -o $@ $<
-
-$(ODIR)/ctree_exp_leafsize_lfhv: ctree_exp_leafsize.cc ctree_exp_leafsize.h random.h test_noup.h
+$(ODIR)/ctree_with_crack: ctree_with_crack.cc ctree_with_crack.h test.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
 
-$(ODIR)/ctree_with_crack_noup: ctree_with_crack.cc ctree_with_crack.h random.h test_noup.h
-	$(CXX) $(CXXFLAGS) $(FLAGS) -DNOUP -Wall -o $@ $<
-
-$(ODIR)/ctree_with_crack_lfhv: ctree_with_crack.cc ctree_with_crack.h random.h test_lfhv.h
+$(ODIR)/sort: sort.cc test.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
 
-
-$(ODIR)/sort_noup: sort.cc random.h test_noup.h
-	$(CXX) $(CXXFLAGS) $(FLAGS) -DNOUP -Wall -o $@ $<
-
-$(ODIR)/sort_lfhv: sort.cc random.h test_lfhv.h
+$(ODIR)/btree_google: btree_google.cc google/btree_set.h google/btree.h google/btree_container.h test.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
 
-
-$(ODIR)/btree_google_noup: btree_google.cc google/btree_set.h google/btree.h google/btree_container.h test_noup.h random.h
-	$(CXX) $(CXXFLAGS) $(FLAGS) -DNOUP -Wall -o $@ $<
-
-$(ODIR)/btree_google_lfhv: btree_google.cc google/btree_set.h google/btree.h google/btree_container.h test_lfhv.h random.h
-	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
-
-
-$(ODIR)/btree_stx_noup: btree_stx.cc stx/btree_multiset stx/btree_multiset.h stx/btree.h test_noup.h random.h
-	$(CXX) $(CXXFLAGS) $(FLAGS) -DNOUP -Wall -o $@ $<
-
-$(ODIR)/btree_stx_lfhv: btree_stx.cc stx/btree_multiset stx/btree_multiset.h stx/btree.h test_lfhv.h random.h
-	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
-
-
-$(ODIR)/comb2_tests: comb2_tests.cc comb2.h random.h
+$(ODIR)/btree_stx: btree_stx.cc stx/btree_multiset stx/btree_multiset.h stx/btree.h test.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
 
 $(ODIR)/ctree_tests: ctree_tests.cc ctree.h random.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
 
+$(ODIR)/ctree_eager: ctree.cc ctree.h test.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=64 -DLEAF_BSIZE=128 -DEAGER -Wall -o $@ $<
 
-$(ODIR)/ctree_eager_noup: ctree.cc ctree.h random.h test_noup.h
-	$(CXX) $(CXXFLAGS) $(FLAGS) -DNOUP -DINTERNAL_BSIZE=64 -DLEAF_BSIZE=128 -DEAGER -Wall -o $@ $<
+$(ODIR)/ctree_8_8: ctree.cc ctree.h test.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=8 -DLEAF_BSIZE=8 -Wall -o $@ $<
+$(ODIR)/ctree_8_16: ctree.cc ctree.h test.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=8 -DLEAF_BSIZE=16 -Wall -o $@ $<
+$(ODIR)/ctree_8_32: ctree.cc ctree.h test.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=8 -DLEAF_BSIZE=32 -Wall -o $@ $<
+$(ODIR)/ctree_8_64: ctree.cc ctree.h test.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=8 -DLEAF_BSIZE=64 -Wall -o $@ $<
+$(ODIR)/ctree_8_128: ctree.cc ctree.h test.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=8 -DLEAF_BSIZE=128 -Wall -o $@ $<
+$(ODIR)/ctree_8_256: ctree.cc ctree.h test.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=8 -DLEAF_BSIZE=256 -Wall -o $@ $<
+$(ODIR)/ctree_8_1024: ctree.cc ctree.h test.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=8 -DLEAF_BSIZE=1024 -Wall -o $@ $<
+$(ODIR)/ctree_8_4096: ctree.cc ctree.h test.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=8 -DLEAF_BSIZE=4096 -Wall -o $@ $<
 
-$(ODIR)/ctree_32_32_noup: ctree.cc ctree.h random.h test_noup.h
-	$(CXX) $(CXXFLAGS) $(FLAGS) -DNOUP -DINTERNAL_BSIZE=32 -DLEAF_BSIZE=32 -Wall -o $@ $<
-$(ODIR)/ctree_32_64_noup: ctree.cc ctree.h random.h test_noup.h
-	$(CXX) $(CXXFLAGS) $(FLAGS) -DNOUP -DINTERNAL_BSIZE=32 -DLEAF_BSIZE=64 -Wall -o $@ $<
-$(ODIR)/ctree_32_128_noup: ctree.cc ctree.h random.h test_noup.h
-	$(CXX) $(CXXFLAGS) $(FLAGS) -DNOUP -DINTERNAL_BSIZE=32 -DLEAF_BSIZE=128 -Wall -o $@ $<
-$(ODIR)/ctree_32_256_noup: ctree.cc ctree.h random.h test_noup.h
-	$(CXX) $(CXXFLAGS) $(FLAGS) -DNOUP -DINTERNAL_BSIZE=32 -DLEAF_BSIZE=256 -Wall -o $@ $<
-$(ODIR)/ctree_32_1024_noup: ctree.cc ctree.h random.h test_noup.h
-	$(CXX) $(CXXFLAGS) $(FLAGS) -DNOUP -DINTERNAL_BSIZE=32 -DLEAF_BSIZE=1024 -Wall -o $@ $<
-$(ODIR)/ctree_32_4096_noup: ctree.cc ctree.h random.h test_noup.h
-	$(CXX) $(CXXFLAGS) $(FLAGS) -DNOUP -DINTERNAL_BSIZE=32 -DLEAF_BSIZE=4096 -Wall -o $@ $<
+$(ODIR)/ctree_16_8: ctree.cc ctree.h test.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=16 -DLEAF_BSIZE=8 -Wall -o $@ $<
+$(ODIR)/ctree_16_16: ctree.cc ctree.h test.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=16 -DLEAF_BSIZE=16 -Wall -o $@ $<
+$(ODIR)/ctree_16_32: ctree.cc ctree.h test.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=16 -DLEAF_BSIZE=32 -Wall -o $@ $<
+$(ODIR)/ctree_16_64: ctree.cc ctree.h test.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=16 -DLEAF_BSIZE=64 -Wall -o $@ $<
+$(ODIR)/ctree_16_128: ctree.cc ctree.h test.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=16 -DLEAF_BSIZE=128 -Wall -o $@ $<
+$(ODIR)/ctree_16_256: ctree.cc ctree.h test.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=16 -DLEAF_BSIZE=256 -Wall -o $@ $<
+$(ODIR)/ctree_16_1024: ctree.cc ctree.h test.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=16 -DLEAF_BSIZE=1024 -Wall -o $@ $<
+$(ODIR)/ctree_16_4096: ctree.cc ctree.h test.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=16 -DLEAF_BSIZE=4096 -Wall -o $@ $<
 
-$(ODIR)/ctree_64_32_noup: ctree.cc ctree.h random.h test_noup.h
-	$(CXX) $(CXXFLAGS) $(FLAGS) -DNOUP -DINTERNAL_BSIZE=64 -DLEAF_BSIZE=32 -Wall -o $@ $<
-$(ODIR)/ctree_64_64_noup: ctree.cc ctree.h random.h test_noup.h
-	$(CXX) $(CXXFLAGS) $(FLAGS) -DNOUP -DINTERNAL_BSIZE=64 -DLEAF_BSIZE=64 -Wall -o $@ $<
-$(ODIR)/ctree_64_128_noup: ctree.cc ctree.h random.h test_noup.h
-	$(CXX) $(CXXFLAGS) $(FLAGS) -DNOUP -DINTERNAL_BSIZE=64 -DLEAF_BSIZE=128 -Wall -o $@ $<
-$(ODIR)/ctree_64_256_noup: ctree.cc ctree.h random.h test_noup.h
-	$(CXX) $(CXXFLAGS) $(FLAGS) -DNOUP -DINTERNAL_BSIZE=64 -DLEAF_BSIZE=256 -Wall -o $@ $<
-$(ODIR)/ctree_64_1024_noup: ctree.cc ctree.h random.h test_noup.h
-	$(CXX) $(CXXFLAGS) $(FLAGS) -DNOUP -DINTERNAL_BSIZE=64 -DLEAF_BSIZE=1024 -Wall -o $@ $<
-$(ODIR)/ctree_64_4096_noup: ctree.cc ctree.h random.h test_noup.h
-	$(CXX) $(CXXFLAGS) $(FLAGS) -DNOUP -DINTERNAL_BSIZE=64 -DLEAF_BSIZE=4096 -Wall -o $@ $<
-
-$(ODIR)/ctree_128_32_noup: ctree.cc ctree.h random.h test_noup.h
-	$(CXX) $(CXXFLAGS) $(FLAGS) -DNOUP -DINTERNAL_BSIZE=128 -DLEAF_BSIZE=32 -Wall -o $@ $<
-$(ODIR)/ctree_128_64_noup: ctree.cc ctree.h random.h test_noup.h
-	$(CXX) $(CXXFLAGS) $(FLAGS) -DNOUP -DINTERNAL_BSIZE=128 -DLEAF_BSIZE=64 -Wall -o $@ $<
-$(ODIR)/ctree_128_128_noup: ctree.cc ctree.h random.h test_noup.h
-	$(CXX) $(CXXFLAGS) $(FLAGS) -DNOUP -DINTERNAL_BSIZE=128 -DLEAF_BSIZE=128 -Wall -o $@ $<
-$(ODIR)/ctree_128_256_noup: ctree.cc ctree.h random.h test_noup.h
-	$(CXX) $(CXXFLAGS) $(FLAGS) -DNOUP -DINTERNAL_BSIZE=128 -DLEAF_BSIZE=256 -Wall -o $@ $<
-$(ODIR)/ctree_128_1024_noup: ctree.cc ctree.h random.h test_noup.h
-	$(CXX) $(CXXFLAGS) $(FLAGS) -DNOUP -DINTERNAL_BSIZE=128 -DLEAF_BSIZE=1024 -Wall -o $@ $<
-$(ODIR)/ctree_128_4096_noup: ctree.cc ctree.h random.h test_noup.h
-	$(CXX) $(CXXFLAGS) $(FLAGS) -DNOUP -DINTERNAL_BSIZE=128 -DLEAF_BSIZE=4096 -Wall -o $@ $<
-
-$(ODIR)/ctree_256_32_noup: ctree.cc ctree.h random.h test_noup.h
-	$(CXX) $(CXXFLAGS) $(FLAGS) -DNOUP -DINTERNAL_BSIZE=256 -DLEAF_BSIZE=32 -Wall -o $@ $<
-$(ODIR)/ctree_256_64_noup: ctree.cc ctree.h random.h test_noup.h
-	$(CXX) $(CXXFLAGS) $(FLAGS) -DNOUP -DINTERNAL_BSIZE=256 -DLEAF_BSIZE=64 -Wall -o $@ $<
-$(ODIR)/ctree_256_128_noup: ctree.cc ctree.h random.h test_noup.h
-	$(CXX) $(CXXFLAGS) $(FLAGS) -DNOUP -DINTERNAL_BSIZE=256 -DLEAF_BSIZE=128 -Wall -o $@ $<
-$(ODIR)/ctree_256_256_noup: ctree.cc ctree.h random.h test_noup.h
-	$(CXX) $(CXXFLAGS) $(FLAGS) -DNOUP -DINTERNAL_BSIZE=256 -DLEAF_BSIZE=256 -Wall -o $@ $<
-$(ODIR)/ctree_256_1024_noup: ctree.cc ctree.h random.h test_noup.h
-	$(CXX) $(CXXFLAGS) $(FLAGS) -DNOUP -DINTERNAL_BSIZE=256 -DLEAF_BSIZE=1024 -Wall -o $@ $<
-$(ODIR)/ctree_256_4096_noup: ctree.cc ctree.h random.h test_noup.h
-	$(CXX) $(CXXFLAGS) $(FLAGS) -DNOUP -DINTERNAL_BSIZE=256 -DLEAF_BSIZE=4096 -Wall -o $@ $<
-
-
-
-
-$(ODIR)/ctree_32_32_lfhv: ctree.cc ctree.h random.h test_lfhv.h
+$(ODIR)/ctree_32_8: ctree.cc ctree.h test.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=32 -DLEAF_BSIZE=8 -Wall -o $@ $<
+$(ODIR)/ctree_32_16: ctree.cc ctree.h test.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=32 -DLEAF_BSIZE=16 -Wall -o $@ $<
+$(ODIR)/ctree_32_32: ctree.cc ctree.h test.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=32 -DLEAF_BSIZE=32 -Wall -o $@ $<
-$(ODIR)/ctree_32_64_lfhv: ctree.cc ctree.h random.h test_lfhv.h
+$(ODIR)/ctree_32_64: ctree.cc ctree.h test.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=32 -DLEAF_BSIZE=64 -Wall -o $@ $<
-$(ODIR)/ctree_32_128_lfhv: ctree.cc ctree.h random.h test_lfhv.h
+$(ODIR)/ctree_32_128: ctree.cc ctree.h test.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=32 -DLEAF_BSIZE=128 -Wall -o $@ $<
-$(ODIR)/ctree_32_256_lfhv: ctree.cc ctree.h random.h test_lfhv.h
+$(ODIR)/ctree_32_256: ctree.cc ctree.h test.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=32 -DLEAF_BSIZE=256 -Wall -o $@ $<
-$(ODIR)/ctree_32_1024_lfhv: ctree.cc ctree.h random.h test_lfhv.h
+$(ODIR)/ctree_32_1024: ctree.cc ctree.h test.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=32 -DLEAF_BSIZE=1024 -Wall -o $@ $<
-$(ODIR)/ctree_32_4096_lfhv: ctree.cc ctree.h random.h test_lfhv.h
+$(ODIR)/ctree_32_4096: ctree.cc ctree.h test.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=32 -DLEAF_BSIZE=4096 -Wall -o $@ $<
 
-$(ODIR)/ctree_64_32_lfhv: ctree.cc ctree.h random.h test_lfhv.h
+$(ODIR)/ctree_64_32: ctree.cc ctree.h test.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=64 -DLEAF_BSIZE=32 -Wall -o $@ $<
-$(ODIR)/ctree_64_64_lfhv: ctree.cc ctree.h random.h test_lfhv.h
+$(ODIR)/ctree_64_64: ctree.cc ctree.h test.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=64 -DLEAF_BSIZE=64 -Wall -o $@ $<
-$(ODIR)/ctree_64_128_lfhv: ctree.cc ctree.h random.h test_lfhv.h
+$(ODIR)/ctree_64_128: ctree.cc ctree.h test.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=64 -DLEAF_BSIZE=128 -Wall -o $@ $<
-$(ODIR)/ctree_64_256_lfhv: ctree.cc ctree.h random.h test_lfhv.h
+$(ODIR)/ctree_64_256: ctree.cc ctree.h test.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=64 -DLEAF_BSIZE=256 -Wall -o $@ $<
-$(ODIR)/ctree_64_1024_lfhv: ctree.cc ctree.h random.h test_lfhv.h
+$(ODIR)/ctree_64_1024: ctree.cc ctree.h test.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=64 -DLEAF_BSIZE=1024 -Wall -o $@ $<
-$(ODIR)/ctree_64_4096_lfhv: ctree.cc ctree.h random.h test_lfhv.h
+$(ODIR)/ctree_64_4096: ctree.cc ctree.h test.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=64 -DLEAF_BSIZE=4096 -Wall -o $@ $<
 
-$(ODIR)/ctree_128_32_lfhv: ctree.cc ctree.h random.h test_lfhv.h
+$(ODIR)/ctree_128_32: ctree.cc ctree.h test.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=128 -DLEAF_BSIZE=32 -Wall -o $@ $<
-$(ODIR)/ctree_128_64_lfhv: ctree.cc ctree.h random.h test_lfhv.h
+$(ODIR)/ctree_128_64: ctree.cc ctree.h test.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=128 -DLEAF_BSIZE=64 -Wall -o $@ $<
-$(ODIR)/ctree_128_128_lfhv: ctree.cc ctree.h random.h test_lfhv.h
+$(ODIR)/ctree_128_128: ctree.cc ctree.h test.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=128 -DLEAF_BSIZE=128 -Wall -o $@ $<
-$(ODIR)/ctree_128_256_lfhv: ctree.cc ctree.h random.h test_lfhv.h
+$(ODIR)/ctree_128_256: ctree.cc ctree.h test.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=128 -DLEAF_BSIZE=256 -Wall -o $@ $<
-$(ODIR)/ctree_128_1024_lfhv: ctree.cc ctree.h random.h test_lfhv.h
+$(ODIR)/ctree_128_1024: ctree.cc ctree.h test.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=128 -DLEAF_BSIZE=1024 -Wall -o $@ $<
-$(ODIR)/ctree_128_4096_lfhv: ctree.cc ctree.h random.h test_lfhv.h
+$(ODIR)/ctree_128_4096: ctree.cc ctree.h test.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=128 -DLEAF_BSIZE=4096 -Wall -o $@ $<
 
-$(ODIR)/ctree_256_32_lfhv: ctree.cc ctree.h random.h test_lfhv.h
+$(ODIR)/ctree_256_32: ctree.cc ctree.h test.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=256 -DLEAF_BSIZE=32 -Wall -o $@ $<
-$(ODIR)/ctree_256_64_lfhv: ctree.cc ctree.h random.h test_lfhv.h
+$(ODIR)/ctree_256_64: ctree.cc ctree.h test.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=256 -DLEAF_BSIZE=64 -Wall -o $@ $<
-$(ODIR)/ctree_256_128_lfhv: ctree.cc ctree.h random.h test_lfhv.h
+$(ODIR)/ctree_256_128: ctree.cc ctree.h test.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=256 -DLEAF_BSIZE=128 -Wall -o $@ $<
-$(ODIR)/ctree_256_256_lfhv: ctree.cc ctree.h random.h test_lfhv.h
+$(ODIR)/ctree_256_256: ctree.cc ctree.h test.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=256 -DLEAF_BSIZE=256 -Wall -o $@ $<
-$(ODIR)/ctree_256_1024_lfhv: ctree.cc ctree.h random.h test_lfhv.h
+$(ODIR)/ctree_256_1024: ctree.cc ctree.h test.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=256 -DLEAF_BSIZE=1024 -Wall -o $@ $<
-$(ODIR)/ctree_256_4096_lfhv: ctree.cc ctree.h random.h test_lfhv.h
+$(ODIR)/ctree_256_4096: ctree.cc ctree.h test.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=256 -DLEAF_BSIZE=4096 -Wall -o $@ $<
-
 
 
 depend:
