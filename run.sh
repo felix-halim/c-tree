@@ -23,7 +23,7 @@ batch_noup)		./run.sh noup ctree_uniform | tee -a $out
 							;;
 
 batch_lfhv)		#./run.sh lfhv comb | tee -a $out
-							./run.sh lfhv ctree_64_128 | tee -a $out
+#							./run.sh lfhv ctree_64_128 | tee -a $out
 							./run.sh lfhv btree_google | tee -a $out
 							./run.sh lfhv btree_stx | tee -a $out
 							;;
