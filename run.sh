@@ -42,10 +42,10 @@ batch_lfhv)   ./run.sh lfhv comb | tee -a $out
 batch_skew)
               for (( selectivity = 1; selectivity <= $N; selectivity *= 10))
               do
-                ./run.sh skew comb $selectivity | tee -a $out
+                # ./run.sh skew comb $selectivity | tee -a $out
                 ./run.sh skew ctree_32_64 $selectivity | tee -a $out
-                ./run.sh skew btree_google $selectivity | tee -a $out
-                ./run.sh skew btree_stx $selectivity | tee -a $out
+                # ./run.sh skew btree_google $selectivity | tee -a $out
+                # ./run.sh skew btree_stx $selectivity | tee -a $out
               done
               ;;
 
