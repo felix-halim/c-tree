@@ -207,6 +207,7 @@ struct Statistics {
   string workload;
   double insert_time;
   double query_time;
+  double update_time;
   unsigned long long checksum;
 
   // Each algorithm should fill in the following stats at the end of run:
@@ -233,6 +234,7 @@ struct Statistics {
     printf("%d,", selectivity);
     printf("%d,", verified);
     printf("%.6lf,", insert_time);
+    printf("%.6lf,", update_time);
     printf("%.6lf,", query_time);
     printf("%llu,", checksum);
     printf("%d,", n_leaves);
@@ -335,19 +337,24 @@ int main(int argc, char *argv[]) {
   }
 
   for (s.Q = 1; ; s.Q *= 10) {
+    double update_time = 0;
     s.query_time += time_it([&] {
       int nQ = s.Q - s.Q / 10; // nQ = how many queries needed.
       for (int i = 0; i < nQ; i++) {
         s.checksum = s.checksum * 13 + query(dis(gen));
-        if (U == 1 && i % 1000 == 0) {
-          for (int j = 0; j < 1000; j++) {
-            int k = disN(gen);
-            erase(iarr[k]);
-            insert(iarr[k] = dis(gen));
-          }
+        if (U == 1 && i && i % 1000 == 0) {
+          update_time += time_it([&] {
+            for (int j = 0; j < 1000; j++) {
+              int k = disN(gen);
+              erase(iarr[k]);
+              insert(iarr[k] = dis(gen));
+            }
+          });
         }
       }
     });
+    s.query_time -= update_time;
+    s.update_time += update_time;
 
     results(s);
     s.verified = verify(U, s);

@@ -20,6 +20,9 @@ all: \
 $(ODIR)/comb: comb.cc comb.h test.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
 
+$(ODIR)/art: art.cc art.h test.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
+
 $(ODIR)/ctree_exp_leafsize: ctree_exp_leafsize.cc ctree_exp_leafsize.h test.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
 
