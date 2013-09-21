@@ -529,7 +529,54 @@ class ArtCrack {
     return make_pair(false, right_pivot);
   }
 
+  bool can_split(int b) {
+    if (LEAF_BUCKET(b)->next()) {
+      int v1 = LEAF_BUCKET(b)->data(0);
+      int pivot, nb;
+      leaf_split_long_chain(b, pivot, nb);
+      int t = LEAF_BUCKET(nb)->data(0);
+      LEAF_BUCKET(nb)->set_data(0, pivot);
+      leaf_insert(nb, t);
+
+      int v2 = LEAF_BUCKET(b)->data(0);
+      if (v1 != v2) {
+        remove_root_bucket(v1, b);
+        insert_root(v2, b);
+      }
+      assert(pivot == LEAF_BUCKET(nb)->data(0));
+      insert_root(pivot, nb);
+      return true;
+    }
+    return false;
+  }
+
   pair<bool, int> lower_bound(int value) {
+    uint8_t key[8];
+    loadKey(make_key(value, 1 << 29), key);
+    while (true) {
+      Node *leaf = ::lower_bound_prev(tree,key,8,0,8);
+      if (leaf) {
+        assert(isLeaf(leaf));
+        int b = getLeafValue(leaf) & ((1 << 30) - 1);
+        if (can_split(b)) continue;
+        auto ret = lower_bound_bucket(b, value);
+        if (ret.first) return ret;
+      }
+      leaf = ::lower_bound(tree,key,8,0,8);
+      if (!leaf) {
+        // fprintf(stderr, "WOOT %d\n", value);
+        return make_pair(false, 0);
+      }
+      assert(isLeaf(leaf));
+      int b = getLeafValue(leaf) & ((1 << 30) - 1);
+      if (can_split(b)) continue;
+      auto ret = lower_bound_bucket(b, value);
+      assert(ret.first);
+      return ret;
+    }
+  }
+
+  pair<bool, int> lower_bound2(int value) {
     // if (value == 1570896042)
     // fprintf(stderr, "\nquery = %d\n", value);
     uint8_t key[8];
