@@ -10,14 +10,15 @@ Node* tree=NULL;
 
 void init(int *arr, int N) {
   for (int i = 0; i < N; i++) {
-    uint8_t key[8];
-    loadKey(arr[i], key);
-    insert(tree,&tree,key,0,arr[i],8);
+    insert(arr[i]);
   }
 }
 
 void insert(int value) {
-  // art_insert(&t, (char*) &value, 4, (void*)&value);
+  uint8_t key[8];
+  uint64_t value64 = value;
+  loadKey(value64, key);
+  insert(tree,&tree,key,0,value64,8);
 }
 
 void erase(int value) {
@@ -25,10 +26,16 @@ void erase(int value) {
 }
 
 int query(int value) {
-  uint8_t key[8];loadKey(value, key);
-  Node* leaf=lookup(tree,key,8,0,8);
-  if (isLeaf(leaf)) return getLeafValue(leaf);
-  return 0;
+  uint64_t value64 = value;
+  uint8_t key[8];
+  loadKey(value64, key);
+  Node* leaf=lower_bound(tree,key,8,0,8);
+  int ret = 0;
+  if (isLeaf(leaf)) {
+    ret = getLeafValue(leaf);
+    // fprintf(stderr, "%d (%d)\n", ret, value);
+  }
+  return ret;
 }
 
 void results(Statistics &s) {

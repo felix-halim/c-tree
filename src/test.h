@@ -14,7 +14,20 @@ double time_it(Func f) {
   return duration_cast<microseconds>(t1 - t0).count() * 1e-6;
 }
 
-map<int, unsigned long long> noup_checksum {
+map<int, unsigned long long> noup_checksum7 {
+  { 1, 424586796ULL },
+  { 10, 5480072333541571000ULL },
+  { 100, 14378805140977604002ULL },
+  { 1000, 8240630307966189758ULL },
+  { 10000, 14142057438707533601ULL },
+  { 100000, 11756929181964242927ULL },
+  { 1000000, 9155585855960663799ULL },
+  { 10000000, 3417311297719903117ULL },
+  { 100000000, 9300358559902812175ULL },
+  { 1000000000, 12919963144119736153ULL },
+};
+
+map<int, unsigned long long> noup_checksum8 {
   { 1, 815231912ULL },
   { 10, 8837347545989574115ULL },
   { 100, 13550455485803658225ULL },
@@ -273,7 +286,8 @@ bool checksum_match2(M &m, int k1, int k2, unsigned long long v) {
 
 int verify(int U, Statistics &s) {
   switch (U) {
-    case 0 : return s.N == 100000000 && checksum_match(noup_checksum, s.Q, s.checksum);
+    case 0 : return (s.N == 10000000) ? checksum_match(noup_checksum7, s.Q, s.checksum) :
+                    (s.N == 100000000 ? checksum_match(noup_checksum8, s.Q, s.checksum) : 0);
     case 1 : return (s.N == 10000000) ? checksum_match(lfhv_checksum7, s.Q, s.checksum) :
                     (s.N == 100000000 ? checksum_match(lfhv_checksum8, s.Q, s.checksum) : 0);
     case 2 : return (s.N == 10000000) ? checksum_match2(skew_checksum7, s.selectivity, s.Q, s.checksum) :

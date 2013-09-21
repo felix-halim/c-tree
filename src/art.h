@@ -29,7 +29,7 @@ struct Node {
    // length of the compressed path (prefix)
    uint32_t prefixLength;
    // number of non-null children
-   uint16_t count;
+   int16_t count;
    // node type
    int8_t type;
    // compressed path (prefix)
@@ -130,7 +130,7 @@ Node** findChild(Node* n,uint8_t keyByte) {
    switch (n->type) {
       case NodeType4: {
          Node4* node=static_cast<Node4*>(n);
-         for (unsigned i=0;i<node->count;i++)
+         for (int i=0;i<node->count;i++)
             if (node->key[i]==keyByte)
                return &node->child[i];
          return &nullNode;
@@ -297,6 +297,216 @@ Node* lookup(Node* node,uint8_t key[],unsigned keyLength,unsigned depth,unsigned
    return NULL;
 }
 
+Node* lower_bound(Node* node, uint8_t key[], unsigned keyLength, unsigned depth, unsigned maxKeyLength, bool skippedPrefix=false, bool bigger = false) {
+   // fprintf(stderr, "lower_bound %u, %p\n", depth, node);
+
+   if (isLeaf(node)) {
+      if (!skippedPrefix && depth == keyLength) // No check required
+         return node;
+
+      if (depth != keyLength && !bigger) {
+         // Check leaf
+         uint8_t leafKey[maxKeyLength];
+         loadKey(getLeafValue(node),leafKey);
+         for (unsigned i=(skippedPrefix?0:depth);i<keyLength;i++) {
+            // fprintf(stderr, "i = %u, %u %u, value = %lu\n", i, leafKey[i], key[i], getLeafValue(node));
+            if (leafKey[i] < key[i]) {
+               // for (int j = 0; j < keyLength; j++) {
+               //    fprintf(stderr, "%d -> %u %u\n", i, leafKey[j], key[j]);
+               // }
+               // fprintf(stderr, "ARRRR!!! \n");
+               return NULL;
+            }
+         }
+      }
+      return node;
+   }
+
+   // fprintf(stderr, "prefixLength = %u\n", node->prefixLength);
+   if (node->prefixLength) {
+      if (node->prefixLength < maxPrefixLength && !bigger) {
+         for (unsigned pos=0; pos < node->prefixLength; pos++)
+            if (key[depth+pos] > node->prefix[pos]) {
+               // fprintf(stderr, "ARRRRGGGGGHhHHHHAaAJSKHJAKSJDHKAJSHDKASJDHAKSJHDAKJSDHAKSJDHAKSJDHASKDJHAS\n");
+               return NULL;
+            }
+      } else
+         skippedPrefix=true;
+      depth+=node->prefixLength;
+   }
+
+   Node *n = node;
+   int keyByte = key[depth++];
+
+   switch (n->type) {
+      case NodeType4: {
+            Node4* node = static_cast<Node4*>(n);
+            for (int i = 0; i < node->count; i++) {
+               if (node->key[i] >= keyByte || bigger) {
+                  Node *ret = lower_bound(node->child[i], key, keyLength, depth, maxKeyLength, skippedPrefix, bigger || node->key[i] > keyByte);
+                  if (ret) return ret;
+               }
+            }
+         }
+         break;
+
+      case NodeType16: {
+            int pos = 0;
+            Node16* node = static_cast<Node16*>(n);
+            if (!bigger) {
+               __m128i cmp=_mm_cmplt_epi8(_mm_set1_epi8(flipSign(keyByte)),_mm_loadu_si128(reinterpret_cast<__m128i*>(node->key)));
+               uint16_t bitfield=_mm_movemask_epi8(cmp)&(0xFFFF>>(16-node->count));
+               pos = bitfield ? ctz(bitfield) : node->count;
+               if (pos > 0 && flipSign(node->key[pos - 1]) == keyByte) pos--;
+            }
+            while (pos < node->count) {
+               Node *ret = lower_bound(node->child[pos], key, keyLength, depth, maxKeyLength, skippedPrefix, bigger || flipSign(node->key[pos]) > keyByte);
+               if (ret) return ret;
+               pos++;
+            }
+         }
+         break;
+
+      case NodeType48: {
+            Node48* node=static_cast<Node48*>(n);
+            if (bigger) keyByte = 0;
+            while (keyByte < 256) {
+               if (node->childIndex[keyByte] != emptyMarker) {
+                  Node *ret = lower_bound(node->child[node->childIndex[keyByte]], key, keyLength, depth, maxKeyLength, skippedPrefix, bigger);
+                  if (ret) return ret;
+               }
+               keyByte++;
+               bigger = 1;
+            }
+         }
+         break;
+
+      case NodeType256: {
+            Node256* node=static_cast<Node256*>(n);
+            if (bigger) keyByte = 0;
+            while (keyByte < 256) {
+               if (node->child[keyByte]) {
+                  Node *ret = lower_bound(node->child[keyByte], key, keyLength, depth, maxKeyLength, skippedPrefix, bigger);
+                  if (ret) return ret;
+               }
+               keyByte++;
+               bigger = 1;
+            }
+         }
+         break;
+
+      default: assert(0);
+   }
+
+   // fprintf(stderr, "NOOOOOOOOOOO\n");
+   return NULL;
+}
+
+Node* lower_bound_prev(Node* node, uint8_t key[], unsigned keyLength, unsigned depth, unsigned maxKeyLength, bool skippedPrefix=false, bool is_less = false) {
+   // fprintf(stderr, "lower_prev1 %u\n", depth);
+
+   if (isLeaf(node)) {
+      if (!skippedPrefix && depth == keyLength) // No check required
+         return node;
+
+      if (depth != keyLength && !is_less) {
+         uint8_t leafKey[maxKeyLength];
+         loadKey(getLeafValue(node),leafKey);
+         for (unsigned i=(skippedPrefix?0:depth);i<keyLength;i++) {
+            if (leafKey[i] > key[i]) {
+               return NULL;
+            }
+         }
+      }
+      return node;
+   }
+
+   // fprintf(stderr, "lower_prev1 plen = %u\n", node->prefixLength);
+   if (node->prefixLength) {
+      if (node->prefixLength < maxPrefixLength && !is_less) {
+         for (unsigned pos=0; pos < node->prefixLength; pos++)
+            if (key[depth+pos] < node->prefix[pos]) {
+               return NULL;
+            }
+      } else {
+         skippedPrefix=true;
+      }
+      depth+=node->prefixLength;
+   }
+
+   Node *n = node;
+   int keyByte = key[depth++];
+
+   switch (n->type) {
+      case NodeType4: {
+            // fprintf(stderr, "Node4 %d\n", node->count);
+            Node4* node = static_cast<Node4*>(n);
+            for (int i = node->count - 1; i >= 0; i--) {
+               if (node->key[i] <= keyByte || is_less) {
+                  Node *ret = lower_bound(node->child[i], key, keyLength, depth, maxKeyLength, skippedPrefix, is_less || node->key[i] < keyByte);
+                  if (ret) return ret;
+               }
+            }
+         }
+         break;
+
+      case NodeType16: {
+            // fprintf(stderr, "Node16 %d\n", node->count);
+            Node16* node = static_cast<Node16*>(n);
+            int pos = node->count - 1;
+            if (!is_less) {
+               // fprintf(stderr, "Node16 is_less %d\n", node->count);
+               __m128i cmp=_mm_cmplt_epi8(_mm_set1_epi8(flipSign(keyByte)),_mm_loadu_si128(reinterpret_cast<__m128i*>(node->key)));
+               uint16_t bitfield=_mm_movemask_epi8(cmp)&(0xFFFF>>(16-node->count));
+               pos = bitfield ? ctz(bitfield) : node->count;
+               if (pos > 0 && flipSign(node->key[pos - 1]) == keyByte) pos--;
+               if (pos == node->count) pos--;
+            }
+            assert(pos < node->count);
+            while (pos >= 0) {
+               // fprintf(stderr, "Node16 pos %d, %p\n", pos, node->child[pos]);
+               Node *ret = lower_bound(node->child[pos], key, keyLength, depth, maxKeyLength, skippedPrefix, is_less || flipSign(node->key[pos]) < keyByte);
+               if (ret) return ret;
+               pos--;
+            }
+         }
+         break;
+
+      case NodeType48: {
+            // fprintf(stderr, "Node48 %d\n", node->count);
+            Node48* node=static_cast<Node48*>(n);
+            if (is_less) keyByte = 255;
+            while (keyByte >= 0) {
+               if (node->childIndex[keyByte] != emptyMarker) {
+                  Node *ret = lower_bound(node->child[node->childIndex[keyByte]], key, keyLength, depth, maxKeyLength, skippedPrefix, is_less);
+                  if (ret) return ret;
+               }
+               keyByte--;
+               is_less = 1;
+            }
+         }
+         break;
+
+      case NodeType256: {
+            // fprintf(stderr, "Node256 %d\n", node->count);
+            Node256* node=static_cast<Node256*>(n);
+            if (is_less) keyByte = 255;
+            while (keyByte >= 0) {
+               if (node->child[keyByte]) {
+                  Node *ret = lower_bound(node->child[keyByte], key, keyLength, depth, maxKeyLength, skippedPrefix, is_less);
+                  if (ret) return ret;
+               }
+               keyByte--;
+               is_less = 1;
+            }
+         }
+         break;
+
+      default: assert(0);
+   }
+   return NULL;
+}
+
 Node* lookupPessimistic(Node* node,uint8_t key[],unsigned keyLength,unsigned depth,unsigned maxKeyLength) {
    // Find the node with a matching key, alternative pessimistic version
 
@@ -409,7 +619,7 @@ void insertNode4(Node4* node,Node** nodeRef,uint8_t keyByte,Node* child) {
    // Insert leaf into inner node
    if (node->count<4) {
       // Insert element
-      unsigned pos;
+      int pos;
       for (pos=0;(pos<node->count)&&(node->key[pos]<keyByte);pos++);
       memmove(node->key+pos+1,node->key+pos,node->count-pos);
       memmove(node->child+pos+1,node->child+pos,(node->count-pos)*sizeof(uintptr_t));
@@ -448,7 +658,7 @@ void insertNode16(Node16* node,Node** nodeRef,uint8_t keyByte,Node* child) {
       Node48* newNode=new Node48();
       *nodeRef=newNode;
       memcpy(newNode->child,node->child,node->count*sizeof(uintptr_t));
-      for (unsigned i=0;i<node->count;i++)
+      for (int i=0;i<node->count;i++)
          newNode->childIndex[flipSign(node->key[i])]=i;
       copyPrefix(node,newNode);
       newNode->count=node->count;
