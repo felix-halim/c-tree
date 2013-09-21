@@ -89,6 +89,7 @@ class Bucket {
   bool is_full() const { assert(is_valid()); return slack() == 0; }
   bool is_valid() const { return N <= LEAF_BSIZE; }
   int last_data_is_at_least(int value) const { assert(is_valid()); return D[N - 1] >= value; }
+  void set_data(int i, int v) { assert(is_valid()); assert(i >=0 && i < N); D[i] = v; }
 
   void init() {
     P = 0;
@@ -150,14 +151,6 @@ class Bucket {
     assert(is_valid());
     assert(N > 0);
     swap(R, D[rng.nextInt(N)]);
-  }
-
-  void swap_data(Bucket *that, int i, int j) {
-    assert(is_valid());
-    assert(that->is_valid());
-    assert(N > 0);
-    assert(that->size());
-    swap(D[i], that->D[j]);
   }
 
   void append(int value) {
@@ -488,93 +481,154 @@ class ArtCrack {
     la_size = leaf_bucket_allocator.N;
   }
 
-  void remove_root_bucket(uint64_t value64) {
-    uint8_t key[8];
-    loadKey(value64, key);
-    ::erase(tree,&tree,key,8,0,8);
-  }
-
   pair<bool, int> lower_bound_bucket(int b, int value) {
     // fprintf(stderr, "split %d\n", b);
+
+    int right_pivot = 0;
     while (LEAF_BUCKET(b)->next()) {
+      int v1 = LEAF_BUCKET(b)->data(0);
+
       int pivot, nb;
       leaf_split_long_chain(b, pivot, nb);
-      leaf_insert(nb, pivot);
-      if (LEAF_BUCKET(nb)->tail()) {
-        int t = LEAF_BUCKET(nb)->tail();
-        LEAF_BUCKET(nb)->swap_data(LEAF_BUCKET(t), 0, LEAF_BUCKET(t)->size() - 1);
-      } else {
-        LEAF_BUCKET(nb)->swap_data(LEAF_BUCKET(nb), 0, LEAF_BUCKET(nb)->size() - 1);
+      int t = LEAF_BUCKET(nb)->data(0);
+      LEAF_BUCKET(nb)->set_data(0, pivot);
+      leaf_insert(nb, t);
+
+      int v2 = LEAF_BUCKET(b)->data(0);
+
+      if (v1 != v2) {
+    // if (value == 1570896042)
+        // fprintf(stderr, "DETACH %d %d\n", b, v1);
+        remove_root_bucket(v1, b);
+    // if (value == 1570896042)
+        // fprintf(stderr, "REATTACH ROOT %d -> %d\n", b, v2);
+        insert_root(v2, b);
       }
+
+    if (value == 1570896042)
+      fprintf(stderr, "pivot = %d\n", pivot);
+      assert(pivot == LEAF_BUCKET(nb)->data(0));
       insert_root(pivot, nb);
-      if (value >= pivot) b = nb;
+      if (value >= pivot) {
+        b = nb;
+    // if (value == 1570896042)
+        // fprintf(stderr, "GO RIGHT\n");
+      } else {
+    // if (value == 1570896042)
+        // fprintf(stderr, "GO LEFT\n");
+        right_pivot = pivot;
+      }
     }
     // fprintf(stderr, "splited %d\n", b);
 
     int pos = LEAF_BUCKET(b)->leaf_lower_pos(value);
     if (pos < LEAF_BUCKET(b)->size())
       return make_pair(true, LEAF_BUCKET(b)->data(pos));
-    return make_pair(false, 0);
+    // if (value == 1570896042)
+    // fprintf(stderr, "pos = %d / %d\n", pos, LEAF_BUCKET(b)->size());
+    return make_pair(false, right_pivot);
   }
 
   pair<bool, int> lower_bound(int value) {
-    // fprintf(stderr, "lo1 %d\n", value);
-    int b = get_root_bucket_prev(value);
-    // fprintf(stderr, "lo2 %d\n", value);
-    if (b == -1) return make_pair(false, value);
-    // fprintf(stderr, "lo3 %d\n", value);
+    // if (value == 1570896042)
+    // fprintf(stderr, "\nquery = %d\n", value);
+    uint8_t key[8];
+    loadKey(make_key(value, 1 << 29), key);
+    Node *leaf = ::lower_bound_prev(tree,key,8,0,8);
+    if (leaf) {
+      assert(isLeaf(leaf));
+      uint64_t v = getLeafValue(leaf);
+      int b = v & ((1 << 30) - 1);
+    // if (value == 1570896042)
+      // fprintf(stderr, "value1 = %llu, b = %d\n", v >> 30, b);
+      auto ret = lower_bound_bucket(b, value);
+    // if (value == 1570896042)
+      // fprintf(stderr, "final1 %d\n", ret.second);
+      if (ret.first) return ret;
+    // if (value == 1570896042)
+      // fprintf(stderr, "fail!\n");
+    }
+    leaf = ::lower_bound(tree,key,8,0,8);
+    if (!leaf) {
+      fprintf(stderr, "WOOT %d\n", value);
+      return make_pair(false, 0);
+    }
+    assert(leaf);
+    assert(isLeaf(leaf));
+    uint64_t v = getLeafValue(leaf);
+    int b = v & ((1 << 30) - 1);
+    // if (value == 1570896042)
+    // fprintf(stderr, "value = %llu, b = %d\n", v >> 30, b);
     auto ret = lower_bound_bucket(b, value);
-    // fprintf(stderr, "lo4 %d\n", value);
-    if (ret.first) return ret;
-    // fprintf(stderr, "lo5 %d\n", value);
-    b = get_root_bucket(value);
-    // fprintf(stderr, "lo6 %d\n", value);
-    if (b == -1) return make_pair(false, value);
-    // fprintf(stderr, "lo7 %d\n", value);
-    ret = lower_bound_bucket(b, value);
-    // fprintf(stderr, "lo8 %d\n", value);
+    // if (value == 1570896042)
+    // fprintf(stderr, "final2 %d, b = %d, FOUND = %d\n", ret.second, b, ret.first);
     // assert(ret.first);
+    ret.first = true;
     return ret;
   }
 
-  int get_root_bucket_prev(uint64_t value64) {
-    uint8_t key[8];
-    loadKey(value64, key);
-    // fprintf(stderr, "prev1 %llu\n", value64);
-    Node *leaf=lower_bound_prev(tree,key,8,0,8);
-    // fprintf(stderr, "prev2 %llu\n", value64);
-    if (!leaf) return -1;
-    assert(isLeaf(leaf));
-    return getLeafValue(leaf);
+  uint64_t make_key(uint64_t value, uint64_t bucket_number) {
+    return (value << 30) | bucket_number;
   }
 
-  int get_root_bucket(uint64_t value64) {
+  int get_root(int value) {
+    uint8_t key[8];
+    loadKey(make_key(value, 1 << 29), key);
+    Node *leaf = ::lower_bound_prev(tree,key,8,0,8);
+    if (leaf) {
+      assert(isLeaf(leaf));
+      return getLeafValue(leaf) & ((1 << 30) - 1);
+    }
+    leaf = ::lower_bound(tree,key,8,0,8);
+    assert(leaf);
+    assert(isLeaf(leaf));
+    return getLeafValue(leaf) & ((1 << 30) - 1);
+  }
+
+  void insert_root(int value, int bucket_number) {
+    // fprintf(stderr, "insert root at %d, b = %d\n", value, bucket_number);
+    assert((int) value == LEAF_BUCKET(bucket_number)->data(0));
+    uint64_t value64 = make_key(value, bucket_number);
     uint8_t key[8];
     loadKey(value64, key);
-    Node *leaf=::lower_bound(tree,key,8,0,8);
-    if (!leaf) return -1;
-    // fprintf(stderr, "leaf = %p\n", leaf);
-    assert(isLeaf(leaf));
-    return getLeafValue(leaf);
+    ::insert(tree,&tree,key,0,value64,8);
+
+    // TODO: remove
+    // Node *leaf = ::lookup(tree, key, 8, 0, 8);
+    // assert(leaf);
+    // assert(isLeaf(leaf));
+    // assert(getLeafValue(leaf) == value64);
   }
+
+  void remove_root_bucket(int value, int bucket_number) {
+    // fprintf(stderr, "remove root at %d, b = %d\n", value, bucket_number);
+    uint64_t value64 = make_key(value, bucket_number);
+    uint8_t key[8];
+    loadKey(value64, key);
+
+    // TODO: remove
+    // Node *leaf = ::lookup(tree, key, 8, 0, 8);
+    // assert(leaf);
+    // assert(isLeaf(leaf));
+
+    ::erase(tree,&tree,key,8,0,8);
+
+    // TODO: remove
+    // assert(!::lookup(tree, key, 8, 0, 8));
+  }
+
 
   void insert(int value) {
     // fprintf(stderr, "ins %d\n", value);
-    int b = get_root_bucket(value);
+    int b = get_root(value);
     assert(b != 0);
     leaf_insert(b, value);
-  }
-
-  void insert_root(uint64_t value, uint64_t bucket_number) {
-    uint8_t key[8];
-    loadKey(value, key);
-    ::insert(tree,&tree,key,0,bucket_number,8);
   }
 
   void batch_insert(int *arr, int N) {
     // fprintf(stderr, "batch %d\n", N);
     int i = 0;
-    int root = new_leaf_bucket();
+    int root = -1;
     while (i + LEAF_BSIZE <= N) {
       int idx = new_leaf_bucket();
       Bucket *b = LEAF_BUCKET(idx);
@@ -582,10 +636,11 @@ class ArtCrack {
         b->append(arr[i++]);
       }
       // fprintf(stderr, "chain %d, %d\n", i, b->size());
-      add_chain(root, idx);
+      if (root == -1) root = idx;
+      else add_chain(root, idx);
     }
 
-    insert_root(1LL << 32, root);
+    insert_root(LEAF_BUCKET(root)->data(0), root);
 
     // fprintf(stderr, "done %d %d\n", i, N);
     while (i < N) {

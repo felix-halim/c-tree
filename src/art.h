@@ -233,8 +233,10 @@ bool leafMatches(Node* leaf,uint8_t key[],unsigned keyLength,unsigned depth,unsi
       uint8_t leafKey[maxKeyLength];
       loadKey(getLeafValue(leaf),leafKey);
       for (unsigned i=depth;i<keyLength;i++)
-         if (leafKey[i]!=key[i])
+         if (leafKey[i]!=key[i]) {
+            // fprintf(stderr, "LEAF NOT MATCH\n");
             return false;
+         }
    }
    return true;
 }
@@ -261,6 +263,7 @@ unsigned prefixMismatch(Node* node,uint8_t key[],unsigned depth,unsigned maxKeyL
 
 Node* lookup(Node* node,uint8_t key[],unsigned keyLength,unsigned depth,unsigned maxKeyLength) {
    // Find the node with a matching key, optimistic version
+   if (!node) return NULL;
 
    bool skippedPrefix=false; // Did we optimistically skip some prefix without checking it?
 
@@ -298,24 +301,22 @@ Node* lookup(Node* node,uint8_t key[],unsigned keyLength,unsigned depth,unsigned
 }
 
 Node* lower_bound(Node* node, uint8_t key[], unsigned keyLength, unsigned depth, unsigned maxKeyLength, bool skippedPrefix=false, bool bigger = false) {
-   // fprintf(stderr, "lower_bound %u, %p\n", depth, node);
+   // fprintf(stderr, "lower_boundx %u, %p\n", depth, node);
+   if (!node) return NULL;
 
    if (isLeaf(node)) {
       if (!skippedPrefix && depth == keyLength) // No check required
          return node;
 
-      if (depth != keyLength && !bigger) {
-         // Check leaf
+      if (depth && depth != keyLength && !bigger) {
          uint8_t leafKey[maxKeyLength];
          loadKey(getLeafValue(node),leafKey);
          for (unsigned i=(skippedPrefix?0:depth);i<keyLength;i++) {
-            // fprintf(stderr, "i = %u, %u %u, value = %lu\n", i, leafKey[i], key[i], getLeafValue(node));
             if (leafKey[i] < key[i]) {
-               // for (int j = 0; j < keyLength; j++) {
-               //    fprintf(stderr, "%d -> %u %u\n", i, leafKey[j], key[j]);
-               // }
                // fprintf(stderr, "ARRRR!!! \n");
                return NULL;
+            } else if (leafKey[i] > key[i]) {
+               break;
             }
          }
       }
@@ -403,18 +404,25 @@ Node* lower_bound(Node* node, uint8_t key[], unsigned keyLength, unsigned depth,
 }
 
 Node* lower_bound_prev(Node* node, uint8_t key[], unsigned keyLength, unsigned depth, unsigned maxKeyLength, bool skippedPrefix=false, bool is_less = false) {
-   // fprintf(stderr, "lower_prev1 %u\n", depth);
+   // fprintf(stderr, "lower_prev1 %u, leaf = %d\n", depth, isLeaf(node));
+   if (!node) return NULL;
 
    if (isLeaf(node)) {
       if (!skippedPrefix && depth == keyLength) // No check required
          return node;
 
-      if (depth != keyLength && !is_less) {
+      if (depth && depth != keyLength && !is_less) {
          uint8_t leafKey[maxKeyLength];
          loadKey(getLeafValue(node),leafKey);
+         // for (int j = 0; j < keyLength; j++) {
+         //    fprintf(stderr, "%d: %u %u\n", j, leafKey[j], key[j]);
+         // }
          for (unsigned i=(skippedPrefix?0:depth);i<keyLength;i++) {
             if (leafKey[i] > key[i]) {
+               // fprintf(stderr, "GAGAL %u %u\n", leafKey[i], key[i]);
                return NULL;
+            } else if (leafKey[i] < key[i]) {
+               break;
             }
          }
       }
@@ -426,6 +434,7 @@ Node* lower_bound_prev(Node* node, uint8_t key[], unsigned keyLength, unsigned d
       if (node->prefixLength < maxPrefixLength && !is_less) {
          for (unsigned pos=0; pos < node->prefixLength; pos++)
             if (key[depth+pos] < node->prefix[pos]) {
+               // fprintf(stderr, "GAGAL2 %u %u, pos = %u\n", key[depth+pos], node->prefix[pos], pos);
                return NULL;
             }
       } else {
@@ -443,7 +452,7 @@ Node* lower_bound_prev(Node* node, uint8_t key[], unsigned keyLength, unsigned d
             Node4* node = static_cast<Node4*>(n);
             for (int i = node->count - 1; i >= 0; i--) {
                if (node->key[i] <= keyByte || is_less) {
-                  Node *ret = lower_bound(node->child[i], key, keyLength, depth, maxKeyLength, skippedPrefix, is_less || node->key[i] < keyByte);
+                  Node *ret = lower_bound_prev(node->child[i], key, keyLength, depth, maxKeyLength, skippedPrefix, is_less || node->key[i] < keyByte);
                   if (ret) return ret;
                }
             }
@@ -451,7 +460,7 @@ Node* lower_bound_prev(Node* node, uint8_t key[], unsigned keyLength, unsigned d
          break;
 
       case NodeType16: {
-            // fprintf(stderr, "Node16 %d\n", node->count);
+            // fprintf(stderr, "Node16 count = %d, is_less = %d\n", node->count, is_less);
             Node16* node = static_cast<Node16*>(n);
             int pos = node->count - 1;
             if (!is_less) {
@@ -459,14 +468,18 @@ Node* lower_bound_prev(Node* node, uint8_t key[], unsigned keyLength, unsigned d
                __m128i cmp=_mm_cmplt_epi8(_mm_set1_epi8(flipSign(keyByte)),_mm_loadu_si128(reinterpret_cast<__m128i*>(node->key)));
                uint16_t bitfield=_mm_movemask_epi8(cmp)&(0xFFFF>>(16-node->count));
                pos = bitfield ? ctz(bitfield) : node->count;
-               if (pos > 0 && flipSign(node->key[pos - 1]) == keyByte) pos--;
-               if (pos == node->count) pos--;
+               while (pos == node->count || (pos > 0 && flipSign(node->key[pos]) > keyByte)) pos--;
             }
+            // fprintf(stderr, "pos = %d\n", pos);
             assert(pos < node->count);
             while (pos >= 0) {
-               // fprintf(stderr, "Node16 pos %d, %p\n", pos, node->child[pos]);
-               Node *ret = lower_bound(node->child[pos], key, keyLength, depth, maxKeyLength, skippedPrefix, is_less || flipSign(node->key[pos]) < keyByte);
-               if (ret) return ret;
+               // fprintf(stderr, "Node16 pos %d, %p, %u %u\n", pos, node->child[pos], flipSign(node->key[pos]), keyByte);
+               if (is_less || flipSign(node->key[pos]) <= keyByte) {
+                  Node *ret = lower_bound_prev(node->child[pos], key, keyLength, depth, maxKeyLength, skippedPrefix, is_less || flipSign(node->key[pos]) < keyByte);
+                  if (ret) return ret;
+               } else {
+                  // fprintf(stderr, "FAIL\n");
+               }
                pos--;
             }
          }
@@ -478,7 +491,7 @@ Node* lower_bound_prev(Node* node, uint8_t key[], unsigned keyLength, unsigned d
             if (is_less) keyByte = 255;
             while (keyByte >= 0) {
                if (node->childIndex[keyByte] != emptyMarker) {
-                  Node *ret = lower_bound(node->child[node->childIndex[keyByte]], key, keyLength, depth, maxKeyLength, skippedPrefix, is_less);
+                  Node *ret = lower_bound_prev(node->child[node->childIndex[keyByte]], key, keyLength, depth, maxKeyLength, skippedPrefix, is_less);
                   if (ret) return ret;
                }
                keyByte--;
@@ -493,7 +506,7 @@ Node* lower_bound_prev(Node* node, uint8_t key[], unsigned keyLength, unsigned d
             if (is_less) keyByte = 255;
             while (keyByte >= 0) {
                if (node->child[keyByte]) {
-                  Node *ret = lower_bound(node->child[keyByte], key, keyLength, depth, maxKeyLength, skippedPrefix, is_less);
+                  Node *ret = lower_bound_prev(node->child[keyByte], key, keyLength, depth, maxKeyLength, skippedPrefix, is_less);
                   if (ret) return ret;
                }
                keyByte--;
@@ -706,26 +719,38 @@ void eraseNode256(Node256* node,Node** nodeRef,uint8_t keyByte);
 void erase(Node* node,Node** nodeRef,uint8_t key[],unsigned keyLength,unsigned depth,unsigned maxKeyLength) {
    // Delete a leaf from a tree
 
-   if (!node)
+   // fprintf(stderr, "ERASE %p %d\n", node, depth);
+
+   if (!node) {
+      // fprintf(stderr, "NO NODE\n");
       return;
+   }
 
    if (isLeaf(node)) {
       // Make sure we have the right leaf
-      if (leafMatches(node,key,keyLength,depth,maxKeyLength))
+      if (leafMatches(node,key,keyLength,depth,maxKeyLength)) {
+         // fprintf(stderr, "DONE DELETE %p %p\n", node, *nodeRef);
          *nodeRef=NULL;
+         // fprintf(stderr, "DONE DELETE %p %p\n", node, *nodeRef);
+      } else {
+         // fprintf(stderr, "DONE LEAF NOT MATCH\n");
+      }
       return;
    }
 
    // Handle prefix
    if (node->prefixLength) {
-      if (prefixMismatch(node,key,depth,maxKeyLength)!=node->prefixLength)
+      if (prefixMismatch(node,key,depth,maxKeyLength)!=node->prefixLength) {
+         // fprintf(stderr, "PREFIX MISMATCH\n");
          return;
+      }
       depth+=node->prefixLength;
    }
 
    Node** child=findChild(node,key[depth]);
    if (isLeaf(*child)&&leafMatches(*child,key,keyLength,depth,maxKeyLength)) {
       // Leaf found, delete it in inner node
+      // fprintf(stderr, "LEAF FOUND\n");
       switch (node->type) {
          case NodeType4: eraseNode4(static_cast<Node4*>(node),nodeRef,child); break;
          case NodeType16: eraseNode16(static_cast<Node16*>(node),nodeRef,child); break;
@@ -745,10 +770,12 @@ void eraseNode4(Node4* node,Node** nodeRef,Node** leafPlace) {
    memmove(node->child+pos,node->child+pos+1,(node->count-pos-1)*sizeof(uintptr_t));
    node->count--;
 
+   // fprintf(stderr, "Erase4, count = %d\n", node->count);
    if (node->count==1) {
       // Get rid of one-way node
       Node* child=node->child[0];
       if (!isLeaf(child)) {
+         assert(0);
          // Concantenate prefixes
          unsigned l1=node->prefixLength;
          if (l1<maxPrefixLength) {
@@ -775,6 +802,7 @@ void eraseNode16(Node16* node,Node** nodeRef,Node** leafPlace) {
    memmove(node->key+pos,node->key+pos+1,node->count-pos-1);
    memmove(node->child+pos,node->child+pos+1,(node->count-pos-1)*sizeof(uintptr_t));
    node->count--;
+   // fprintf(stderr, "Erase16\n");
 
    if (node->count==3) {
       // Shrink to Node4
@@ -794,6 +822,7 @@ void eraseNode48(Node48* node,Node** nodeRef,uint8_t keyByte) {
    node->child[node->childIndex[keyByte]]=NULL;
    node->childIndex[keyByte]=emptyMarker;
    node->count--;
+   // fprintf(stderr, "Erase48\n");
 
    if (node->count==12) {
       // Shrink to Node16
@@ -815,6 +844,7 @@ void eraseNode256(Node256* node,Node** nodeRef,uint8_t keyByte) {
    // Delete leaf from inner node
    node->child[keyByte]=NULL;
    node->count--;
+   // fprintf(stderr, "Erase256\n");
 
    if (node->count==37) {
       // Shrink to Node48

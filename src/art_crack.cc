@@ -29,7 +29,7 @@ void erase(int value) {
 int query(int value) {
   auto it = c.lower_bound(value);
   int ret = it.first ? it.second : 0;
-  // fprintf(stderr, "%d (%d)\n", ret, value);
+  // fprintf(stdout, "%d (%d)\n", ret, value);
   return ret;
 }
 

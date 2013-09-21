@@ -1,4 +1,5 @@
 #include <chrono>
+#include <set>
 #include <map>
 #include <cstring>
 #include <algorithm>
@@ -322,8 +323,14 @@ int main(int argc, char *argv[]) {
   uniform_int_distribution<> dis;
   uniform_int_distribution<> disN(0, s.N - 1);
 
+  // set<int> S;
   int *iarr = new int[s.N];
-  for (int i = 0; i < s.N; i++) iarr[i] = dis(gen);
+  for (int i = 0; i < s.N; i++) {
+    iarr[i] = dis(gen);
+    // if (S.count(iarr[i])) fprintf(stderr, "i = %d, dup = %d\n", i, iarr[i]);
+    // S.insert(iarr[i]);
+  }
+  // fprintf(stderr, "no dup\n");
 
   s.insert_time = time_it([&] { init(iarr, s.N); });
 
