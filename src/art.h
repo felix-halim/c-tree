@@ -24,6 +24,9 @@ static const int8_t NodeType256=3;
 // demand
 static const unsigned maxPrefixLength=9;
 
+int art_debug = 0;
+#define ART_DEBUG(...) { if (art_debug) fprintf(stderr, __VA_ARGS__); }
+
 // Shared header of all inner nodes
 struct Node {
    // length of the compressed path (prefix)
@@ -234,7 +237,7 @@ bool leafMatches(Node* leaf,uint8_t key[],unsigned keyLength,unsigned depth,unsi
       loadKey(getLeafValue(leaf),leafKey);
       for (unsigned i=depth;i<keyLength;i++)
          if (leafKey[i]!=key[i]) {
-            // fprintf(stderr, "LEAF NOT MATCH\n");
+            ART_DEBUG("LEAF NOT MATCH\n");
             return false;
          }
    }
@@ -301,7 +304,7 @@ Node* lookup(Node* node,uint8_t key[],unsigned keyLength,unsigned depth,unsigned
 }
 
 Node* lower_bound(Node* node, uint8_t key[], unsigned keyLength, unsigned depth, unsigned maxKeyLength, bool skippedPrefix=false, bool bigger = false) {
-   // fprintf(stderr, "lower_boundx %u, %p\n", depth, node);
+   // ART_DEBUG("lower_boundx %u, %p\n", depth, node);
    if (!node) return NULL;
 
    if (isLeaf(node)) {
@@ -313,23 +316,27 @@ Node* lower_bound(Node* node, uint8_t key[], unsigned keyLength, unsigned depth,
          loadKey(getLeafValue(node),leafKey);
          for (unsigned i=(skippedPrefix?0:depth);i<keyLength;i++) {
             if (leafKey[i] < key[i]) {
-               // fprintf(stderr, "ARRRR!!! \n");
+               ART_DEBUG("ARRRR!!! \n");
                return NULL;
             } else if (leafKey[i] > key[i]) {
+               ART_DEBUG("SHORTCUT\n");
                break;
             }
          }
       }
+      ART_DEBUG("YES");
       return node;
    }
 
-   // fprintf(stderr, "prefixLength = %u\n", node->prefixLength);
+   // ART_DEBUG("prefixLength = %u\n", node->prefixLength);
    if (node->prefixLength) {
       if (node->prefixLength < maxPrefixLength && !bigger) {
          for (unsigned pos=0; pos < node->prefixLength; pos++)
             if (key[depth+pos] > node->prefix[pos]) {
-               // fprintf(stderr, "ARRRRGGGGGHhHHHHAaAJSKHJAKSJDHKAJSHDKASJDHAKSJHDAKJSDHAKSJDHAKSJDHASKDJHAS\n");
+               ART_DEBUG("ARRRRGGGGGHhHHHHAaAJSKHJAKSJDHKAJSHDKASJDHAKSJHDAKJSDHAKSJDHAKSJDHASKDJHAS\n");
                return NULL;
+            } else if (key[depth+pos] < node->prefix[pos]) {
+               bigger = 1;
             }
       } else
          skippedPrefix=true;
@@ -341,9 +348,13 @@ Node* lower_bound(Node* node, uint8_t key[], unsigned keyLength, unsigned depth,
 
    switch (n->type) {
       case NodeType4: {
+            ART_DEBUG("LoweBound4, count = %d\n", node->count);
             Node4* node = static_cast<Node4*>(n);
             for (int i = 0; i < node->count; i++) {
+               // Node *c = node->child[i];
+               // if (isLeaf(c)) ART_DEBUG("i = %d, key4 = %d >= %d, %llu\n", i, node->key[i], keyByte, getLeafValue(c));
                if (node->key[i] >= keyByte || bigger) {
+                  // ART_DEBUG("got it\n");
                   Node *ret = lower_bound(node->child[i], key, keyLength, depth, maxKeyLength, skippedPrefix, bigger || node->key[i] > keyByte);
                   if (ret) return ret;
                }
@@ -352,6 +363,7 @@ Node* lower_bound(Node* node, uint8_t key[], unsigned keyLength, unsigned depth,
          break;
 
       case NodeType16: {
+            ART_DEBUG("LoweBound16\n");
             int pos = 0;
             Node16* node = static_cast<Node16*>(n);
             if (!bigger) {
@@ -369,6 +381,7 @@ Node* lower_bound(Node* node, uint8_t key[], unsigned keyLength, unsigned depth,
          break;
 
       case NodeType48: {
+            ART_DEBUG("LoweBound48\n");
             Node48* node=static_cast<Node48*>(n);
             if (bigger) keyByte = 0;
             while (keyByte < 256) {
@@ -383,9 +396,11 @@ Node* lower_bound(Node* node, uint8_t key[], unsigned keyLength, unsigned depth,
          break;
 
       case NodeType256: {
+            ART_DEBUG("LoweBound256\n");
             Node256* node=static_cast<Node256*>(n);
             if (bigger) keyByte = 0;
             while (keyByte < 256) {
+               ART_DEBUG("LoweBound256 keyByte = %d, bigger = %d\n", keyByte, bigger);
                if (node->child[keyByte]) {
                   Node *ret = lower_bound(node->child[keyByte], key, keyLength, depth, maxKeyLength, skippedPrefix, bigger);
                   if (ret) return ret;
@@ -399,12 +414,12 @@ Node* lower_bound(Node* node, uint8_t key[], unsigned keyLength, unsigned depth,
       default: assert(0);
    }
 
-   // fprintf(stderr, "NOOOOOOOOOOO\n");
+   ART_DEBUG("NOOOOOOOOOOO\n");
    return NULL;
 }
 
 Node* lower_bound_prev(Node* node, uint8_t key[], unsigned keyLength, unsigned depth, unsigned maxKeyLength, bool skippedPrefix=false, bool is_less = false) {
-   // fprintf(stderr, "lower_prev1 %u, leaf = %d\n", depth, isLeaf(node));
+   // ART_DEBUG("lower_prev1 %u, leaf = %d\n", depth, isLeaf(node));
    if (!node) return NULL;
 
    if (isLeaf(node)) {
@@ -415,11 +430,11 @@ Node* lower_bound_prev(Node* node, uint8_t key[], unsigned keyLength, unsigned d
          uint8_t leafKey[maxKeyLength];
          loadKey(getLeafValue(node),leafKey);
          // for (int j = 0; j < keyLength; j++) {
-         //    fprintf(stderr, "%d: %u %u\n", j, leafKey[j], key[j]);
+            // ART_DEBUG("%d: %u %u\n", j, leafKey[j], key[j]);
          // }
          for (unsigned i=(skippedPrefix?0:depth);i<keyLength;i++) {
             if (leafKey[i] > key[i]) {
-               // fprintf(stderr, "GAGAL %u %u\n", leafKey[i], key[i]);
+               ART_DEBUG("GAGAL %u %u\n", leafKey[i], key[i]);
                return NULL;
             } else if (leafKey[i] < key[i]) {
                break;
@@ -429,13 +444,15 @@ Node* lower_bound_prev(Node* node, uint8_t key[], unsigned keyLength, unsigned d
       return node;
    }
 
-   // fprintf(stderr, "lower_prev1 plen = %u\n", node->prefixLength);
+   // ART_DEBUG("lower_prev1 plen = %u\n", node->prefixLength);
    if (node->prefixLength) {
       if (node->prefixLength < maxPrefixLength && !is_less) {
          for (unsigned pos=0; pos < node->prefixLength; pos++)
             if (key[depth+pos] < node->prefix[pos]) {
-               // fprintf(stderr, "GAGAL2 %u %u, pos = %u\n", key[depth+pos], node->prefix[pos], pos);
+               ART_DEBUG("GAGAL2 %u %u, pos = %u\n", key[depth+pos], node->prefix[pos], pos);
                return NULL;
+            } else if (key[depth+pos] > node->prefix[pos]) {
+               is_less = 1;
             }
       } else {
          skippedPrefix=true;
@@ -448,7 +465,7 @@ Node* lower_bound_prev(Node* node, uint8_t key[], unsigned keyLength, unsigned d
 
    switch (n->type) {
       case NodeType4: {
-            // fprintf(stderr, "Node4 %d\n", node->count);
+            // ART_DEBUG("Node4 %d\n", node->count);
             Node4* node = static_cast<Node4*>(n);
             for (int i = node->count - 1; i >= 0; i--) {
                if (node->key[i] <= keyByte || is_less) {
@@ -460,25 +477,25 @@ Node* lower_bound_prev(Node* node, uint8_t key[], unsigned keyLength, unsigned d
          break;
 
       case NodeType16: {
-            // fprintf(stderr, "Node16 count = %d, is_less = %d\n", node->count, is_less);
+            // ART_DEBUG("Node16 count = %d, is_less = %d\n", node->count, is_less);
             Node16* node = static_cast<Node16*>(n);
             int pos = node->count - 1;
             if (!is_less) {
-               // fprintf(stderr, "Node16 is_less %d\n", node->count);
+               // ART_DEBUG("Node16 is_less %d\n", node->count);
                __m128i cmp=_mm_cmplt_epi8(_mm_set1_epi8(flipSign(keyByte)),_mm_loadu_si128(reinterpret_cast<__m128i*>(node->key)));
                uint16_t bitfield=_mm_movemask_epi8(cmp)&(0xFFFF>>(16-node->count));
                pos = bitfield ? ctz(bitfield) : node->count;
                while (pos == node->count || (pos > 0 && flipSign(node->key[pos]) > keyByte)) pos--;
             }
-            // fprintf(stderr, "pos = %d\n", pos);
+            // ART_DEBUG("pos = %d\n", pos);
             assert(pos < node->count);
             while (pos >= 0) {
-               // fprintf(stderr, "Node16 pos %d, %p, %u %u\n", pos, node->child[pos], flipSign(node->key[pos]), keyByte);
+               // ART_DEBUG("Node16 pos %d, %p, %u %u\n", pos, node->child[pos], flipSign(node->key[pos]), keyByte);
                if (is_less || flipSign(node->key[pos]) <= keyByte) {
                   Node *ret = lower_bound_prev(node->child[pos], key, keyLength, depth, maxKeyLength, skippedPrefix, is_less || flipSign(node->key[pos]) < keyByte);
                   if (ret) return ret;
                } else {
-                  // fprintf(stderr, "FAIL\n");
+                  // ART_DEBUG("FAIL\n");
                }
                pos--;
             }
@@ -486,7 +503,7 @@ Node* lower_bound_prev(Node* node, uint8_t key[], unsigned keyLength, unsigned d
          break;
 
       case NodeType48: {
-            // fprintf(stderr, "Node48 %d\n", node->count);
+            // ART_DEBUG("Node48 %d\n", node->count);
             Node48* node=static_cast<Node48*>(n);
             if (is_less) keyByte = 255;
             while (keyByte >= 0) {
@@ -501,7 +518,7 @@ Node* lower_bound_prev(Node* node, uint8_t key[], unsigned keyLength, unsigned d
          break;
 
       case NodeType256: {
-            // fprintf(stderr, "Node256 %d\n", node->count);
+            // ART_DEBUG("Node256 %d\n", node->count);
             Node256* node=static_cast<Node256*>(n);
             if (is_less) keyByte = 255;
             while (keyByte >= 0) {
@@ -719,21 +736,21 @@ void eraseNode256(Node256* node,Node** nodeRef,uint8_t keyByte);
 void erase(Node* node,Node** nodeRef,uint8_t key[],unsigned keyLength,unsigned depth,unsigned maxKeyLength) {
    // Delete a leaf from a tree
 
-   // fprintf(stderr, "ERASE %p %d\n", node, depth);
+   ART_DEBUG("ERASE %p %d\n", node, depth);
 
    if (!node) {
-      // fprintf(stderr, "NO NODE\n");
+      ART_DEBUG("NO NODE\n");
       return;
    }
 
    if (isLeaf(node)) {
       // Make sure we have the right leaf
       if (leafMatches(node,key,keyLength,depth,maxKeyLength)) {
-         // fprintf(stderr, "DONE DELETE %p %p\n", node, *nodeRef);
+         ART_DEBUG("DONE DELETE %p %p\n", node, *nodeRef);
          *nodeRef=NULL;
-         // fprintf(stderr, "DONE DELETE %p %p\n", node, *nodeRef);
+         ART_DEBUG("DONE DELETE %p %p\n", node, *nodeRef);
       } else {
-         // fprintf(stderr, "DONE LEAF NOT MATCH\n");
+         ART_DEBUG("DONE LEAF NOT MATCH\n");
       }
       return;
    }
@@ -741,7 +758,7 @@ void erase(Node* node,Node** nodeRef,uint8_t key[],unsigned keyLength,unsigned d
    // Handle prefix
    if (node->prefixLength) {
       if (prefixMismatch(node,key,depth,maxKeyLength)!=node->prefixLength) {
-         // fprintf(stderr, "PREFIX MISMATCH\n");
+         ART_DEBUG("PREFIX MISMATCH\n");
          return;
       }
       depth+=node->prefixLength;
@@ -750,7 +767,7 @@ void erase(Node* node,Node** nodeRef,uint8_t key[],unsigned keyLength,unsigned d
    Node** child=findChild(node,key[depth]);
    if (isLeaf(*child)&&leafMatches(*child,key,keyLength,depth,maxKeyLength)) {
       // Leaf found, delete it in inner node
-      // fprintf(stderr, "LEAF FOUND\n");
+      ART_DEBUG("LEAF FOUND\n");
       switch (node->type) {
          case NodeType4: eraseNode4(static_cast<Node4*>(node),nodeRef,child); break;
          case NodeType16: eraseNode16(static_cast<Node16*>(node),nodeRef,child); break;
@@ -770,7 +787,7 @@ void eraseNode4(Node4* node,Node** nodeRef,Node** leafPlace) {
    memmove(node->child+pos,node->child+pos+1,(node->count-pos-1)*sizeof(uintptr_t));
    node->count--;
 
-   // fprintf(stderr, "Erase4, count = %d\n", node->count);
+   ART_DEBUG("Erase4, count = %d\n", node->count);
    if (node->count==1) {
       // Get rid of one-way node
       Node* child=node->child[0];
@@ -802,7 +819,7 @@ void eraseNode16(Node16* node,Node** nodeRef,Node** leafPlace) {
    memmove(node->key+pos,node->key+pos+1,node->count-pos-1);
    memmove(node->child+pos,node->child+pos+1,(node->count-pos-1)*sizeof(uintptr_t));
    node->count--;
-   // fprintf(stderr, "Erase16\n");
+   ART_DEBUG("Erase16\n");
 
    if (node->count==3) {
       // Shrink to Node4
@@ -822,7 +839,7 @@ void eraseNode48(Node48* node,Node** nodeRef,uint8_t keyByte) {
    node->child[node->childIndex[keyByte]]=NULL;
    node->childIndex[keyByte]=emptyMarker;
    node->count--;
-   // fprintf(stderr, "Erase48\n");
+   ART_DEBUG("Erase48\n");
 
    if (node->count==12) {
       // Shrink to Node16
@@ -844,7 +861,7 @@ void eraseNode256(Node256* node,Node** nodeRef,uint8_t keyByte) {
    // Delete leaf from inner node
    node->child[keyByte]=NULL;
    node->count--;
-   // fprintf(stderr, "Erase256\n");
+   ART_DEBUG("Erase256\n");
 
    if (node->count==37) {
       // Shrink to Node48
