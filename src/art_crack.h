@@ -495,11 +495,7 @@ class ArtCrack {
       int v2 = LEAF_BUCKET(b)->data(0);
 
       if (v1 != v2) {
-    // if (value == 1570896042)
-        // fprintf(stderr, "DETACH %d %d\n", b, v1);
         remove_root_bucket(v1, b);
-    // if (value == 1570896042)
-        // fprintf(stderr, "REATTACH ROOT %d -> %d\n", b, v2);
         insert_root(v2, b);
       }
 
@@ -507,11 +503,7 @@ class ArtCrack {
       insert_root(pivot, nb);
       if (value >= pivot) {
         b = nb;
-    // if (value == 1570896042)
-        // fprintf(stderr, "GO RIGHT\n");
       } else {
-    // if (value == 1570896042)
-        // fprintf(stderr, "GO LEFT\n");
         right_pivot = pivot;
       }
     }
@@ -520,13 +512,10 @@ class ArtCrack {
     int pos = LEAF_BUCKET(b)->leaf_lower_pos(value);
     if (pos < LEAF_BUCKET(b)->size())
       return make_pair(true, LEAF_BUCKET(b)->data(pos));
-    // if (value == 1570896042)
-    // fprintf(stderr, "pos = %d / %d\n", pos, LEAF_BUCKET(b)->size());
     return make_pair(false, right_pivot);
   }
 
   pair<bool, int> lower_bound(int value) {
-    // if (value == 1570896042)
     // fprintf(stderr, "\nquery = %d\n", value);
     uint8_t key[8];
     loadKey(make_key(value, 1 << 29), key);
@@ -535,29 +524,16 @@ class ArtCrack {
       assert(isLeaf(leaf));
       uint64_t v = getLeafValue(leaf);
       int b = v & ((1 << 30) - 1);
-    // if (value == 1570896042)
-      // fprintf(stderr, "value1 = %llu, b = %d\n", v >> 30, b);
       auto ret = lower_bound_bucket(b, value);
-    // if (value == 1570896042)
-      // fprintf(stderr, "final1 %d\n", ret.second);
       if (ret.first) return ret;
-    // if (value == 1570896042)
-      // fprintf(stderr, "fail!\n");
     }
     leaf = ::lower_bound(tree,key,8,0,8);
-    if (!leaf) {
-      // fprintf(stderr, "WOOT %d\n", value);
-      return make_pair(false, 0);
-    }
+    if (!leaf) return make_pair(false, 0);
     assert(leaf);
     assert(isLeaf(leaf));
     uint64_t v = getLeafValue(leaf);
     int b = v & ((1 << 30) - 1);
-    // if (value == 1570896042)
-    // fprintf(stderr, "value = %llu, b = %d\n", v >> 30, b);
     auto ret = lower_bound_bucket(b, value);
-    // if (value == 1570896042)
-    // fprintf(stderr, "final2 %d, b = %d, FOUND = %d\n", ret.second, b, ret.first);
     // assert(ret.first);
     ret.first = true;
     return ret;

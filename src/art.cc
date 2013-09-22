@@ -22,7 +22,10 @@ void insert(int value) {
 }
 
 void erase(int value) {
-  // art_delete(&t, (char*) &value, 4);
+  uint8_t key[8];
+  uint64_t value64 = value;
+  loadKey(value64, key);
+  erase(tree,&tree,key,0,value64,8);
 }
 
 int query(int value) {

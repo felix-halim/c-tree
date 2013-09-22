@@ -7,6 +7,9 @@ CXXFLAGS = -O3 -g -DNDEBUGx -std=c++0x# -stdlib=libc++
 FLAGS    = -I.
 
 all: \
+	$(ODIR)/art \
+	$(ODIR)/art_crack \
+	$(ODIR)/crack \
 	$(ODIR)/comb \
 	$(ODIR)/ctree \
 	$(ODIR)/ctree_eager \
@@ -18,6 +21,9 @@ all: \
 	$(ODIR)/ctree_tests
 
 $(ODIR)/comb: comb.cc comb.h test.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
+
+$(ODIR)/crack: crack.cc crack.h test.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
 
 $(ODIR)/art: art.cc art.h test.h
