@@ -473,7 +473,7 @@ Node* lower_bound_prev(Node* node, uint8_t key[], unsigned keyLength, unsigned d
 
    switch (n->type) {
       case NodeType4: {
-            ART_DEBUG("Node4 %d\n", node->count);
+            ART_DEBUG("Node4P %d\n", node->count);
             Node4* node = static_cast<Node4*>(n);
             for (int i = node->count - 1; i >= 0; i--) {
                if (isLeaf(node->child[i])) {
@@ -488,7 +488,7 @@ Node* lower_bound_prev(Node* node, uint8_t key[], unsigned keyLength, unsigned d
          break;
 
       case NodeType16: {
-            ART_DEBUG("Node16 count = %d, is_less = %d\n", node->count, is_less);
+            ART_DEBUG("Node16P count = %d, is_less = %d\n", node->count, is_less);
             Node16* node = static_cast<Node16*>(n);
             int pos = node->count - 1;
             if (!is_less) {
@@ -515,12 +515,14 @@ Node* lower_bound_prev(Node* node, uint8_t key[], unsigned keyLength, unsigned d
          break;
 
       case NodeType48: {
-            ART_DEBUG("Node48 %d\n", node->count);
+            ART_DEBUG("Node48P %d is_less = %d, keyByte = %d\n", node->count, is_less, keyByte);
             Node48* node=static_cast<Node48*>(n);
             if (is_less) keyByte = 255;
             while (keyByte >= 0) {
                if (node->childIndex[keyByte] != emptyMarker) {
-                  Node *ret = lower_bound_prev(node->child[node->childIndex[keyByte]], key, keyLength, depth, maxKeyLength, skippedPrefix, is_less);
+                  Node *c = node->child[node->childIndex[keyByte]];
+                  ART_DEBUG("N48C %d = %lld\n", keyByte, isLeaf(c) ? getLeafValue(c) : -1);
+                  Node *ret = lower_bound_prev(c, key, keyLength, depth, maxKeyLength, skippedPrefix, is_less);
                   if (ret) return ret;
                }
                keyByte--;
@@ -530,7 +532,7 @@ Node* lower_bound_prev(Node* node, uint8_t key[], unsigned keyLength, unsigned d
          break;
 
       case NodeType256: {
-            ART_DEBUG("Node256 %d\n", node->count);
+            ART_DEBUG("Node256P %d\n", node->count);
             Node256* node=static_cast<Node256*>(n);
             if (is_less) keyByte = 255;
             while (keyByte >= 0) {

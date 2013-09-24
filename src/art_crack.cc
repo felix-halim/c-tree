@@ -28,6 +28,7 @@ void erase(long long value) {
 }
 
 long long query(long long value) {
+  // art_debug = 1;
   if (value == 3217062660858581735LL) art_debug = 1;
   auto it = c.lower_bound(value);
   long long ret = it.first ? it.second : 0;
