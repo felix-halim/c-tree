@@ -1,6 +1,6 @@
 mkdir bin 2> /dev/null
-N=100000000
-Q=1000000000
+N=10000000
+Q=100000
 out=results.js
 
 case $1 in

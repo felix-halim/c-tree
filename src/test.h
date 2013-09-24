@@ -309,7 +309,7 @@ Statistics s;
 
 inline static long long next_ll() {
   // return dis(gen);
-  return (((long long) dis(gen)) << 30) | (dis_suffix++);
+  return (((long long) dis(gen)) << 31) | (dis_suffix++);
 }
 
 int main(int argc, char *argv[]) {
