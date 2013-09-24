@@ -184,13 +184,13 @@ class Bucket {
     }
     int pos = 0;
     while (pos < N && D[pos] < value) {
-      ART_DEBUG("leaf_lower_pos for value = %lld, D[%d/%d] = %lld\n", value, pos, N, D[pos]);
+      // ART_DEBUG("leaf_lower_pos for value = %lld, D[%d/%d] = %lld\n", value, pos, N, D[pos]);
       pos++;
     }
-    if (art_debug) {
-      for (int i = 0; i < N; i++)
-       ART_DEBUG("D[%d/%d] = %lld\n", i, N, D[i]);
-    }
+    // if (art_debug) {
+    //   for (int i = 0; i < N; i++)
+    //    ART_DEBUG("D[%d/%d] = %lld\n", i, N, D[i]);
+    // }
     ART_DEBUG("leaf_lower_pos for value = %lld, pos = %d/%d, v = %lld\n", value, pos, N, pos < N ? D[pos] : -1);
     return pos;
   }
@@ -545,10 +545,6 @@ class ArtCrack {
       int b = reinterpret_cast<uintptr_t>(leaf) >> 1;
       auto ret = lower_bound_bucket(b, value);
       if (ret.first) return ret;
-      if (ret.second != -1) {
-        ret.first = true;
-        return ret;
-      }
     }
     ART_DEBUG("second lower_bound\n");
     leaf = ::lower_bound(tree,key,8,0,8);

@@ -306,7 +306,7 @@ Node* lookup(Node* node,uint8_t key[],unsigned keyLength,unsigned depth,unsigned
 }
 
 Node* lower_bound(Node* node, uint8_t key[], unsigned keyLength, unsigned depth, unsigned maxKeyLength, bool skippedPrefix=false, bool bigger = false) {
-   // ART_DEBUG("lower_boundx %u, %p\n", depth, node);
+   ART_DEBUG("lower_boundx depth = %u, %p, bigger = %d\n", depth, node, bigger);
    if (!node) return NULL;
 
    if (isLeaf(node)) {
@@ -316,8 +316,13 @@ Node* lower_bound(Node* node, uint8_t key[], unsigned keyLength, unsigned depth,
       if (depth && depth != keyLength && !bigger) {
          uint8_t leafKey[maxKeyLength];
          loadKey(getLeafValue(node),leafKey);
+         if (art_debug) {
+            for (unsigned i = 0; i < keyLength; i++) {
+               ART_DEBUG("i = %d, %u %u\n", i, leafKey[i], key[i]);
+            }
+         }
          for (unsigned i=(skippedPrefix?0:depth);i<keyLength;i++) {
-            ART_DEBUG("i = %u, %u %u\n", i, leafKey[i], key[i]);
+            ART_DEBUG("i => %u, %u %u\n", i, leafKey[i], key[i]);
             if (leafKey[i] < key[i]) {
                ART_DEBUG("ARRRR!!! \n");
                return NULL;
@@ -355,11 +360,11 @@ Node* lower_bound(Node* node, uint8_t key[], unsigned keyLength, unsigned depth,
             ART_DEBUG("LoweBound4, count = %d\n", node->count);
             Node4* node = static_cast<Node4*>(n);
             for (int i = 0; i < node->count; i++) {
-               // Node *c = node->child[i];
-               // if (isLeaf(c)) ART_DEBUG("i = %d, key4 = %d >= %d, %llu\n", i, node->key[i], keyByte, getLeafValue(c));
+               Node *c = node->child[i];
+               ART_DEBUG("i = %d, key4 = %d >= %d, %lu\n", i, node->key[i], keyByte, isLeaf(c) ? getLeafValue(c) : 0);
                if (node->key[i] >= keyByte || bigger) {
                   // ART_DEBUG("got it\n");
-                  Node *ret = lower_bound(node->child[i], key, keyLength, depth, maxKeyLength, skippedPrefix, bigger || node->key[i] > keyByte);
+                  Node *ret = lower_bound(c, key, keyLength, depth, maxKeyLength, skippedPrefix, bigger || node->key[i] > keyByte);
                   if (ret) return ret;
                }
             }
@@ -591,6 +596,7 @@ void copyPrefix(Node* src,Node* dst) {
 
 void insert(Node* node,Node** nodeRef,uint8_t key[],unsigned depth,uintptr_t value,unsigned maxKeyLength) {
    // Insert the leaf value into the tree
+   ART_DEBUG("Insert depth = %d, %u\n", depth, depth < maxKeyLength ? key[depth] : 0);
 
    if (node==NULL) {
       *nodeRef=makeLeaf(value);
@@ -620,16 +626,19 @@ void insert(Node* node,Node** nodeRef,uint8_t key[],unsigned depth,uintptr_t val
       unsigned mismatchPos=prefixMismatch(node,key,depth,maxKeyLength);
       if (mismatchPos!=node->prefixLength) {
          // Prefix differs, create new node
+         ART_DEBUG("Prefix Differs\n");
          Node4* newNode=new Node4();
          *nodeRef=newNode;
          newNode->prefixLength=mismatchPos;
          memcpy(newNode->prefix,node->prefix,min(mismatchPos,maxPrefixLength));
          // Break up prefix
          if (node->prefixLength<maxPrefixLength) {
+            ART_DEBUG("Break Prefix\n");
             insertNode4(newNode,nodeRef,node->prefix[mismatchPos],node);
             node->prefixLength-=(mismatchPos+1);
             memmove(node->prefix,node->prefix+mismatchPos+1,min(node->prefixLength,maxPrefixLength));
          } else {
+            ART_DEBUG("Break Prefix2\n");
             node->prefixLength-=(mismatchPos+1);
             uint8_t minKey[maxKeyLength];
             loadKey(getLeafValue(minimum(node)),minKey);
@@ -645,12 +654,14 @@ void insert(Node* node,Node** nodeRef,uint8_t key[],unsigned depth,uintptr_t val
    // Recurse
    Node** child=findChild(node,key[depth]);
    if (*child) {
+      ART_DEBUG("Recurse\n");
       insert(*child,child,key,depth+1,value,maxKeyLength);
       return;
    }
 
    // Insert leaf into inner node
    Node* newNode=makeLeaf(value);
+   ART_DEBUG("Insert Inner\n");
    switch (node->type) {
       case NodeType4: insertNode4(static_cast<Node4*>(node),nodeRef,key[depth],newNode); break;
       case NodeType16: insertNode16(static_cast<Node16*>(node),nodeRef,key[depth],newNode); break;

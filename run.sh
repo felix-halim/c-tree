@@ -23,8 +23,7 @@ max_depth,slack,in_size,ln_size,ia_free,ia_size,la_free,la_size\n\\" > data.js;
               echo "';" >> data.js
               ;;
 
-batch_noup)   ./run.sh noup ctree_with_crack | tee -a $out
-              ./run.sh noup comb | tee -a $out
+batch_noup)   ./run.sh noup comb | tee -a $out
               ./run.sh noup ctree_32_64 | tee -a $out
               ./run.sh noup art | tee -a $out
               ./run.sh noup art_crack | tee -a $out

@@ -29,11 +29,11 @@ void erase(long long value) {
 
 long long query(long long value) {
   // art_debug = 1;
-  if (value == 3217062660858581735LL) art_debug = 1;
+  if (value == 1234820389148375309LL) art_debug = 1;
   auto it = c.lower_bound(value);
   long long ret = it.first ? it.second : 0;
-  // fprintf(stdout, "%lld (%lld)\n", ret, value);
-  if (value == 3217062660858581735LL) fprintf(stderr, "%d %lld\n", it.first, it.second);
+  fprintf(stdout, "%lld (%lld)\n", ret, value);
+  if (value == 1234820389148375309LL) fprintf(stderr, "%d %lld\n", it.first, it.second);
   art_debug = 0;
   return ret;
 }
