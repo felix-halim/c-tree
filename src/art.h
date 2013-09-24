@@ -521,7 +521,7 @@ Node* lower_bound_prev(Node* node, uint8_t key[], unsigned keyLength, unsigned d
             while (keyByte >= 0) {
                if (node->childIndex[keyByte] != emptyMarker) {
                   Node *c = node->child[node->childIndex[keyByte]];
-                  ART_DEBUG("N48C %d = %lld\n", keyByte, isLeaf(c) ? getLeafValue(c) : -1);
+                  ART_DEBUG("N48C %d = %lld\n", keyByte, isLeaf(c) ? getLeafValue(c) : -1LL);
                   Node *ret = lower_bound_prev(c, key, keyLength, depth, maxKeyLength, skippedPrefix, is_less);
                   if (ret) return ret;
                }
