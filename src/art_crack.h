@@ -89,6 +89,7 @@ class Bucket {
   int slack() const { assert(is_valid()); return LEAF_BSIZE - size(); }
   bool is_full() const { assert(is_valid()); return slack() == 0; }
   bool is_valid() const { return N <= LEAF_BSIZE; }
+  bool is_sorted() const { return P == 0; }
   int last_data_is_at_least(T value) const { assert(is_valid()); return D[N - 1] >= value; }
   void set_data(int i, T v) { assert(is_valid()); assert(i >=0 && i < N); D[i] = v; }
 
@@ -163,11 +164,10 @@ class Bucket {
 
   void leaf_sort() {
     assert(is_valid());
-    if (P) {
-      assert(!locked);
-      sort(D, D + N);
-      P = 0;
-    }
+    assert(!is_sorted());
+    assert(!locked);
+    sort(D, D + N);
+    P = 0;
   }
 
   T leaf_promote_last() {
@@ -178,7 +178,7 @@ class Bucket {
 
   int leaf_lower_pos(T value) {
     assert(is_valid());
-    leaf_sort();
+    assert(is_sorted());
     if (LEAF_BSIZE >= 256) {
       return std::lower_bound(D, D + N, value) - D;
     }
@@ -308,7 +308,7 @@ class Bucket {
 template <typename T>
 class ArtCrack {
   Allocator<Bucket<T>> leaf_bucket_allocator;
-  Node* tree = NULL;
+  Node* tree;
 
   Bucket<T>* LEAF_BUCKET(int leafb) {
     // fprintf(stderr, "leafb = %d\n", leafb);
@@ -483,6 +483,7 @@ class ArtCrack {
  public:
 
   ArtCrack() {
+    tree = NULL;
     int max_size = 100000000;
     leaf_bucket_allocator.init(max_size / LEAF_BSIZE * 2);
   }
@@ -514,10 +515,6 @@ class ArtCrack {
       T v2 = LEAF_BUCKET(b)->data(0);
       insert_root(v2, b);
 
-      if (v1 != v2) {
-      }
-
-
       if (value >= pivot) {
         ART_DEBUG("GO RIGHT\n");
         b = nb;
@@ -528,6 +525,12 @@ class ArtCrack {
     }
     // fprintf(stderr, "splited %d\n", b);
 
+    // TODO: optimize.
+    if (!LEAF_BUCKET(b)->is_sorted()) {
+      remove_root_bucket(LEAF_BUCKET(b)->data(0), b);
+      LEAF_BUCKET(b)->leaf_sort();
+      insert_root(LEAF_BUCKET(b)->data(0), b);
+    }
     int pos = LEAF_BUCKET(b)->leaf_lower_pos(value);
     if (pos < LEAF_BUCKET(b)->size())
       return make_pair(true, LEAF_BUCKET(b)->data(pos));
@@ -580,10 +583,10 @@ class ArtCrack {
     ::insert(tree,&tree,key,0,bucket_number,8);
 
     // TODO: remove
-    Node *leaf = ::lookup(tree, key, 8, 0, 8);
-    assert(leaf);
-    assert(isLeaf(leaf));
-    assert(getLeafValue(leaf) == value);
+    // Node *leaf = ::lookup(tree, key, 8, 0, 8);
+    // assert(leaf);
+    // assert(isLeaf(leaf));
+    // assert((T) getLeafValue(leaf) == value);
   }
 
   void remove_root_bucket(T value, int bucket_number) {
@@ -592,14 +595,14 @@ class ArtCrack {
     loadKey(value, key);
 
     // TODO: remove
-    Node *leaf = ::lookup(tree, key, 8, 0, 8);
-    assert(leaf);
-    assert(isLeaf(leaf));
+    // Node *leaf = ::lookup(tree, key, 8, 0, 8);
+    // assert(leaf);
+    // assert(isLeaf(leaf));
 
     ::erase(tree,&tree,key,8,0,8);
 
     // TODO: remove
-    assert(!::lookup(tree, key, 8, 0, 8));
+    // assert(!::lookup(tree, key, 8, 0, 8));
   }
 
   T bucket_head_value(long long b) {
