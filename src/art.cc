@@ -4,6 +4,11 @@
 #include "art.h"
 #include "test.h"
 
+inline uintptr_t getLeafValue(Node* node) {
+   // The the value stored in the pseudo-leaf
+   return reinterpret_cast<uintptr_t>(node)>>1;
+}
+
 using namespace std;
 
 Node* tree = NULL;
@@ -26,7 +31,9 @@ void erase(long long value) {
   uint8_t key[8];
   uint64_t value64 = value;
   loadKey(value64, key);
+  assert(lookup(tree,key,8,0,8));
   erase(tree,&tree,key,8,0,8);
+  assert(!lookup(tree,key,8,0,8));
 }
 
 long long query(long long value) {

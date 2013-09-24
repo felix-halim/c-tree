@@ -28,7 +28,7 @@ void erase(long long value) {
 long long query(long long value) {
   long long val = 0;
   long long ret = c.lower_bound(value).next(val) ? val : 0;
-  // fprintf(stdout, "%lld (%lld)\n", ret, value);
+  fprintf(stdout, "%lld (%lld)\n", ret, value);
   return ret;
 }
 

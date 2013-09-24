@@ -90,10 +90,7 @@ inline Node* makeLeaf(uintptr_t tid) {
    return reinterpret_cast<Node*>((tid<<1)|1);
 }
 
-inline uintptr_t getLeafValue(Node* node) {
-   // The the value stored in the pseudo-leaf
-   return reinterpret_cast<uintptr_t>(node)>>1;
-}
+inline uintptr_t getLeafValue(Node* node);
 
 inline bool isLeaf(Node* node) {
    // Is the node a leaf?
@@ -130,10 +127,10 @@ static inline unsigned ctz(uint16_t x) {
 
 Node** findChild(Node* n,uint8_t keyByte) {
    // Find the next child for the keyByte
-   ART_DEBUG("FC = %p, %d\n", n, n->type);
+   // ART_DEBUG("FC = %p, %d\n", n, n->type);
    switch (n->type) {
       case NodeType4: {
-         ART_DEBUG("FC4 = %u\n", keyByte);
+         // ART_DEBUG("FC4 = %u\n", keyByte);
          Node4* node=static_cast<Node4*>(n);
          for (int i=0;i<node->count;i++)
             if (node->key[i]==keyByte)
@@ -141,7 +138,7 @@ Node** findChild(Node* n,uint8_t keyByte) {
          return &nullNode;
       }
       case NodeType16: {
-         ART_DEBUG("FC16 = %u\n", keyByte);
+         // ART_DEBUG("FC16 = %u\n", keyByte);
          Node16* node=static_cast<Node16*>(n);
          __m128i cmp=_mm_cmpeq_epi8(_mm_set1_epi8(flipSign(keyByte)),_mm_loadu_si128(reinterpret_cast<__m128i*>(node->key)));
          unsigned bitfield=_mm_movemask_epi8(cmp)&((1<<node->count)-1);
@@ -150,14 +147,14 @@ Node** findChild(Node* n,uint8_t keyByte) {
             return &nullNode;
       }
       case NodeType48: {
-         ART_DEBUG("FC48 = %u\n", keyByte);
+         // ART_DEBUG("FC48 = %u\n", keyByte);
          Node48* node=static_cast<Node48*>(n);
          if (node->childIndex[keyByte]!=emptyMarker)
             return &node->child[node->childIndex[keyByte]]; else
             return &nullNode;
       }
       case NodeType256: {
-         ART_DEBUG("FC256 = %u\n", keyByte);
+         // ART_DEBUG("FC256 = %u\n", keyByte);
          Node256* node=static_cast<Node256*>(n);
          return &(node->child[keyByte]);
       }
@@ -320,6 +317,7 @@ Node* lower_bound(Node* node, uint8_t key[], unsigned keyLength, unsigned depth,
          uint8_t leafKey[maxKeyLength];
          loadKey(getLeafValue(node),leafKey);
          for (unsigned i=(skippedPrefix?0:depth);i<keyLength;i++) {
+            ART_DEBUG("i = %u, %u %u\n", i, leafKey[i], key[i]);
             if (leafKey[i] < key[i]) {
                ART_DEBUG("ARRRR!!! \n");
                return NULL;
@@ -369,15 +367,16 @@ Node* lower_bound(Node* node, uint8_t key[], unsigned keyLength, unsigned depth,
          break;
 
       case NodeType16: {
-            ART_DEBUG("LoweBound16\n");
+            ART_DEBUG("LoweBound16 %d\n", node->count);
             int pos = 0;
             Node16* node = static_cast<Node16*>(n);
             if (!bigger) {
                __m128i cmp=_mm_cmplt_epi8(_mm_set1_epi8(flipSign(keyByte)),_mm_loadu_si128(reinterpret_cast<__m128i*>(node->key)));
                uint16_t bitfield=_mm_movemask_epi8(cmp)&(0xFFFF>>(16-node->count));
                pos = bitfield ? ctz(bitfield) : node->count;
-               if (pos > 0 && flipSign(node->key[pos - 1]) == keyByte) pos--;
+               while (pos > 0 && flipSign(node->key[pos - 1]) >= keyByte) pos--;
             }
+            ART_DEBUG("pos = %d\n", pos);
             while (pos < node->count) {
                Node *ret = lower_bound(node->child[pos], key, keyLength, depth, maxKeyLength, skippedPrefix, bigger || flipSign(node->key[pos]) > keyByte);
                if (ret) return ret;
@@ -402,7 +401,7 @@ Node* lower_bound(Node* node, uint8_t key[], unsigned keyLength, unsigned depth,
          break;
 
       case NodeType256: {
-            ART_DEBUG("LoweBound256\n");
+            ART_DEBUG("LoweBound256 %d\n", node->count);
             Node256* node=static_cast<Node256*>(n);
             if (bigger) keyByte = 0;
             while (keyByte < 256) {
@@ -443,10 +442,12 @@ Node* lower_bound_prev(Node* node, uint8_t key[], unsigned keyLength, unsigned d
                ART_DEBUG("GAGAL %u %u\n", leafKey[i], key[i]);
                return NULL;
             } else if (leafKey[i] < key[i]) {
+               ART_DEBUG("WOHOOOO");
                break;
             }
          }
       }
+      ART_DEBUG("VALUE = %lu, is_less = %d, %lu\n", getLeafValue(node), is_less, sizeof(uintptr_t));
       return node;
    }
 
@@ -472,9 +473,12 @@ Node* lower_bound_prev(Node* node, uint8_t key[], unsigned keyLength, unsigned d
 
    switch (n->type) {
       case NodeType4: {
-            // ART_DEBUG("Node4 %d\n", node->count);
+            ART_DEBUG("Node4 %d\n", node->count);
             Node4* node = static_cast<Node4*>(n);
             for (int i = node->count - 1; i >= 0; i--) {
+               if (isLeaf(node->child[i])) {
+                  ART_DEBUG("child %d, value = %lu\n", i, getLeafValue(node->child[i]));
+               }
                if (node->key[i] <= keyByte || is_less) {
                   Node *ret = lower_bound_prev(node->child[i], key, keyLength, depth, maxKeyLength, skippedPrefix, is_less || node->key[i] < keyByte);
                   if (ret) return ret;
@@ -484,7 +488,7 @@ Node* lower_bound_prev(Node* node, uint8_t key[], unsigned keyLength, unsigned d
          break;
 
       case NodeType16: {
-            // ART_DEBUG("Node16 count = %d, is_less = %d\n", node->count, is_less);
+            ART_DEBUG("Node16 count = %d, is_less = %d\n", node->count, is_less);
             Node16* node = static_cast<Node16*>(n);
             int pos = node->count - 1;
             if (!is_less) {
@@ -492,9 +496,10 @@ Node* lower_bound_prev(Node* node, uint8_t key[], unsigned keyLength, unsigned d
                __m128i cmp=_mm_cmplt_epi8(_mm_set1_epi8(flipSign(keyByte)),_mm_loadu_si128(reinterpret_cast<__m128i*>(node->key)));
                uint16_t bitfield=_mm_movemask_epi8(cmp)&(0xFFFF>>(16-node->count));
                pos = bitfield ? ctz(bitfield) : node->count;
-               while (pos == node->count || (pos > 0 && flipSign(node->key[pos]) > keyByte)) pos--;
+               while (pos >= node->count || flipSign(node->key[pos]) > keyByte) pos--;
+               while (pos + 1 < node->count && flipSign(node->key[pos + 1]) <= keyByte) pos++;
             }
-            // ART_DEBUG("pos = %d\n", pos);
+            ART_DEBUG("pos = %d\n", pos);
             assert(pos < node->count);
             while (pos >= 0) {
                // ART_DEBUG("Node16 pos %d, %p, %u %u\n", pos, node->child[pos], flipSign(node->key[pos]), keyByte);
@@ -510,7 +515,7 @@ Node* lower_bound_prev(Node* node, uint8_t key[], unsigned keyLength, unsigned d
          break;
 
       case NodeType48: {
-            // ART_DEBUG("Node48 %d\n", node->count);
+            ART_DEBUG("Node48 %d\n", node->count);
             Node48* node=static_cast<Node48*>(n);
             if (is_less) keyByte = 255;
             while (keyByte >= 0) {
@@ -525,7 +530,7 @@ Node* lower_bound_prev(Node* node, uint8_t key[], unsigned keyLength, unsigned d
          break;
 
       case NodeType256: {
-            // ART_DEBUG("Node256 %d\n", node->count);
+            ART_DEBUG("Node256 %d\n", node->count);
             Node256* node=static_cast<Node256*>(n);
             if (is_less) keyByte = 255;
             while (keyByte >= 0) {
@@ -763,7 +768,7 @@ void erase(Node* node,Node** nodeRef,uint8_t key[],unsigned keyLength,unsigned d
    }
 
    // Handle prefix
-   ART_DEBUG("PREFIX LEN = %d\n", node->prefixLength);
+   // ART_DEBUG("PREFIX LEN = %d\n", node->prefixLength);
    if (node->prefixLength) {
       if (prefixMismatch(node,key,depth,maxKeyLength)!=node->prefixLength) {
          ART_DEBUG("PREFIX MISMATCH\n");
@@ -772,10 +777,10 @@ void erase(Node* node,Node** nodeRef,uint8_t key[],unsigned keyLength,unsigned d
       depth+=node->prefixLength;
    }
 
-   ART_DEBUG("PREFIX LEN2 = %d, depth = %u\n", node->prefixLength, depth);
+   // ART_DEBUG("PREFIX LEN2 = %d, depth = %u\n", node->prefixLength, depth);
    Node** child = findChild(node,key[depth]);
-   ART_DEBUG("PREFIX LEN3 = %p\n", child);
-   ART_DEBUG("CHILD = %p\n", *child);
+   // ART_DEBUG("PREFIX LEN3 = %p\n", child);
+   // ART_DEBUG("CHILD = %p\n", *child);
    if (isLeaf(*child)&&leafMatches(*child,key,keyLength,depth,maxKeyLength)) {
       // Leaf found, delete it in inner node
       ART_DEBUG("LEAF FOUND\n");
@@ -834,11 +839,11 @@ void eraseNode16(Node16* node,Node** nodeRef,Node** leafPlace) {
    if (node->count==3) {
       // Shrink to Node4
       Node4* newNode=new Node4();
-      newNode->count=4;
+      newNode->count=3;
       copyPrefix(node,newNode);
-      for (unsigned i=0;i<4;i++)
+      for (unsigned i=0;i<3;i++)
          newNode->key[i]=flipSign(node->key[i]);
-      memcpy(newNode->child,node->child,sizeof(uintptr_t)*4);
+      memcpy(newNode->child,node->child,sizeof(uintptr_t)*3);
       *nodeRef=newNode;
       delete node;
    }
