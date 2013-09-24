@@ -130,8 +130,10 @@ static inline unsigned ctz(uint16_t x) {
 
 Node** findChild(Node* n,uint8_t keyByte) {
    // Find the next child for the keyByte
+   ART_DEBUG("FC = %p, %d\n", n, n->type);
    switch (n->type) {
       case NodeType4: {
+         ART_DEBUG("FC4 = %u\n", keyByte);
          Node4* node=static_cast<Node4*>(n);
          for (int i=0;i<node->count;i++)
             if (node->key[i]==keyByte)
@@ -139,6 +141,7 @@ Node** findChild(Node* n,uint8_t keyByte) {
          return &nullNode;
       }
       case NodeType16: {
+         ART_DEBUG("FC16 = %u\n", keyByte);
          Node16* node=static_cast<Node16*>(n);
          __m128i cmp=_mm_cmpeq_epi8(_mm_set1_epi8(flipSign(keyByte)),_mm_loadu_si128(reinterpret_cast<__m128i*>(node->key)));
          unsigned bitfield=_mm_movemask_epi8(cmp)&((1<<node->count)-1);
@@ -147,12 +150,14 @@ Node** findChild(Node* n,uint8_t keyByte) {
             return &nullNode;
       }
       case NodeType48: {
+         ART_DEBUG("FC48 = %u\n", keyByte);
          Node48* node=static_cast<Node48*>(n);
          if (node->childIndex[keyByte]!=emptyMarker)
             return &node->child[node->childIndex[keyByte]]; else
             return &nullNode;
       }
       case NodeType256: {
+         ART_DEBUG("FC256 = %u\n", keyByte);
          Node256* node=static_cast<Node256*>(n);
          return &(node->child[keyByte]);
       }
@@ -324,7 +329,7 @@ Node* lower_bound(Node* node, uint8_t key[], unsigned keyLength, unsigned depth,
             }
          }
       }
-      ART_DEBUG("YES");
+      ART_DEBUG("YES\n");
       return node;
    }
 
@@ -337,6 +342,7 @@ Node* lower_bound(Node* node, uint8_t key[], unsigned keyLength, unsigned depth,
                return NULL;
             } else if (key[depth+pos] < node->prefix[pos]) {
                bigger = 1;
+               break;
             }
       } else
          skippedPrefix=true;
@@ -453,6 +459,7 @@ Node* lower_bound_prev(Node* node, uint8_t key[], unsigned keyLength, unsigned d
                return NULL;
             } else if (key[depth+pos] > node->prefix[pos]) {
                is_less = 1;
+               break;
             }
       } else {
          skippedPrefix=true;
@@ -756,6 +763,7 @@ void erase(Node* node,Node** nodeRef,uint8_t key[],unsigned keyLength,unsigned d
    }
 
    // Handle prefix
+   ART_DEBUG("PREFIX LEN = %d\n", node->prefixLength);
    if (node->prefixLength) {
       if (prefixMismatch(node,key,depth,maxKeyLength)!=node->prefixLength) {
          ART_DEBUG("PREFIX MISMATCH\n");
@@ -764,7 +772,10 @@ void erase(Node* node,Node** nodeRef,uint8_t key[],unsigned keyLength,unsigned d
       depth+=node->prefixLength;
    }
 
-   Node** child=findChild(node,key[depth]);
+   ART_DEBUG("PREFIX LEN2 = %d, depth = %u\n", node->prefixLength, depth);
+   Node** child = findChild(node,key[depth]);
+   ART_DEBUG("PREFIX LEN3 = %p\n", child);
+   ART_DEBUG("CHILD = %p\n", *child);
    if (isLeaf(*child)&&leafMatches(*child,key,keyLength,depth,maxKeyLength)) {
       // Leaf found, delete it in inner node
       ART_DEBUG("LEAF FOUND\n");
@@ -792,7 +803,6 @@ void eraseNode4(Node4* node,Node** nodeRef,Node** leafPlace) {
       // Get rid of one-way node
       Node* child=node->child[0];
       if (!isLeaf(child)) {
-         assert(0);
          // Concantenate prefixes
          unsigned l1=node->prefixLength;
          if (l1<maxPrefixLength) {

@@ -3,24 +3,24 @@
 #include "google/btree_set.h"
 #include "test.h"
 
-btree::btree_multiset<int> b;
+btree::btree_multiset<long long> b;
 
-void init(int *arr, int N) {
+void init(long long *arr, int N) {
   for (int i = 0; i < N; i++)
     b.insert(arr[i]);
 }
 
-void insert(int value) {
+void insert(long long value) {
   b.insert(value);
 }
 
-void erase(int value) {
+void erase(long long value) {
   auto it = b.lower_bound(value);
   assert(it != b.end());
   b.erase(it);
 }
 
-int query(int value) {
+long long query(long long value) {
   auto it = b.lower_bound(value);
   return (it == b.end()) ? 0 : *it;
 }

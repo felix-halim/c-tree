@@ -296,13 +296,20 @@ int verify(int U, Statistics &s) {
   return false;
 }
 
-void init(int *arr, int N);  // Initializes the initial values of N integers.
-void insert(int value);      // Inserts the value.
-int query(int value);        // Query for lower bound, returns 0 if not found.
-void erase(int value);       // Deletes the value. The value guaranteed to exists.
+void init(long long *arr, int N);  // Initializes the initial values of N integers.
+void insert(long long value);      // Inserts the value.
+long long query(long long value);  // Query for lower bound, returns 0 if not found.
+void erase(long long value);       // Deletes the value. The value guaranteed to exists.
 void results(Statistics &s);
 
+mt19937 gen(140384);
+uniform_int_distribution<> dis;
+long long dis_suffix = 0;
 Statistics s;
+
+inline static long long next_ll() {
+  return (((long long) dis(gen)) << 31) | (dis_suffix++);
+}
 
 int main(int argc, char *argv[]) {
   char *prog = argv[0];
@@ -318,18 +325,12 @@ int main(int argc, char *argv[]) {
   s.selectivity = s.N;
   if (argc > 5) s.selectivity = atoi(argv[5]);
 
-  mt19937 gen(140384);
-  uniform_int_distribution<> dis;
-  uniform_int_distribution<> disN(0, s.N - 1);
-
-  int *iarr = new int[s.N];
-  for (int i = 0; i < s.N; i++) iarr[i] = dis(gen);
+  long long *iarr = new long long[s.N];
+  for (int i = 0; i < s.N; i++) iarr[i] = next_ll();
 
   s.insert_time = time_it([&] { init(iarr, s.N); });
-
   s.checksum = 0;
   s.query_time = 0;
-
   switch (U) {
     case 0 : s.workload = "NOUP"; break;
     case 1 : s.workload = "LFHV"; break;
@@ -350,18 +351,19 @@ int main(int argc, char *argv[]) {
     default : assert(0); abort(); break;
   }
 
+  uniform_int_distribution<> disN(0, s.N - 1);
   for (s.Q = 1; ; s.Q *= 10) {
     double update_time = 0;
     s.query_time += time_it([&] {
       int nQ = s.Q - s.Q / 10; // nQ = how many queries needed.
       for (int i = 0; i < nQ; i++) {
-        s.checksum = s.checksum * 13 + query(dis(gen));
+        s.checksum = s.checksum * 13 + query(next_ll());
         if (U == 1 && i && i % 1000 == 0) {
           update_time += time_it([&] {
             for (int j = 0; j < 1000; j++) {
               int k = disN(gen);
               erase(iarr[k]);
-              insert(iarr[k] = dis(gen));
+              insert(iarr[k] = next_ll());
             }
           });
         }

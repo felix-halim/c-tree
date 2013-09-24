@@ -4,18 +4,18 @@
 #include "test.h"
 
 // Comb<int, std::less<int>, true, 3200, 125, 50> c;
-Comb<int> c;
+Comb<long long> c;
 
-void init(int *arr, int N) {
+void init(long long *arr, int N) {
   for (int i = 0; i < N; i++)
     c.insert(arr[i]);
 }
 
-void insert(int value) {
+void insert(long long value) {
   c.insert(value);
 }
 
-void erase(int value) {
+void erase(long long value) {
   // fprintf(stderr, "erase %d\n", value);
   #ifdef NDEBUG
     c.erase(value);
@@ -25,15 +25,15 @@ void erase(int value) {
   #endif
 }
 
-int query(int value) {
-  int val = 0;
-  int ret = c.lower_bound(value).next(val) ? val : 0;
-  fprintf(stdout, "%d (%d)\n", ret, value);
+long long query(long long value) {
+  long long val = 0;
+  long long ret = c.lower_bound(value).next(val) ? val : 0;
+  // fprintf(stdout, "%lld (%lld)\n", ret, value);
   return ret;
 }
 
 void results(Statistics &s) {
-  assert(c.check());
+  // assert(c.check());
   s.note = "Lazy";
   s.n_leaves = c.num_of_buckets();
   s.n_capacity = c.num_of_buckets() * c.bucket_size();
