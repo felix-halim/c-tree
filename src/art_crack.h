@@ -139,6 +139,7 @@ class Bucket {
         D[i--] = D[--N];
       }
     }
+    P = 1;
   }
 
   T remove_random_data(Random &rng) {
@@ -195,24 +196,11 @@ class Bucket {
     return pos;
   }
 
-  T leaf_promote_first() {
-    assert(is_valid());
-    // TODO: optimize
-    P = 1;
-    int smallest_pos = 0;
-    int pos = 1;
-    while (pos < N) {
-      if (D[pos] < D[smallest_pos]) smallest_pos = pos;
-      pos++;
-    }
-    swap(D[smallest_pos], D[--N]);
-    return D[N];
-  }
-
   int detach_and_get_next() {
     assert(is_valid());
     int ret = nextp;
     nextp = tailp = 0;
+    P = 1;
     return ret;
   }
 
@@ -243,19 +231,24 @@ class Bucket {
   void set_next(int next) {
     assert(is_valid());
     nextp = next;
+    P = 1;
   }
 
   void set_tail(int tail) {
     assert(is_valid());
     tailp = tail;
+    P = 1;
   }
 
-  T leaf_erase_pos(int pos) {
+  void leaf_erase_pos(int pos) {
     assert(is_valid());
     assert(pos >= 0 && pos < N);
-    swap(D[pos], D[--N]);
-    P = 1;
-    return D[N];
+    assert(is_sorted());
+    N--;
+    while (pos < N) {
+      D[pos] = D[pos + 1];
+      pos++;
+    }
   }
 
   int leaf_largest_pos() {
@@ -270,15 +263,9 @@ class Bucket {
     return largest_pos;
   }
 
-  bool leaf_erase(T v) {
-    for (int i = 0; i < N; i++) {
-      if (D[i] == v) {
-        D[i] = D[--N];
-        P = 1;
-        return true;
-      }
-    }
-    return false;
+  int leaf_find_pos(T v) {
+    for (int i = 0; i < N; i++) if (D[i] == v) return i;
+    return N;
   }
 
   void debug_data() {
@@ -532,6 +519,7 @@ class ArtCrack {
       insert_root(LEAF_BUCKET(b)->data(0), b);
     }
     int pos = LEAF_BUCKET(b)->leaf_lower_pos(value);
+    // fprintf(stderr, "po = %d\n", pos);
     if (pos < LEAF_BUCKET(b)->size())
       return make_pair(true, LEAF_BUCKET(b)->data(pos));
     ART_DEBUG("right_pivot = %lld\n", right_pivot);
@@ -561,20 +549,6 @@ class ArtCrack {
     return ret;
   }
 
-  int get_root(T value) {
-    uint8_t key[8];
-    loadKey(value, key);
-    Node *leaf = ::lower_bound_prev(tree,key,8,0,8);
-    if (leaf) {
-      assert(isLeaf(leaf));
-      return reinterpret_cast<uintptr_t>(leaf) >> 1;
-    }
-    leaf = ::lower_bound(tree,key,8,0,8);
-    assert(leaf);
-    assert(isLeaf(leaf));
-    return reinterpret_cast<uintptr_t>(leaf) >> 1;
-  }
-
   void insert_root(T value, int bucket_number) {
     ART_DEBUG("insert root at %lld, b = %d\n", value, bucket_number);
     assert(value == LEAF_BUCKET(bucket_number)->data(0));
@@ -583,10 +557,10 @@ class ArtCrack {
     ::insert(tree,&tree,key,0,bucket_number,8);
 
     // TODO: remove
-    // Node *leaf = ::lookup(tree, key, 8, 0, 8);
-    // assert(leaf);
-    // assert(isLeaf(leaf));
-    // assert((T) getLeafValue(leaf) == value);
+    Node *leaf = ::lookup(tree, key, 8, 0, 8);
+    assert(leaf);
+    assert(isLeaf(leaf));
+    assert((T) getLeafValue(leaf) == value);
   }
 
   void remove_root_bucket(T value, int bucket_number) {
@@ -595,14 +569,14 @@ class ArtCrack {
     loadKey(value, key);
 
     // TODO: remove
-    // Node *leaf = ::lookup(tree, key, 8, 0, 8);
-    // assert(leaf);
-    // assert(isLeaf(leaf));
+    Node *leaf = ::lookup(tree, key, 8, 0, 8);
+    assert(leaf);
+    assert(isLeaf(leaf));
 
     ::erase(tree,&tree,key,8,0,8);
 
     // TODO: remove
-    // assert(!::lookup(tree, key, 8, 0, 8));
+    assert(!::lookup(tree, key, 8, 0, 8));
   }
 
   T bucket_head_value(long long b) {
@@ -611,10 +585,34 @@ class ArtCrack {
     return LEAF_BUCKET(b)->data(0);
   }
 
+  int get_root(T value) {
+    uint8_t key[8];
+    loadKey(value, key);
+    Node *leaf = ::lower_bound(tree,key,8,0,8);
+    if (leaf) {
+      assert(isLeaf(leaf));
+      assert(value != (T) getLeafValue(leaf));
+      if (value > (T) getLeafValue(leaf)) {
+        return reinterpret_cast<uintptr_t>(leaf) >> 1;
+      }
+
+      leaf = ::lower_bound_prev(tree,key,8,0,8);
+      if (leaf) {
+        return reinterpret_cast<uintptr_t>(leaf) >> 1;
+      }
+    }
+    assert(0);
+    leaf = ::minimum(tree);
+    assert(leaf);
+    assert(isLeaf(leaf));
+    return reinterpret_cast<uintptr_t>(leaf) >> 1;
+  }
+
   void insert(T value) {
     // fprintf(stderr, "ins %d\n", value);
     int b = get_root(value);
-    assert(b != 0);
+    assert(b);
+    assert(value >= LEAF_BUCKET(b)->data(0));
     leaf_insert(b, value);
   }
 
@@ -655,7 +653,21 @@ class ArtCrack {
       int b = reinterpret_cast<uintptr_t>(leaf) >> 1;
       auto ret = lower_bound_bucket(b, value);
       if (ret.first) {
-        return LEAF_BUCKET(b)->leaf_erase(value);
+        int pos = LEAF_BUCKET(b)->leaf_find_pos(value);
+        ART_DEBUG("FOUND POS TO ERASE %d\n", pos);
+        if (pos < LEAF_BUCKET(b)->size()) {
+          assert(LEAF_BUCKET(b)->data(pos) == value);
+          if (pos == 0) {
+            remove_root_bucket(LEAF_BUCKET(b)->data(0), b);
+            LEAF_BUCKET(b)->leaf_erase_pos(pos);
+            insert_root(LEAF_BUCKET(b)->data(0), b);
+          } else {
+            LEAF_BUCKET(b)->leaf_erase_pos(pos);
+          }
+          return true;
+        }
+        fprintf(stderr, "pos = %d / %d, %llu %llu\n", pos, LEAF_BUCKET(b)->size(), value, ret.second);
+        assert(0);
       }
     }
     leaf = ::lower_bound(tree,key,8,0,8);
@@ -663,8 +675,26 @@ class ArtCrack {
     assert(leaf);
     assert(isLeaf(leaf));
     int b = reinterpret_cast<uintptr_t>(leaf) >> 1;
-    lower_bound_bucket(b, value);
-    return LEAF_BUCKET(b)->leaf_erase(value);
+    auto ret = lower_bound_bucket(b, value);
+
+    ART_DEBUG("SECOND ERASE\n");
+
+    assert(ret.first);
+    int pos = LEAF_BUCKET(b)->leaf_find_pos(value);
+    if (pos < LEAF_BUCKET(b)->size()) {
+      assert(LEAF_BUCKET(b)->data(pos) == value);
+      if (pos == 0) {
+        remove_root_bucket(LEAF_BUCKET(b)->data(0), b);
+        LEAF_BUCKET(b)->leaf_erase_pos(pos);
+        insert_root(LEAF_BUCKET(b)->data(0), b);
+      } else {
+        LEAF_BUCKET(b)->leaf_erase_pos(pos);
+      }
+      return true;
+    }
+    assert(0);
+
+    return false;
 
     // assert(next_largest <= value);
     // assert(check());

@@ -27,7 +27,7 @@ batch_noup)   ./run.sh noup comb | tee -a $out
               ./run.sh noup ctree_32_64 | tee -a $out
               ./run.sh noup art | tee -a $out
               ./run.sh noup art_crack | tee -a $out
-              ./run.sh noup ctree_exp_leafsize | tee -a $out
+              # ./run.sh noup ctree_exp_leafsize | tee -a $out
               ./run.sh noup ctree_eager | tee -a $out
               ./run.sh noup sort | tee -a $out
               ./run.sh noup btree_google | tee -a $out

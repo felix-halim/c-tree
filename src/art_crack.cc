@@ -24,16 +24,21 @@ void insert(long long value) {
 }
 
 void erase(long long value) {
-  c.erase(value);
+  #ifdef NDEBUG
+    c.erase(value);
+  #else
+    bool ok = c.erase(value);
+    assert(ok);
+  #endif
 }
 
 long long query(long long value) {
   // art_debug = 1;
-  // if (value == 2986699173744095021LL) art_debug = 1;
+  if (value == 1904630696647192210LL) art_debug = 1;
   auto it = c.lower_bound(value);
   long long ret = it.first ? it.second : 0;
   // fprintf(stdout, "%lld (%lld)\n", ret, value);
-  // if (value == 2986699173744095021LL) fprintf(stderr, "%d %lld\n", it.first, it.second);
+  if (value == 1904630696647192210LL) fprintf(stderr, "%d %lld\n", it.first, it.second);
   art_debug = 0;
   return ret;
 }

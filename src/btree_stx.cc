@@ -3,23 +3,23 @@
 #include "stx/btree_multiset"
 #include "test.h"
 
-stx::btree_multiset<int> b;
+stx::btree_multiset<long long> b;
 
-void init(int *arr, int N) {
+void init(long long *arr, int N) {
   b.insert(arr, arr + N);
 }
 
-void insert(int value) {
+void insert(long long value) {
   b.insert(value);
 }
 
-void erase(int value) {
+void erase(long long value) {
   auto it = b.lower_bound(value);
   assert(it != b.end());
   b.erase(it);
 }
 
-int query(int value) {
+long long query(long long value) {
   auto it = b.lower_bound(value);
   return (it == b.end()) ? 0 : *it;
 }

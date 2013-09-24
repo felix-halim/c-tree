@@ -596,7 +596,7 @@ void copyPrefix(Node* src,Node* dst) {
 
 void insert(Node* node,Node** nodeRef,uint8_t key[],unsigned depth,uintptr_t value,unsigned maxKeyLength) {
    // Insert the leaf value into the tree
-   ART_DEBUG("Insert depth = %d, %u\n", depth, depth < maxKeyLength ? key[depth] : 0);
+   // ART_DEBUG("Insert depth = %d, %u\n", depth, depth < maxKeyLength ? key[depth] : 0);
 
    if (node==NULL) {
       *nodeRef=makeLeaf(value);
@@ -654,14 +654,14 @@ void insert(Node* node,Node** nodeRef,uint8_t key[],unsigned depth,uintptr_t val
    // Recurse
    Node** child=findChild(node,key[depth]);
    if (*child) {
-      ART_DEBUG("Recurse\n");
+      // ART_DEBUG("Recurse\n");
       insert(*child,child,key,depth+1,value,maxKeyLength);
       return;
    }
 
    // Insert leaf into inner node
    Node* newNode=makeLeaf(value);
-   ART_DEBUG("Insert Inner\n");
+   // ART_DEBUG("Insert Inner\n");
    switch (node->type) {
       case NodeType4: insertNode4(static_cast<Node4*>(node),nodeRef,key[depth],newNode); break;
       case NodeType16: insertNode16(static_cast<Node16*>(node),nodeRef,key[depth],newNode); break;
