@@ -439,9 +439,10 @@ Node* lower_bound_prev(Node* node, uint8_t key[], unsigned keyLength, unsigned d
       if (depth && depth != keyLength && !is_less) {
          uint8_t leafKey[maxKeyLength];
          loadKey(getLeafValue(node),leafKey);
-         // for (int j = 0; j < keyLength; j++) {
-            // ART_DEBUG("%d: %u %u\n", j, leafKey[j], key[j]);
-         // }
+         for (unsigned j = 0; j < keyLength; j++) {
+            ART_DEBUG("%u: %u %u\n", j, leafKey[j], key[j]);
+         }
+         ART_DEBUG("THE VALUE = %lu\n", getLeafValue(node) >> 30);
          for (unsigned i=(skippedPrefix?0:depth);i<keyLength;i++) {
             if (leafKey[i] > key[i]) {
                ART_DEBUG("GAGAL %u %u\n", leafKey[i], key[i]);
@@ -452,7 +453,7 @@ Node* lower_bound_prev(Node* node, uint8_t key[], unsigned keyLength, unsigned d
             }
          }
       }
-      ART_DEBUG("VALUE = %lu, is_less = %d, %lu\n", getLeafValue(node), is_less, sizeof(uintptr_t));
+      ART_DEBUG("VALUE = %lu, is_less = %d, %lu\n", getLeafValue(node) >> 30, is_less, sizeof(uintptr_t));
       return node;
    }
 
@@ -482,7 +483,7 @@ Node* lower_bound_prev(Node* node, uint8_t key[], unsigned keyLength, unsigned d
             Node4* node = static_cast<Node4*>(n);
             for (int i = node->count - 1; i >= 0; i--) {
                if (isLeaf(node->child[i])) {
-                  ART_DEBUG("child %d, value = %lu\n", i, getLeafValue(node->child[i]));
+                  ART_DEBUG("child %d, value = %lu\n", i, getLeafValue(node->child[i]) >> 30);
                }
                if (node->key[i] <= keyByte || is_less) {
                   Node *ret = lower_bound_prev(node->child[i], key, keyLength, depth, maxKeyLength, skippedPrefix, is_less || node->key[i] < keyByte);
@@ -526,7 +527,7 @@ Node* lower_bound_prev(Node* node, uint8_t key[], unsigned keyLength, unsigned d
             while (keyByte >= 0) {
                if (node->childIndex[keyByte] != emptyMarker) {
                   Node *c = node->child[node->childIndex[keyByte]];
-                  ART_DEBUG("N48C %d = %lld\n", keyByte, isLeaf(c) ? getLeafValue(c) : -1LL);
+                  ART_DEBUG("N48C %d = %lld\n", keyByte, isLeaf(c) ? getLeafValue(c) >> 30 : -1LL);
                   Node *ret = lower_bound_prev(c, key, keyLength, depth, maxKeyLength, skippedPrefix, is_less);
                   if (ret) return ret;
                }

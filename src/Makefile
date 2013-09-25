@@ -32,6 +32,9 @@ $(ODIR)/art: art.cc art.h test.h
 $(ODIR)/art_crack: art_crack.cc art_crack.h art.h test.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
 
+$(ODIR)/artd_crack: artd_crack.cc artd_crack.h art.h test.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
+
 $(ODIR)/ctree_exp_leafsize: ctree_exp_leafsize.cc ctree_exp_leafsize.h test.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
 

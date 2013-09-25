@@ -308,8 +308,8 @@ long long dis_suffix = 0;
 Statistics s;
 
 inline static long long next_ll() {
-  // return dis(gen);
-  return (((long long) dis(gen)) << 31) | (dis_suffix++);
+  return dis(gen);
+  // return (((long long) dis(gen)) << 31) | (dis_suffix++);
 }
 
 int main(int argc, char *argv[]) {
@@ -326,8 +326,12 @@ int main(int argc, char *argv[]) {
   s.selectivity = s.N;
   if (argc > 5) s.selectivity = atoi(argv[5]);
 
-  long long *iarr = new long long[s.N];
-  for (int i = 0; i < s.N; i++) iarr[i] = next_ll();
+  long long *iarr = new long long[s.N * 2];
+  int gap = 2147483647 / s.N / 2;
+  iarr[0] = 1;
+  for (int i = 1; i < s.N * 2; i++)
+    iarr[i] = iarr[i - 1] + (next_ll() % gap) + 1;
+  random_shuffle(iarr, iarr + s.N * 2);
 
   s.insert_time = time_it([&] { init(iarr, s.N); });
   s.checksum = 0;
@@ -363,8 +367,15 @@ int main(int argc, char *argv[]) {
           update_time += time_it([&] {
             for (int j = 0; j < 1000; j++) {
               int k = disN(gen);
-              erase(iarr[k]);
-              insert(iarr[k] = next_ll());
+              // if (iarr[k] == -1) { j--; continue; }
+              // erase(iarr[k]);
+              // iarr[k] = -1;
+              int l = s.N + disN(gen);
+              // swap(iarr[k], iarr[l]);
+              // insert(iarr[k]);
+              if (iarr[l] == -1) { j--; continue; }
+              insert(iarr[l]);
+              iarr[l] = -1;
             }
           });
         }
