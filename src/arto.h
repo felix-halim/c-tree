@@ -760,7 +760,7 @@ void insertNode4(Node4* &node,uint8_t keyByte,Node* child) {
       newNode->tail = node->tail;
       delete node;
       node=reinterpret_cast<Node4*>(newNode);
-      return insertNode16(newNode,(Node**) &newNode,keyByte,child);
+      return insertNode16(node,(Node**) &node,keyByte,child);
    }
 }
 
