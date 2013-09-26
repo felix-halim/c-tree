@@ -24,7 +24,7 @@ void insert(long long value) {
   uint8_t key[8];
   uint64_t value64 = value;
   loadKey(value64, key);
-  insert(tree,&tree,key,0,value64,8);
+  insert(tree,key,0,value64,8);
 }
 
 void erase(long long value) {
@@ -38,6 +38,7 @@ void erase(long long value) {
 
 long long query(long long value) {
   art_debug = value == 231224771;
+  art_debug = 1;
   ART_DEBUG("\nquery %lld\n", value);
   uint64_t value64 = value;
   uint8_t key[8];

@@ -1,5 +1,5 @@
 mkdir bin 2> /dev/null
-N=10000000
+N=1000000
 Q=1000000000
 out=results.js
 
