@@ -639,8 +639,8 @@ void insert(Node* &node,uint8_t key[],unsigned depth,uintptr_t value,unsigned ma
       memcpy(newNode->prefix,key+depth,min(newPrefixLength,maxPrefixLength));
       node = newNode;
 
-      insertNode4(newNode,existingKey[depth+newPrefixLength],node);
-      insertNode4(newNode,key[depth+newPrefixLength],makeLeaf(value));
+      insertNode4(node,existingKey[depth+newPrefixLength],node);
+      insertNode4(node,key[depth+newPrefixLength],makeLeaf(value));
       return;
    }
 
