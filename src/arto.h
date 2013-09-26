@@ -714,8 +714,8 @@ void flush_inserts(Node* node,Node** nodeRef,uint8_t key[],unsigned depth,uintpt
 }
 
 void flush_inserts(Node **nodeRef, int depth, int maxKeyLength) {
-   ART_DEBUG("flushing_inserts %d, next = %p\n", depth, (*nodeRef)->next);
    while ((*nodeRef)->next) {
+      ART_DEBUG("flushing_inserts %d, next = %p\n", depth, (*nodeRef)->next);
       uint8_t key[8];
       for (int i = 0; i < (*nodeRef)->next->N; i++) {
          loadKey((*nodeRef)->next->D[i], key);
