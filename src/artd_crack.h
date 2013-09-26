@@ -244,12 +244,15 @@ class Bucket {
   void leaf_erase_pos(int pos) {
     assert(is_valid());
     assert(pos >= 0 && pos < N);
-    // assert(is_sorted());
     N--;
-    while (pos < N) {
-      // assert(D[pos] <= D[pos + 1]);
-      D[pos] = D[pos + 1];
-      pos++;
+    if (is_sorted()) {
+      while (pos < N) {
+        assert(D[pos] <= D[pos + 1]);
+        D[pos] = D[pos + 1];
+        pos++;
+      }
+    } else {
+      D[pos] = D[N];
     }
   }
 
@@ -569,7 +572,7 @@ class ArtCrack {
     ART_DEBUG("\nquery = %lld\n", value);
 
     uint8_t key[8];
-    loadKey((value << 30) | (1 << 29), key);
+    loadKey(value << 30, key);
     Node *leaf = ::lower_bound_prev(tree,key,8,0,8);
     if (leaf) {
       assert(isLeaf(leaf));
@@ -598,11 +601,12 @@ class ArtCrack {
     loadKey(value, key);
     ::insert(tree,&tree,key,0,value,8);
 
-    // TODO: remove
-    // Node *leaf = ::lookup(tree, key, 8, 0, 8);
-    // assert(leaf);
-    // assert(isLeaf(leaf));
-    // assert((T) getLeafValue(leaf) == value);
+    #ifndef NDEBUG
+      Node *leaf = ::lookup(tree, key, 8, 0, 8);
+      assert(leaf);
+      assert(isLeaf(leaf));
+      assert((T) getLeafValue(leaf) == value);
+    #endif
   }
 
   void remove_root_bucket(T value, int bucket_number) {
@@ -611,15 +615,17 @@ class ArtCrack {
     uint8_t key[8];
     loadKey(value, key);
 
-    // TODO: remove
-    // Node *leaf = ::lookup(tree, key, 8, 0, 8);
-    // assert(leaf);
-    // assert(isLeaf(leaf));
+    #ifndef NDEBUG
+      Node *leaf = ::lookup(tree, key, 8, 0, 8);
+      assert(leaf);
+      assert(isLeaf(leaf));
+    #endif
 
     ::erase(tree,&tree,key,8,0,8);
 
-    // TODO: remove
-    // assert(!::lookup(tree, key, 8, 0, 8));
+    #ifndef NDEBUG
+      assert(!::lookup(tree, key, 8, 0, 8));
+    #endif
   }
 
   void insert(T value) {
@@ -634,7 +640,7 @@ class ArtCrack {
     Node *leaf = ::lower_bound_prev(tree,key,8,0,8);
     if (leaf) {
       assert(isLeaf(leaf));
-      ART_DEBUG("leaf value = %lld\n", getLeafValue(leaf) >> 30);
+      ART_DEBUG("leaf value = %lu\n", getLeafValue(leaf) >> 30);
       // assert(value >= (getLeafValue(leaf) >> 30));
 
       int b = getBucket(leaf);
@@ -681,12 +687,10 @@ class ArtCrack {
   }
 
   bool erase(T value) {
-    // assert(check());
     ART_DEBUG("\nERASEV %lld\n", value);
-    // debug();
 
     uint8_t key[8];
-    loadKey((value << 30) | (1 << 29), key);
+    loadKey(value << 30, key);
     Node *leaf = ::lower_bound_prev(tree,key,8,0,8);
     if (leaf) {
       assert(isLeaf(leaf));
@@ -695,26 +699,23 @@ class ArtCrack {
       if (ret.first) {
         int pos = LEAF_BUCKET(b)->leaf_find_pos(value);
         ART_DEBUG("FOUND POS TO ERASE %d\n", pos);
-        if (pos < LEAF_BUCKET(b)->size()) {
-          assert(LEAF_BUCKET(b)->data(pos) == value);
-          if (pos == 0) {
-            remove_root_bucket(LEAF_BUCKET(b)->data(0), b);
-            LEAF_BUCKET(b)->leaf_erase_pos(pos);
-            if (LEAF_BUCKET(b)->size()) {
-              insert_root(LEAF_BUCKET(b)->data(0), b);
-            }
-          } else {
-            LEAF_BUCKET(b)->leaf_erase_pos(pos);
+        assert(pos < LEAF_BUCKET(b)->size());
+        assert(LEAF_BUCKET(b)->data(pos) == value);
+        if (pos == 0) {
+          remove_root_bucket(LEAF_BUCKET(b)->data(0), b);
+          LEAF_BUCKET(b)->leaf_erase_pos(pos);
+          if (LEAF_BUCKET(b)->size()) {
+            insert_root(LEAF_BUCKET(b)->data(0), b);
           }
-          return true;
+        } else {
+          LEAF_BUCKET(b)->leaf_erase_pos(pos);
         }
-        ART_DEBUG("ANTON pos = %d / %d, %llu %llu\n", pos, LEAF_BUCKET(b)->size(), value, ret.second);
-        assert(0);
+        return true;
       }
     }
     leaf = ::lower_bound(tree,key,8,0,8);
     if (!leaf) {
-      fprintf(stderr, "NULL %lld\n", value);
+      ART_DEBUG("ERASE NOT FOUND %lld\n", value);
       return false;
     }
     assert(leaf);

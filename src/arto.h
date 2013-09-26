@@ -32,6 +32,15 @@ int art_debug = 0;
    #define ART_DEBUG(...) { if (art_debug) fprintf(stderr, __VA_ARGS__); }
 #endif
 
+#define BSIZE 1024
+
+struct Bucket {
+   int D[BSIZE], N;
+   Bucket *next;
+
+   Bucket() { N = 0; next = 0; };
+};
+
 // Shared header of all inner nodes
 struct Node {
    // length of the compressed path (prefix)
@@ -43,7 +52,9 @@ struct Node {
    // compressed path (prefix)
    uint8_t prefix[maxPrefixLength];
 
-   Node(int8_t type) : prefixLength(0),count(0),type(type) {}
+   Bucket *next, *tail;
+
+   Node(int8_t type) : prefixLength(0),count(0),type(type),next(0),tail(0) {}
 };
 
 // Node with up to 4 children
@@ -310,7 +321,9 @@ Node* lookup(Node* node,uint8_t key[],unsigned keyLength,unsigned depth,unsigned
    return NULL;
 }
 
-Node* lower_bound(Node* node, uint8_t key[], unsigned keyLength, unsigned depth, unsigned maxKeyLength, bool skippedPrefix=false, bool bigger = false) {
+void flush_inserts(Node **nodeRef, int depth, int maxKeyLength);
+
+Node* lower_bound(Node *node, Node **nodeRef, uint8_t key[], unsigned keyLength, unsigned depth, unsigned maxKeyLength, bool skippedPrefix=false, bool bigger = false) {
    ART_DEBUG("lower_boundx depth = %u, %p, bigger = %d\n", depth, node, bigger);
    if (!node) return NULL;
 
@@ -341,6 +354,8 @@ Node* lower_bound(Node* node, uint8_t key[], unsigned keyLength, unsigned depth,
       return node;
    }
 
+   flush_inserts(nodeRef, depth, maxKeyLength);
+
    // ART_DEBUG("prefixLength = %u\n", node->prefixLength);
    if (node->prefixLength) {
       if (node->prefixLength < maxPrefixLength && !bigger) {
@@ -369,7 +384,7 @@ Node* lower_bound(Node* node, uint8_t key[], unsigned keyLength, unsigned depth,
                ART_DEBUG("i = %d, key4 = %d >= %d, %lu\n", i, node->key[i], keyByte, isLeaf(c) ? getLeafValue(c) : 0);
                if (node->key[i] >= keyByte || bigger) {
                   // ART_DEBUG("got it\n");
-                  Node *ret = lower_bound(c, key, keyLength, depth, maxKeyLength, skippedPrefix, bigger || node->key[i] > keyByte);
+                  Node *ret = lower_bound(c, &node->child[i], key, keyLength, depth, maxKeyLength, skippedPrefix, bigger || node->key[i] > keyByte);
                   if (ret) return ret;
                }
             }
@@ -388,7 +403,7 @@ Node* lower_bound(Node* node, uint8_t key[], unsigned keyLength, unsigned depth,
             }
             ART_DEBUG("pos = %d\n", pos);
             while (pos < node->count) {
-               Node *ret = lower_bound(node->child[pos], key, keyLength, depth, maxKeyLength, skippedPrefix, bigger || flipSign(node->key[pos]) > keyByte);
+               Node *ret = lower_bound(node->child[pos], &node->child[pos], key, keyLength, depth, maxKeyLength, skippedPrefix, bigger || flipSign(node->key[pos]) > keyByte);
                if (ret) return ret;
                pos++;
             }
@@ -401,7 +416,8 @@ Node* lower_bound(Node* node, uint8_t key[], unsigned keyLength, unsigned depth,
             if (bigger) keyByte = 0;
             while (keyByte < 256) {
                if (node->childIndex[keyByte] != emptyMarker) {
-                  Node *ret = lower_bound(node->child[node->childIndex[keyByte]], key, keyLength, depth, maxKeyLength, skippedPrefix, bigger);
+                  int i = node->childIndex[keyByte];
+                  Node *ret = lower_bound(node->child[i], &node->child[i], key, keyLength, depth, maxKeyLength, skippedPrefix, bigger);
                   if (ret) return ret;
                }
                keyByte++;
@@ -417,7 +433,7 @@ Node* lower_bound(Node* node, uint8_t key[], unsigned keyLength, unsigned depth,
             while (keyByte < 256) {
                ART_DEBUG("LoweBound256 keyByte = %d, bigger = %d\n", keyByte, bigger);
                if (node->child[keyByte]) {
-                  Node *ret = lower_bound(node->child[keyByte], key, keyLength, depth, maxKeyLength, skippedPrefix, bigger);
+                  Node *ret = lower_bound(node->child[keyByte], &node->child[keyByte], key, keyLength, depth, maxKeyLength, skippedPrefix, bigger);
                   if (ret) return ret;
                }
                keyByte++;
@@ -600,9 +616,9 @@ void copyPrefix(Node* src,Node* dst) {
    memcpy(dst->prefix,src->prefix,min(src->prefixLength,maxPrefixLength));
 }
 
-void insert(Node* node,Node** nodeRef,uint8_t key[],unsigned depth,uintptr_t value,unsigned maxKeyLength) {
+void insert(Node *node, Node **nodeRef,uint8_t key[],unsigned depth,uintptr_t value,unsigned maxKeyLength) {
    // Insert the leaf value into the tree
-   // ART_DEBUG("Insert depth = %d, %u\n", depth, depth < maxKeyLength ? key[depth] : 0);
+   // ART_DEBUG("Insert depth = %d, %u, node = %p\n", depth, depth < maxKeyLength ? key[depth] : 0, node);
 
    if (node==NULL) {
       *nodeRef=makeLeaf(value);
@@ -626,6 +642,23 @@ void insert(Node* node,Node** nodeRef,uint8_t key[],unsigned depth,uintptr_t val
       insertNode4(newNode,nodeRef,key[depth+newPrefixLength],makeLeaf(value));
       return;
    }
+
+   // Buffer inserts
+   if (!node->next) {
+      node->next = node->tail = new Bucket();
+      ART_DEBUG("NEW NEXT\n");
+   }
+   if (node->tail->N == BSIZE) {
+      node->tail->next = new Bucket();
+      node->tail = node->tail->next;
+      ART_DEBUG("NEW TAIL\n");
+   }
+   assert(node->tail->N < BSIZE);
+   node->tail->D[node->tail->N++] = value;
+}
+
+void flush_inserts(Node* node,Node** nodeRef,uint8_t key[],unsigned depth,uintptr_t value,unsigned maxKeyLength) {
+   // ART_DEBUG("continue insert %d\n", depth);
 
    // Handle prefix of inner node
    if (node->prefixLength) {
@@ -674,12 +707,34 @@ void insert(Node* node,Node** nodeRef,uint8_t key[],unsigned depth,uintptr_t val
       case NodeType48: insertNode48(static_cast<Node48*>(node),nodeRef,key[depth],newNode); break;
       case NodeType256: insertNode256(static_cast<Node256*>(node),nodeRef,key[depth],newNode); break;
    }
+   ART_DEBUG("done inner \n");
+}
+
+void flush_inserts(Node **nodeRef, int depth, int maxKeyLength) {
+   ART_DEBUG("flushing_inserts %d, next = %p\n", depth, (*nodeRef)->next);
+   while ((*nodeRef)->next) {
+      uint8_t key[8];
+      for (int i = 0; i < (*nodeRef)->next->N; i++) {
+         loadKey((*nodeRef)->next->D[i], key);
+         // ART_DEBUG("LOADED KEY %d / %d\n", i, (*nodeRef)->next->N);
+         flush_inserts(*nodeRef, nodeRef, key, depth, (*nodeRef)->next->D[i], maxKeyLength);
+         ART_DEBUG("f %d / %d\n", i, (*nodeRef)->next->N);
+      }
+      ART_DEBUG("deleting\n");
+      Bucket *next = (*nodeRef)->next->next;
+      delete (*nodeRef)->next;
+      ART_DEBUG("deleting done\n");
+      (*nodeRef)->next = next;
+   }
+   (*nodeRef)->tail = 0;
+   ART_DEBUG("flushing_inserts done\n");
 }
 
 void insertNode4(Node4* node,Node** nodeRef,uint8_t keyByte,Node* child) {
    // Insert leaf into inner node
    if (node->count<4) {
       // Insert element
+      ART_DEBUG("insert4 %d\n", node->count);
       int pos;
       for (pos=0;(pos<node->count)&&(node->key[pos]<keyByte);pos++);
       memmove(node->key+pos+1,node->key+pos,node->count-pos);
@@ -687,8 +742,10 @@ void insertNode4(Node4* node,Node** nodeRef,uint8_t keyByte,Node* child) {
       node->key[pos]=keyByte;
       node->child[pos]=child;
       node->count++;
+      ART_DEBUG("insert4d %d\n", node->count);
    } else {
       // Grow to Node16
+      ART_DEBUG("insert4to16 %d\n", node->count);
       Node16* newNode=new Node16();
       *nodeRef=newNode;
       newNode->count=4;
@@ -696,6 +753,8 @@ void insertNode4(Node4* node,Node** nodeRef,uint8_t keyByte,Node* child) {
       for (unsigned i=0;i<4;i++)
          newNode->key[i]=flipSign(node->key[i]);
       memcpy(newNode->child,node->child,node->count*sizeof(uintptr_t));
+      newNode->next = node->next;
+      newNode->tail = node->tail;
       delete node;
       return insertNode16(newNode,nodeRef,keyByte,child);
    }
@@ -704,6 +763,7 @@ void insertNode4(Node4* node,Node** nodeRef,uint8_t keyByte,Node* child) {
 void insertNode16(Node16* node,Node** nodeRef,uint8_t keyByte,Node* child) {
    // Insert leaf into inner node
    if (node->count<16) {
+      ART_DEBUG("insert16 %d\n", node->count);
       // Insert element
       uint8_t keyByteFlipped=flipSign(keyByte);
       __m128i cmp=_mm_cmplt_epi8(_mm_set1_epi8(keyByteFlipped),_mm_loadu_si128(reinterpret_cast<__m128i*>(node->key)));
@@ -716,6 +776,7 @@ void insertNode16(Node16* node,Node** nodeRef,uint8_t keyByte,Node* child) {
       node->count++;
    } else {
       // Grow to Node48
+      ART_DEBUG("insert16to48 %d\n", node->count);
       Node48* newNode=new Node48();
       *nodeRef=newNode;
       memcpy(newNode->child,node->child,node->count*sizeof(uintptr_t));
@@ -723,6 +784,8 @@ void insertNode16(Node16* node,Node** nodeRef,uint8_t keyByte,Node* child) {
          newNode->childIndex[flipSign(node->key[i])]=i;
       copyPrefix(node,newNode);
       newNode->count=node->count;
+      newNode->next = node->next;
+      newNode->tail = node->tail;
       delete node;
       return insertNode48(newNode,nodeRef,keyByte,child);
    }
@@ -732,6 +795,7 @@ void insertNode48(Node48* node,Node** nodeRef,uint8_t keyByte,Node* child) {
    // Insert leaf into inner node
    if (node->count<48) {
       // Insert element
+      ART_DEBUG("insert48 %d\n", node->count);
       unsigned pos=node->count;
       if (node->child[pos])
          for (pos=0;node->child[pos]!=NULL;pos++);
@@ -740,6 +804,7 @@ void insertNode48(Node48* node,Node** nodeRef,uint8_t keyByte,Node* child) {
       node->count++;
    } else {
       // Grow to Node256
+      ART_DEBUG("insert48to256 %d\n", node->count);
       Node256* newNode=new Node256();
       for (unsigned i=0;i<256;i++)
          if (node->childIndex[i]!=48)
@@ -747,6 +812,8 @@ void insertNode48(Node48* node,Node** nodeRef,uint8_t keyByte,Node* child) {
       newNode->count=node->count;
       copyPrefix(node,newNode);
       *nodeRef=newNode;
+      newNode->next = node->next;
+      newNode->tail = node->tail;
       delete node;
       return insertNode256(newNode,nodeRef,keyByte,child);
    }
@@ -754,6 +821,7 @@ void insertNode48(Node48* node,Node** nodeRef,uint8_t keyByte,Node* child) {
 
 void insertNode256(Node256* node,Node** nodeRef,uint8_t keyByte,Node* child) {
    // Insert leaf into inner node
+   ART_DEBUG("insert256 %d\n", node->count);
    node->count++;
    node->child[keyByte]=child;
 }
@@ -785,6 +853,8 @@ void erase(Node* node,Node** nodeRef,uint8_t key[],unsigned keyLength,unsigned d
       }
       return;
    }
+
+   flush_inserts(nodeRef, depth, maxKeyLength);
 
    // Handle prefix
    // ART_DEBUG("PREFIX LEN = %d\n", node->prefixLength);

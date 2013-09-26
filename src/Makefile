@@ -29,6 +29,9 @@ $(ODIR)/crack: crack.cc crack.h test.h
 $(ODIR)/art: art.cc art.h test.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
 
+$(ODIR)/arto: arto.cc arto.h test.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
+
 $(ODIR)/art_crack: art_crack.cc art_crack.h art.h test.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
 
