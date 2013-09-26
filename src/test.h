@@ -329,8 +329,12 @@ int main(int argc, char *argv[]) {
   long long *iarr = new long long[s.N * 2];
   int gap = 2147483647 / s.N / 2;
   iarr[0] = 1;
-  for (int i = 1; i < s.N * 2; i++)
+  long long mx = iarr[0];
+  for (int i = 1; i < s.N * 2; i++) {
     iarr[i] = iarr[i - 1] + (next_ll() % gap) + 1;
+    mx = max(mx, iarr[i]);
+  }
+  dis = uniform_int_distribution<>(iarr[0], mx + 1);
   random_shuffle(iarr, iarr + s.N * 2);
 
   s.insert_time = time_it([&] { init(iarr, s.N); });
