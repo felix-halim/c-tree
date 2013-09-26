@@ -355,6 +355,7 @@ Node* lower_bound(Node *node, Node **nodeRef, uint8_t key[], unsigned keyLength,
    }
 
    flush_inserts(nodeRef, depth, maxKeyLength);
+   node = *nodeRef;
 
    // ART_DEBUG("prefixLength = %u\n", node->prefixLength);
    if (node->prefixLength) {
@@ -855,6 +856,7 @@ void erase(Node* node,Node** nodeRef,uint8_t key[],unsigned keyLength,unsigned d
    }
 
    flush_inserts(nodeRef, depth, maxKeyLength);
+   node = *nodeRef;
 
    // Handle prefix
    // ART_DEBUG("PREFIX LEN = %d\n", node->prefixLength);
