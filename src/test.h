@@ -371,15 +371,10 @@ int main(int argc, char *argv[]) {
           update_time += time_it([&] {
             for (int j = 0; j < 1000; j++) {
               int k = disN(gen);
-              // if (iarr[k] == -1) { j--; continue; }
-              // erase(iarr[k]);
-              // iarr[k] = -1;
+              erase(iarr[k]);
               int l = s.N + disN(gen);
-              // swap(iarr[k], iarr[l]);
-              // insert(iarr[k]);
-              if (iarr[l] == -1) { j--; continue; }
-              insert(iarr[l]);
-              iarr[l] = -1;
+              swap(iarr[k], iarr[l]);
+              insert(iarr[k]);
             }
           });
         }
