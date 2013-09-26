@@ -37,8 +37,8 @@ void erase(long long value) {
 }
 
 long long query(long long value) {
-  art_debug = value == 231224771;
-  art_debug = 1;
+  // art_debug = value == 231224771;
+  // art_debug = 1;
   ART_DEBUG("\nquery %lld\n", value);
   uint64_t value64 = value;
   uint8_t key[8];
