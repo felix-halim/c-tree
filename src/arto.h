@@ -639,8 +639,8 @@ void insert(Node* &node,uint8_t key[],unsigned depth,uintptr_t value,unsigned ma
       memcpy(newNode->prefix,key+depth,min(newPrefixLength,maxPrefixLength));
       node = newNode;
 
-      insertNode4(node,existingKey[depth+newPrefixLength],node);
-      insertNode4(node,key[depth+newPrefixLength],makeLeaf(value));
+      insertNode4((Node4*&)node,existingKey[depth+newPrefixLength],node);
+      insertNode4((Node4*&)node,key[depth+newPrefixLength],makeLeaf(value));
       return;
    }
 
@@ -676,7 +676,7 @@ void flush_inserts(Node* node,Node** nodeRef,uint8_t key[],unsigned depth,uintpt
          // Break up prefix
          if (node->prefixLength<maxPrefixLength) {
             ART_DEBUG("Break Prefix\n");
-            insertNode4(newNode,node->prefix[mismatchPos],node);
+            insertNode4((Node4*&) *nodeRef,node->prefix[mismatchPos],node);
             node->prefixLength-=(mismatchPos+1);
             memmove(node->prefix,node->prefix+mismatchPos+1,min(node->prefixLength,maxPrefixLength));
          } else {
@@ -684,10 +684,10 @@ void flush_inserts(Node* node,Node** nodeRef,uint8_t key[],unsigned depth,uintpt
             node->prefixLength-=(mismatchPos+1);
             uint8_t minKey[maxKeyLength];
             loadKey(getLeafValue(minimum(node)),minKey);
-            insertNode4(newNode,minKey[depth+mismatchPos],node);
+            insertNode4((Node4*&) *nodeRef,minKey[depth+mismatchPos],node);
             memmove(node->prefix,minKey+depth+mismatchPos+1,min(node->prefixLength,maxPrefixLength));
          }
-         insertNode4(newNode,key[depth+mismatchPos],makeLeaf(value));
+         insertNode4((Node4*&) *nodeRef,key[depth+mismatchPos],makeLeaf(value));
          return;
       }
       depth+=node->prefixLength;
