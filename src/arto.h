@@ -25,6 +25,7 @@ static const int8_t NodeType256=3;
 static const unsigned maxPrefixLength=9;
 
 int art_debug = 0;
+int always_flush = 0;
 
 #ifdef DNDEBUG
    #define ART_DEBUG(...)
@@ -32,7 +33,7 @@ int art_debug = 0;
    #define ART_DEBUG(...) { if (art_debug) fprintf(stderr, __VA_ARGS__); }
 #endif
 
-#define BSIZE 64
+#define BSIZE 128
 
 struct Bucket {
    int D[BSIZE], N;
@@ -617,54 +618,7 @@ void copyPrefix(Node* src,Node* dst) {
    memcpy(dst->prefix,src->prefix,min(src->prefixLength,maxPrefixLength));
 }
 
-void insert(Node *node, Node **nodeRef,uint8_t key[],unsigned depth,uintptr_t value,unsigned maxKeyLength) {
-   // Insert the leaf value into the tree
-   // ART_DEBUG("Insert depth = %d, %u, node = %p\n", depth, depth < maxKeyLength ? key[depth] : 0, node);
-
-   if (node==NULL) {
-      ART_DEBUG("null leaf %d %lu\n", depth, value);
-      *nodeRef=makeLeaf(value);
-      return;
-   }
-
-   if (isLeaf(node)) {
-      ART_DEBUG("insert leaf %d %lu\n", depth, value);
-      // Replace leaf with Node4 and store both leaves in it
-      uint8_t existingKey[maxKeyLength];
-      loadKey(getLeafValue(node),existingKey);
-      unsigned newPrefixLength=0;
-      while (existingKey[depth+newPrefixLength]==key[depth+newPrefixLength])
-         newPrefixLength++;
-
-      Node4* newNode=new Node4();
-      newNode->prefixLength=newPrefixLength;
-      memcpy(newNode->prefix,key+depth,min(newPrefixLength,maxPrefixLength));
-      *nodeRef=newNode;
-
-      insertNode4(newNode,nodeRef,existingKey[depth+newPrefixLength],node);
-      insertNode4(newNode,nodeRef,key[depth+newPrefixLength],makeLeaf(value));
-      return;
-   }
-
-   // Buffer inserts
-   if (!node->next) {
-      node->next = node->tail = new Bucket();
-      ART_DEBUG("NEW NEXT\n");
-      assert(!node->tail->next);
-   }
-   assert(node->tail);
-   if (node->tail->N == BSIZE) {
-      assert(!node->tail->next);
-      ART_DEBUG("HOST %p -> ... -> %p -> ", node, node->tail);
-      node->tail->next = new Bucket();
-      node->tail = node->tail->next;
-      ART_DEBUG("%p\n", node->tail);
-   }
-   assert(node->tail->N < BSIZE);
-   node->tail->D[node->tail->N++] = value;
-   ART_DEBUG("append %lu to %p\n", value, node->tail);
-}
-
+void insert(Node *node, Node **nodeRef,uint8_t key[],unsigned depth,uintptr_t value,unsigned maxKeyLength);
 void flush_inserts(Node* node,Node** nodeRef,uint8_t key[],unsigned depth,uintptr_t value,unsigned maxKeyLength) {
    // ART_DEBUG("continue insert %d\n", depth);
 
@@ -723,6 +677,8 @@ void flush_inserts(Node* node,Node** nodeRef,uint8_t key[],unsigned depth,uintpt
 }
 
 void flush_inserts(Node **nodeRef, int depth, int maxKeyLength) {
+   if (!(*nodeRef)->next) return;
+
    ART_DEBUG("flushing_inserts %d, next = %p\n", depth, (*nodeRef)->next);
    while ((*nodeRef)->next) {
       uint8_t key[8];
@@ -742,6 +698,58 @@ void flush_inserts(Node **nodeRef, int depth, int maxKeyLength) {
    }
    (*nodeRef)->tail = 0;
    ART_DEBUG("flushing_inserts done\n");
+}
+
+void insert(Node *node, Node **nodeRef,uint8_t key[],unsigned depth,uintptr_t value,unsigned maxKeyLength) {
+   // Insert the leaf value into the tree
+   // ART_DEBUG("Insert depth = %d, %u, node = %p\n", depth, depth < maxKeyLength ? key[depth] : 0, node);
+
+   if (node==NULL) {
+      ART_DEBUG("null leaf %d %lu\n", depth, value);
+      *nodeRef=makeLeaf(value);
+      return;
+   }
+
+   if (isLeaf(node)) {
+      ART_DEBUG("insert leaf %d %lu\n", depth, value);
+      // Replace leaf with Node4 and store both leaves in it
+      uint8_t existingKey[maxKeyLength];
+      loadKey(getLeafValue(node),existingKey);
+      unsigned newPrefixLength=0;
+      while (existingKey[depth+newPrefixLength]==key[depth+newPrefixLength])
+         newPrefixLength++;
+
+      Node4* newNode=new Node4();
+      newNode->prefixLength=newPrefixLength;
+      memcpy(newNode->prefix,key+depth,min(newPrefixLength,maxPrefixLength));
+      *nodeRef=newNode;
+
+      insertNode4(newNode,nodeRef,existingKey[depth+newPrefixLength],node);
+      insertNode4(newNode,nodeRef,key[depth+newPrefixLength],makeLeaf(value));
+      return;
+   }
+
+   if (always_flush) {
+      flush_inserts(node, nodeRef, key, depth, value, maxKeyLength);
+   } else {
+      // Buffer inserts
+      if (!node->next) {
+         node->next = node->tail = new Bucket();
+         ART_DEBUG("NEW NEXT\n");
+         assert(!node->tail->next);
+      }
+      assert(node->tail);
+      if (node->tail->N == BSIZE) {
+         assert(!node->tail->next);
+         ART_DEBUG("HOST %p -> ... -> %p -> ", node, node->tail);
+         node->tail->next = new Bucket();
+         node->tail = node->tail->next;
+         ART_DEBUG("%p\n", node->tail);
+      }
+      assert(node->tail->N < BSIZE);
+      node->tail->D[node->tail->N++] = value;
+      ART_DEBUG("append %lu to %p\n", value, node->tail);
+   }
 }
 
 void insertNode4(Node4* node,Node** nodeRef,uint8_t keyByte,Node* child) {

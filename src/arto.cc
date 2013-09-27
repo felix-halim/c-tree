@@ -17,6 +17,7 @@ void init(long long *arr, int N) {
   for (int i = 0; i < N; i++) {
     insert(arr[i]);
   }
+  always_flush = 1;
   // art_debug = 1;
 }
 
