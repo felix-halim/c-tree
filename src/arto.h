@@ -32,7 +32,7 @@ int art_debug = 0;
    #define ART_DEBUG(...) { if (art_debug) fprintf(stderr, __VA_ARGS__); }
 #endif
 
-#define BSIZE 1024
+#define BSIZE 64
 
 struct Bucket {
    int D[BSIZE], N;
@@ -622,11 +622,13 @@ void insert(Node *node, Node **nodeRef,uint8_t key[],unsigned depth,uintptr_t va
    // ART_DEBUG("Insert depth = %d, %u, node = %p\n", depth, depth < maxKeyLength ? key[depth] : 0, node);
 
    if (node==NULL) {
+      ART_DEBUG("null leaf %d %lu\n", depth, value);
       *nodeRef=makeLeaf(value);
       return;
    }
 
    if (isLeaf(node)) {
+      ART_DEBUG("insert leaf %d %lu\n", depth, value);
       // Replace leaf with Node4 and store both leaves in it
       uint8_t existingKey[maxKeyLength];
       loadKey(getLeafValue(node),existingKey);
@@ -648,14 +650,19 @@ void insert(Node *node, Node **nodeRef,uint8_t key[],unsigned depth,uintptr_t va
    if (!node->next) {
       node->next = node->tail = new Bucket();
       ART_DEBUG("NEW NEXT\n");
+      assert(!node->tail->next);
    }
+   assert(node->tail);
    if (node->tail->N == BSIZE) {
+      assert(!node->tail->next);
+      ART_DEBUG("HOST %p -> ... -> %p -> ", node, node->tail);
       node->tail->next = new Bucket();
       node->tail = node->tail->next;
-      ART_DEBUG("NEW TAIL\n");
+      ART_DEBUG("%p\n", node->tail);
    }
    assert(node->tail->N < BSIZE);
    node->tail->D[node->tail->N++] = value;
+   ART_DEBUG("append %lu to %p\n", value, node->tail);
 }
 
 void flush_inserts(Node* node,Node** nodeRef,uint8_t key[],unsigned depth,uintptr_t value,unsigned maxKeyLength) {
@@ -671,6 +678,7 @@ void flush_inserts(Node* node,Node** nodeRef,uint8_t key[],unsigned depth,uintpt
          *nodeRef=newNode;
          newNode->next = node->next;
          newNode->tail = node->tail;
+         node->next = node->tail = 0;
          newNode->prefixLength=mismatchPos;
          memcpy(newNode->prefix,node->prefix,min(mismatchPos,maxPrefixLength));
          // Break up prefix
@@ -693,10 +701,11 @@ void flush_inserts(Node* node,Node** nodeRef,uint8_t key[],unsigned depth,uintpt
       depth+=node->prefixLength;
    }
 
+   assert(node == *nodeRef);
    // Recurse
    Node** child=findChild(node,key[depth]);
    if (*child) {
-      // ART_DEBUG("Recurse\n");
+      ART_DEBUG("Recurse %d from %p to %p; ", depth, node, *child);
       insert(*child,child,key,depth+1,value,maxKeyLength);
       return;
    }
@@ -717,6 +726,7 @@ void flush_inserts(Node **nodeRef, int depth, int maxKeyLength) {
    ART_DEBUG("flushing_inserts %d, next = %p\n", depth, (*nodeRef)->next);
    while ((*nodeRef)->next) {
       uint8_t key[8];
+      ART_DEBUG("flushing bucket = %p\n", (*nodeRef)->next);
       for (int i = 0; i < (*nodeRef)->next->N; i++) {
          loadKey((*nodeRef)->next->D[i], key);
          // ART_DEBUG("LOADED KEY %d / %d\n", i, (*nodeRef)->next->N);
@@ -724,10 +734,10 @@ void flush_inserts(Node **nodeRef, int depth, int maxKeyLength) {
          assert((*nodeRef)->next);
          // ART_DEBUG("f %d / %d\n", i, (*nodeRef)->next->N);
       }
-      ART_DEBUG("deleting\n");
       Bucket *next = (*nodeRef)->next->next;
+      ART_DEBUG("deleting %p, next = %p, host = %p\n", (*nodeRef)->next, next, *nodeRef);
       delete (*nodeRef)->next;
-      ART_DEBUG("deleting done\n");
+      // ART_DEBUG("deleting done, host = %p\n", *nodeRef);
       (*nodeRef)->next = next;
    }
    (*nodeRef)->tail = 0;
