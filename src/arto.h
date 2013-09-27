@@ -618,8 +618,8 @@ void copyPrefix(Node* src,Node* dst) {
    memcpy(dst->prefix,src->prefix,min(src->prefixLength,maxPrefixLength));
 }
 
-void insert(Node *node, Node **nodeRef,uint8_t key[],unsigned depth,uintptr_t value,unsigned maxKeyLength);
-void flush_inserts(Node* node,Node** nodeRef,uint8_t key[],unsigned depth,uintptr_t value,unsigned maxKeyLength) {
+void insert(Node *node, Node **nodeRef,uint8_t key[],unsigned depth,uintptr_t value,unsigned maxKeyLength, bool all);
+void flush_inserts(Node* node,Node** nodeRef,uint8_t key[],unsigned depth,uintptr_t value,unsigned maxKeyLength, bool all) {
    // ART_DEBUG("continue insert %d\n", depth);
 
    // Handle prefix of inner node
@@ -660,7 +660,7 @@ void flush_inserts(Node* node,Node** nodeRef,uint8_t key[],unsigned depth,uintpt
    Node** child=findChild(node,key[depth]);
    if (*child) {
       ART_DEBUG("Recurse %d from %p to %p; ", depth, node, *child);
-      insert(*child,child,key,depth+1,value,maxKeyLength);
+      insert(*child,child,key,depth+1,value,maxKeyLength,all);
       return;
    }
 
@@ -683,10 +683,11 @@ void flush_inserts(Node **nodeRef, int depth, int maxKeyLength) {
    while ((*nodeRef)->next) {
       uint8_t key[8];
       ART_DEBUG("flushing bucket = %p\n", (*nodeRef)->next);
+      bool all = (*nodeRef)->next == (*nodeRef)->tail;
       for (int i = 0; i < (*nodeRef)->next->N; i++) {
          loadKey((*nodeRef)->next->D[i], key);
          // ART_DEBUG("LOADED KEY %d / %d\n", i, (*nodeRef)->next->N);
-         flush_inserts(*nodeRef, nodeRef, key, depth, (*nodeRef)->next->D[i], maxKeyLength);
+         flush_inserts(*nodeRef, nodeRef, key, depth, (*nodeRef)->next->D[i], maxKeyLength, all);
          assert((*nodeRef)->next);
          // ART_DEBUG("f %d / %d\n", i, (*nodeRef)->next->N);
       }
@@ -700,7 +701,7 @@ void flush_inserts(Node **nodeRef, int depth, int maxKeyLength) {
    ART_DEBUG("flushing_inserts done\n");
 }
 
-void insert(Node *node, Node **nodeRef,uint8_t key[],unsigned depth,uintptr_t value,unsigned maxKeyLength) {
+void insert(Node *node, Node **nodeRef,uint8_t key[],unsigned depth,uintptr_t value,unsigned maxKeyLength, bool all) {
    // Insert the leaf value into the tree
    // ART_DEBUG("Insert depth = %d, %u, node = %p\n", depth, depth < maxKeyLength ? key[depth] : 0, node);
 
@@ -729,8 +730,8 @@ void insert(Node *node, Node **nodeRef,uint8_t key[],unsigned depth,uintptr_t va
       return;
    }
 
-   if (always_flush) {
-      flush_inserts(node, nodeRef, key, depth, value, maxKeyLength);
+   if (all) {
+      flush_inserts(node, nodeRef, key, depth, value, maxKeyLength, all);
    } else {
       // Buffer inserts
       if (!node->next) {
