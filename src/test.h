@@ -159,7 +159,6 @@ int main(int argc, char *argv[]) {
     MAXQ = min(s.N, MAXQ);
   }
 
-  uniform_int_distribution<> disN(0, s.N - 1);
   for (s.Q = 1; ; s.Q *= 10) {
     double update_time = 0;
     double load_time = 0;
