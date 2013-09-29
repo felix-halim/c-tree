@@ -24,7 +24,7 @@ class Update {
     if (!in) { fprintf(stderr,"Error opening file %s\n", fn); exit(1); }
   }
 
-  void prepare_deletion(int N) { shuffle(arr.begin(), arr.end() + N, gen); }
+  void prepare_deletion(int N) { shuffle(arr.begin(), arr.begin() + N, gen); }
   int max_element() { return max_value; }
   int* get_arr() { return &arr[0]; }
   int size() { return arr.size(); }
