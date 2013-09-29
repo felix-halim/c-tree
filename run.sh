@@ -54,6 +54,12 @@ batch_sky)    ./run.sh append comb | tee -a $out
               ./run.sh append btree_stx | tee -a $out
               ;;
 
+crack)        for U in {0..5}
+              do
+                     ./run.sh algo crack 0 | tee -a $out
+              done
+              ./run.sh append crack | tee -a $out;;
+
 batch)        ./run.sh batch_noup
               for U in {1..5}
               do
