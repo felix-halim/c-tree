@@ -7,9 +7,9 @@
 using namespace std;
 using namespace ctree;
 
-CTree<long long> c;
+CTree<int> c;
 
-void init(long long *arr, int N) {
+void init(int *arr, int N) {
   // c.load("ctree"); return;
 
   c.batch_insert(arr, N);
@@ -26,11 +26,11 @@ void init(long long *arr, int N) {
   // // c.debug();
 }
 
-void insert(long long value) {
+void insert(int value) {
   c.insert(value);
 }
 
-void erase(long long value) {
+void erase(int value) {
   #ifdef NDEBUG
     c.erase(value);
   #else
@@ -39,9 +39,9 @@ void erase(long long value) {
   #endif
 }
 
-long long query(long long value) {
+int query(int value) {
   auto it = c.lower_bound(value);
-  long long ret = it.first ? it.second : 0;
+  int ret = it.first ? it.second : 0;
   // fprintf(stderr, "%d (%d)\n", ret, value);
   return ret;
 }

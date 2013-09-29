@@ -1,5 +1,5 @@
 mkdir bin 2> /dev/null
-N=100000000
+N=data/10000000.data
 Q=1000000000
 out=results.js
 
@@ -7,11 +7,8 @@ case $1 in
 
 test)         make -C src "../bin/$2_tests" && bin/$2_tests;;
 
-noup)         make -s -C src "../bin/$2" || exit;
-              bin/$2 `hostname` $N 0 $Q;;
-
-lfhv)         make -s -C src "../bin/$2" || exit;
-              bin/$2 `hostname` $N 1 $Q;;
+algo)         make -s -C src "../bin/$2" || exit;
+              bin/$2 $N $Q 0.1 1 $3;;
 
 skew)         make -s -C src "../bin/$2" || exit;
               bin/$2 `hostname` $N 2 $Q $3;;
