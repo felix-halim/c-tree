@@ -232,6 +232,7 @@ int main(int argc, char *argv[]) {
                       bool loaded = false;
                       load_time += time_it([&] {
                         loaded = update.load(10000000);
+                        query_w.set_max(update.max_element());
                       });
                       if (loaded) {
                         int *arr = update.get_arr();
