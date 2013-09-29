@@ -20,6 +20,21 @@ all: \
 	$(ODIR)/sort \
 	$(ODIR)/ctree_tests
 
+$(ODIR)/dataset_gen: dataset_gen.cc
+	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
+
+../data/10000000.data: $(ODIR)/dataset_gen
+	mkdir -p ../data
+	pwd
+	$(ODIR)/dataset_gen 10000000
+	mv 10000000.data ../data
+
+../data/100000000.data: $(ODIR)/dataset_gen
+	mkdir -p ../data
+	pwd
+	$(ODIR)/dataset_gen 100000000
+	mv 100000000.data ../data
+
 $(ODIR)/comb: comb.cc comb.h test.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
 

@@ -1,7 +1,7 @@
 /*
-  Adaptive Radix Tree
-  Viktor Leis, 2012
-  leis@in.tum.de
+  Cracked Adaptive Radix Tree
+  Felix Halim, 2013
+  felix.halim@gmail.com
  */
 
 #include <stdlib.h>    // malloc, free
@@ -25,7 +25,6 @@ static const int8_t NodeType256=3;
 static const unsigned maxPrefixLength=9;
 
 int art_debug = 0;
-int always_flush = 0;
 
 #ifdef DNDEBUG
    #define ART_DEBUG(...)
@@ -618,8 +617,8 @@ void copyPrefix(Node* src,Node* dst) {
    memcpy(dst->prefix,src->prefix,min(src->prefixLength,maxPrefixLength));
 }
 
-void insert(Node *node, Node **nodeRef,uint8_t key[],unsigned depth,uintptr_t value,unsigned maxKeyLength, bool all);
-void flush_inserts(Node* node,Node** nodeRef,uint8_t key[],unsigned depth,uintptr_t value,unsigned maxKeyLength, bool all) {
+void insert(Node *node, Node **nodeRef,uint8_t key[],unsigned depth,uintptr_t value,unsigned maxKeyLength, bool eager);
+void flush_inserts(Node* node,Node** nodeRef,uint8_t key[],unsigned depth,uintptr_t value,unsigned maxKeyLength, bool eager) {
    // ART_DEBUG("continue insert %d\n", depth);
 
    // Handle prefix of inner node
@@ -660,7 +659,7 @@ void flush_inserts(Node* node,Node** nodeRef,uint8_t key[],unsigned depth,uintpt
    Node** child=findChild(node,key[depth]);
    if (*child) {
       ART_DEBUG("Recurse %d from %p to %p; ", depth, node, *child);
-      insert(*child,child,key,depth+1,value,maxKeyLength,all);
+      insert(*child,child,key,depth+1,value,maxKeyLength,eager);
       return;
    }
 
@@ -683,11 +682,11 @@ void flush_inserts(Node **nodeRef, int depth, int maxKeyLength) {
    while ((*nodeRef)->next) {
       uint8_t key[8];
       ART_DEBUG("flushing bucket = %p\n", (*nodeRef)->next);
-      bool all = (*nodeRef)->next == (*nodeRef)->tail;
+      bool eager = (*nodeRef)->next == (*nodeRef)->tail;
       for (int i = 0; i < (*nodeRef)->next->N; i++) {
          loadKey((*nodeRef)->next->D[i], key);
          // ART_DEBUG("LOADED KEY %d / %d\n", i, (*nodeRef)->next->N);
-         flush_inserts(*nodeRef, nodeRef, key, depth, (*nodeRef)->next->D[i], maxKeyLength, all);
+         flush_inserts(*nodeRef, nodeRef, key, depth, (*nodeRef)->next->D[i], maxKeyLength, eager);
          assert((*nodeRef)->next);
          // ART_DEBUG("f %d / %d\n", i, (*nodeRef)->next->N);
       }
@@ -701,7 +700,7 @@ void flush_inserts(Node **nodeRef, int depth, int maxKeyLength) {
    ART_DEBUG("flushing_inserts done\n");
 }
 
-void insert(Node *node, Node **nodeRef,uint8_t key[],unsigned depth,uintptr_t value,unsigned maxKeyLength, bool all) {
+void insert(Node *node, Node **nodeRef,uint8_t key[],unsigned depth,uintptr_t value,unsigned maxKeyLength, bool eager) {
    // Insert the leaf value into the tree
    // ART_DEBUG("Insert depth = %d, %u, node = %p\n", depth, depth < maxKeyLength ? key[depth] : 0, node);
 
@@ -730,8 +729,8 @@ void insert(Node *node, Node **nodeRef,uint8_t key[],unsigned depth,uintptr_t va
       return;
    }
 
-   if (all) {
-      flush_inserts(node, nodeRef, key, depth, value, maxKeyLength, all);
+   if (eager) {
+      flush_inserts(node, nodeRef, key, depth, value, maxKeyLength, eager);
    } else {
       // Buffer inserts
       if (!node->next) {

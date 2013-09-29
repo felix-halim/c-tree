@@ -4,18 +4,18 @@
 #include "test.h"
 
 // Comb<int, std::less<int>, true, 3200, 125, 50> c;
-Comb<long long> c;
+Comb<int> c;
 
-void init(long long *arr, int N) {
+void init(int *arr, int N) {
   for (int i = 0; i < N; i++)
     c.insert(arr[i]);
 }
 
-void insert(long long value) {
+void insert(int value) {
   c.insert(value);
 }
 
-void erase(long long value) {
+void erase(int value) {
   // fprintf(stderr, "erase %d\n", value);
   #ifdef NDEBUG
     c.erase(value);
@@ -25,10 +25,10 @@ void erase(long long value) {
   #endif
 }
 
-long long query(long long value) {
-  long long val = 0;
-  long long ret = c.lower_bound(value).next(val) ? val : 0;
-  fprintf(stdout, "%lld (%lld)\n", ret, value);
+int query(int value) {
+  int val = 0;
+  int ret = c.lower_bound(value).next(val) ? val : 0;
+  // fprintf(stdout, "%lld (%lld)\n", ret, value);
   return ret;
 }
 
