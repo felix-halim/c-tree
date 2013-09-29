@@ -25,7 +25,7 @@ void init(int *arr, int N) {
 void insert(int value64) {
   uint8_t key[8];
   loadKey(value64, key);
-  insert(tree,&tree,key,0,value64,8,false);
+  insert(tree,&tree,key,0,value64,8,true);
 }
 
 void erase(int value) {

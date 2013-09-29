@@ -19,9 +19,9 @@ sky_append)   ./run.sh compile $2
 skew)         make -s -C src "../bin/$2" || exit;
               bin/$2 `hostname` $N 2 $Q $3;;
 
-data)         echo "var data = 'timestamp,hostname,algorithm,N,Q,selectivity\
-insert_time,query_time,checksum,version,nLeaves,nCap,nInternals,\
-max_depth,slack,in_size,ln_size,ia_free,ia_size,la_free,la_size\n\\" > data.js;
+data)         echo "var data = 'timestamp,algorithm,query_workload,update_workload,\
+N,Q,selectivity,verified,insert_time,update_time,query_time,checksum,\
+n_leaves,n_capacity,n_internals,max_depth,slack,in_size,ln_size,ia_free,ia_size,la_free,la_size\n\\" > data.js;
               sed -e 's/$/\\n\\/' results.js >> data.js;
               echo "';" >> data.js
               ;;
