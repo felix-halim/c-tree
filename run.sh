@@ -21,23 +21,37 @@ max_depth,slack,in_size,ln_size,ia_free,ia_size,la_free,la_size\n\\" > data.js;
               echo "';" >> data.js
               ;;
 
-batch_noup)   ./run.sh noup comb | tee -a $out
-              ./run.sh noup ctree_32_64 | tee -a $out
-              ./run.sh noup art | tee -a $out
-              ./run.sh noup art_crack | tee -a $out
-              # ./run.sh noup ctree_exp_leafsize | tee -a $out
-              ./run.sh noup ctree_eager | tee -a $out
-              ./run.sh noup sort | tee -a $out
-              ./run.sh noup btree_google | tee -a $out
-              ./run.sh noup btree_stx | tee -a $out
+batch_noup)   ./run.sh algo comb 0 | tee -a $out
+              ./run.sh algo ctree_32_64 0 | tee -a $out
+              ./run.sh algo art 0 | tee -a $out
+              ./run.sh algo arto 0 | tee -a $out
+              # ./run.sh algo art_crack 0 | tee -a $out
+              # ./run.sh algo ctree_exp_leafsize 0 | tee -a $out
+              ./run.sh algo ctree_eager 0 | tee -a $out
+              ./run.sh algo sort 0 | tee -a $out
+              ./run.sh algo btree_google 0 | tee -a $out
+              ./run.sh algo btree_stx 0 | tee -a $out
               ;;
 
-batch_lfhv)   ./run.sh lfhv comb | tee -a $out
-              ./run.sh lfhv ctree_32_64 | tee -a $out
-              ./run.sh lfhv art | tee -a $out
-              ./run.sh lfhv art_crack | tee -a $out
-              ./run.sh lfhv btree_google | tee -a $out
-              ./run.sh lfhv btree_stx | tee -a $out
+batch_lfhv)   ./run.sh algo comb 1 | tee -a $out
+              ./run.sh algo ctree_32_64 1 | tee -a $out
+              ./run.sh algo art 1 | tee -a $out
+              ./run.sh algo art_crack 1 | tee -a $out
+              ./run.sh algo btree_google 1 | tee -a $out
+              ./run.sh algo btree_stx 1 | tee -a $out
+              ;;
+
+batch)        ./run.sh batch_noup
+              for U in {1..6}
+              do
+                     ./run.sh algo comb $U | tee -a $out
+                     ./run.sh algo ctree_32_64 $U | tee -a $out
+                     ./run.sh algo art $U | tee -a $out
+                     # ./run.sh algo art_crack $U | tee -a $out
+                     ./run.sh algo arto $U | tee -a $out
+                     ./run.sh algo btree_google $U | tee -a $out
+                     ./run.sh algo btree_stx $U | tee -a $out
+              done
               ;;
 
 batch_skew)

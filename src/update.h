@@ -72,7 +72,7 @@ class Update {
 
   int update_delete(int N) {
     static int lastN = N;
-    assert(lastN >= 0);
+    assert(lastN > 0);
     return arr[--lastN];
   }
 
