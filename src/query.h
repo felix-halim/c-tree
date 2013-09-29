@@ -257,7 +257,7 @@ class Workload {
 
 public : 
 
-  Workload(int w, double selectivity_): W(w), I(0), selectivity(selectivity_), gen(140384) {
+  Workload(int w, double selectivity_): N(0), W(w), S(0), I(0), a(0), b(0), selectivity(selectivity_), gen(140384) {
     if (W < 0 || W >= 17) {
       fprintf(stderr,"Workload number %d is not found!\n", W);
       exit(1);
@@ -270,6 +270,7 @@ public :
   }
 
   bool query(int &na, int &nb) {
+    assert(N > 0);
     switch (W) {
       case 0 : if (!skyserver_w()) return false; break;
       case 1 : if (!random_w()) return false; break;
