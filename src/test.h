@@ -146,6 +146,10 @@ int main(int argc, char *argv[]) {
     s.N = update.size() / 2;
     query_w.set_max(update.max_element() + 1);
     if (U == 3) update.prepare_queue(s.N);
+  } else {
+    update.load(1000000);
+    s.N = update.size();
+    query_w.set_max(update.max_element() + 1);
   }
 
   fprintf(stderr, "N = %d\n", s.N);
@@ -233,6 +237,7 @@ int main(int argc, char *argv[]) {
                       load_time += time_it([&] {
                         loaded = update.load(10000000);
                         query_w.set_max(update.max_element());
+                        s.N += update.size();
                       });
                       if (loaded) {
                         int *arr = update.get_arr();
