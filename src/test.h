@@ -162,6 +162,7 @@ int main(int argc, char *argv[]) {
   uniform_int_distribution<> disN(0, s.N - 1);
   for (s.Q = 1; ; s.Q *= 10) {
     double update_time = 0;
+    double load_time = 0;
     s.query_time += time_it([&] {
       int nQ = s.Q - s.Q / 10; // nQ = how many queries needed.
       for (int i = 1, a, b; i <= nQ; i++) {
@@ -229,15 +230,21 @@ int main(int argc, char *argv[]) {
           case 6: if (i % 1000 == 0) update_time += time_it([&] {
                     if (s.N < 580000000) {
                       update.clear();
-                      update.load(10000000);
-                      int *arr = update.get_arr();
-                      REP(j, 10000000) insert(arr[j]);
+                      bool loaded = false;
+                      load_time += time_it([&] {
+                        loaded = update.load(10000000);
+                      });
+                      if (loaded) {
+                        int *arr = update.get_arr();
+                        REP(j, update.size()) insert(arr[j]);
+                      }
                     }
                   });
                   break;
         }
       }
     });
+    update_time -= load_time;
     s.query_time -= update_time;
     s.update_time += update_time;
 
