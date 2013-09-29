@@ -25,143 +25,141 @@ $(ODIR)/dataset_gen: dataset_gen.cc
 
 ../data/10000000.data: $(ODIR)/dataset_gen
 	mkdir -p ../data
-	pwd
 	$(ODIR)/dataset_gen 10000000
 	mv 10000000.data ../data
 
 ../data/100000000.data: $(ODIR)/dataset_gen
 	mkdir -p ../data
-	pwd
 	$(ODIR)/dataset_gen 100000000
 	mv 100000000.data ../data
 
-$(ODIR)/comb: comb.cc comb.h test.h
+$(ODIR)/comb: comb.cc comb.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
 
-$(ODIR)/crack: crack.cc crack.h test.h
+$(ODIR)/crack: crack.cc crack.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
 
-$(ODIR)/art: art.cc art.h test.h
+$(ODIR)/art: art.cc art.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
 
-$(ODIR)/arto: arto.cc arto.h test.h
+$(ODIR)/arto: arto.cc arto.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
 
-$(ODIR)/art_crack: art_crack.cc art_crack.h art.h test.h
+$(ODIR)/art_crack: art_crack.cc art_crack.h art.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
 
-$(ODIR)/artd_crack: artd_crack.cc artd_crack.h art.h test.h
+$(ODIR)/artd_crack: artd_crack.cc artd_crack.h art.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
 
-$(ODIR)/ctree_exp_leafsize: ctree_exp_leafsize.cc ctree_exp_leafsize.h test.h
+$(ODIR)/ctree_exp_leafsize: ctree_exp_leafsize.cc ctree_exp_leafsize.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
 
-$(ODIR)/ctree_with_crack: ctree_with_crack.cc ctree_with_crack.h test.h
+$(ODIR)/ctree_with_crack: ctree_with_crack.cc ctree_with_crack.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
 
-$(ODIR)/sort: sort.cc test.h
+$(ODIR)/sort: sort.cc test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
 
-$(ODIR)/btree_google: btree_google.cc google/btree_set.h google/btree.h google/btree_container.h test.h
+$(ODIR)/btree_google: btree_google.cc google/btree_set.h google/btree.h google/btree_container.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
 
-$(ODIR)/btree_stx: btree_stx.cc stx/btree_multiset stx/btree_multiset.h stx/btree.h test.h
+$(ODIR)/btree_stx: btree_stx.cc stx/btree_multiset stx/btree_multiset.h stx/btree.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
 
 $(ODIR)/ctree_tests: ctree_tests.cc ctree.h random.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
 
-$(ODIR)/ctree_eager: ctree.cc ctree.h test.h
+$(ODIR)/ctree_eager: ctree.cc ctree.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=64 -DLEAF_BSIZE=128 -DEAGER -Wall -o $@ $<
 
-$(ODIR)/ctree_8_8: ctree.cc ctree.h test.h
+$(ODIR)/ctree_8_8: ctree.cc ctree.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=8 -DLEAF_BSIZE=8 -Wall -o $@ $<
-$(ODIR)/ctree_8_16: ctree.cc ctree.h test.h
+$(ODIR)/ctree_8_16: ctree.cc ctree.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=8 -DLEAF_BSIZE=16 -Wall -o $@ $<
-$(ODIR)/ctree_8_32: ctree.cc ctree.h test.h
+$(ODIR)/ctree_8_32: ctree.cc ctree.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=8 -DLEAF_BSIZE=32 -Wall -o $@ $<
-$(ODIR)/ctree_8_64: ctree.cc ctree.h test.h
+$(ODIR)/ctree_8_64: ctree.cc ctree.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=8 -DLEAF_BSIZE=64 -Wall -o $@ $<
-$(ODIR)/ctree_8_128: ctree.cc ctree.h test.h
+$(ODIR)/ctree_8_128: ctree.cc ctree.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=8 -DLEAF_BSIZE=128 -Wall -o $@ $<
-$(ODIR)/ctree_8_256: ctree.cc ctree.h test.h
+$(ODIR)/ctree_8_256: ctree.cc ctree.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=8 -DLEAF_BSIZE=256 -Wall -o $@ $<
-$(ODIR)/ctree_8_1024: ctree.cc ctree.h test.h
+$(ODIR)/ctree_8_1024: ctree.cc ctree.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=8 -DLEAF_BSIZE=1024 -Wall -o $@ $<
-$(ODIR)/ctree_8_4096: ctree.cc ctree.h test.h
+$(ODIR)/ctree_8_4096: ctree.cc ctree.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=8 -DLEAF_BSIZE=4096 -Wall -o $@ $<
 
-$(ODIR)/ctree_16_8: ctree.cc ctree.h test.h
+$(ODIR)/ctree_16_8: ctree.cc ctree.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=16 -DLEAF_BSIZE=8 -Wall -o $@ $<
-$(ODIR)/ctree_16_16: ctree.cc ctree.h test.h
+$(ODIR)/ctree_16_16: ctree.cc ctree.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=16 -DLEAF_BSIZE=16 -Wall -o $@ $<
-$(ODIR)/ctree_16_32: ctree.cc ctree.h test.h
+$(ODIR)/ctree_16_32: ctree.cc ctree.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=16 -DLEAF_BSIZE=32 -Wall -o $@ $<
-$(ODIR)/ctree_16_64: ctree.cc ctree.h test.h
+$(ODIR)/ctree_16_64: ctree.cc ctree.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=16 -DLEAF_BSIZE=64 -Wall -o $@ $<
-$(ODIR)/ctree_16_128: ctree.cc ctree.h test.h
+$(ODIR)/ctree_16_128: ctree.cc ctree.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=16 -DLEAF_BSIZE=128 -Wall -o $@ $<
-$(ODIR)/ctree_16_256: ctree.cc ctree.h test.h
+$(ODIR)/ctree_16_256: ctree.cc ctree.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=16 -DLEAF_BSIZE=256 -Wall -o $@ $<
-$(ODIR)/ctree_16_1024: ctree.cc ctree.h test.h
+$(ODIR)/ctree_16_1024: ctree.cc ctree.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=16 -DLEAF_BSIZE=1024 -Wall -o $@ $<
-$(ODIR)/ctree_16_4096: ctree.cc ctree.h test.h
+$(ODIR)/ctree_16_4096: ctree.cc ctree.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=16 -DLEAF_BSIZE=4096 -Wall -o $@ $<
 
-$(ODIR)/ctree_32_8: ctree.cc ctree.h test.h
+$(ODIR)/ctree_32_8: ctree.cc ctree.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=32 -DLEAF_BSIZE=8 -Wall -o $@ $<
-$(ODIR)/ctree_32_16: ctree.cc ctree.h test.h
+$(ODIR)/ctree_32_16: ctree.cc ctree.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=32 -DLEAF_BSIZE=16 -Wall -o $@ $<
-$(ODIR)/ctree_32_32: ctree.cc ctree.h test.h
+$(ODIR)/ctree_32_32: ctree.cc ctree.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=32 -DLEAF_BSIZE=32 -Wall -o $@ $<
-$(ODIR)/ctree_32_64: ctree.cc ctree.h test.h
+$(ODIR)/ctree_32_64: ctree.cc ctree.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=32 -DLEAF_BSIZE=64 -Wall -o $@ $<
-$(ODIR)/ctree_32_128: ctree.cc ctree.h test.h
+$(ODIR)/ctree_32_128: ctree.cc ctree.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=32 -DLEAF_BSIZE=128 -Wall -o $@ $<
-$(ODIR)/ctree_32_256: ctree.cc ctree.h test.h
+$(ODIR)/ctree_32_256: ctree.cc ctree.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=32 -DLEAF_BSIZE=256 -Wall -o $@ $<
-$(ODIR)/ctree_32_1024: ctree.cc ctree.h test.h
+$(ODIR)/ctree_32_1024: ctree.cc ctree.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=32 -DLEAF_BSIZE=1024 -Wall -o $@ $<
-$(ODIR)/ctree_32_4096: ctree.cc ctree.h test.h
+$(ODIR)/ctree_32_4096: ctree.cc ctree.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=32 -DLEAF_BSIZE=4096 -Wall -o $@ $<
 
-$(ODIR)/ctree_64_32: ctree.cc ctree.h test.h
+$(ODIR)/ctree_64_32: ctree.cc ctree.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=64 -DLEAF_BSIZE=32 -Wall -o $@ $<
-$(ODIR)/ctree_64_64: ctree.cc ctree.h test.h
+$(ODIR)/ctree_64_64: ctree.cc ctree.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=64 -DLEAF_BSIZE=64 -Wall -o $@ $<
-$(ODIR)/ctree_64_128: ctree.cc ctree.h test.h
+$(ODIR)/ctree_64_128: ctree.cc ctree.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=64 -DLEAF_BSIZE=128 -Wall -o $@ $<
-$(ODIR)/ctree_64_256: ctree.cc ctree.h test.h
+$(ODIR)/ctree_64_256: ctree.cc ctree.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=64 -DLEAF_BSIZE=256 -Wall -o $@ $<
-$(ODIR)/ctree_64_1024: ctree.cc ctree.h test.h
+$(ODIR)/ctree_64_1024: ctree.cc ctree.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=64 -DLEAF_BSIZE=1024 -Wall -o $@ $<
-$(ODIR)/ctree_64_4096: ctree.cc ctree.h test.h
+$(ODIR)/ctree_64_4096: ctree.cc ctree.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=64 -DLEAF_BSIZE=4096 -Wall -o $@ $<
 
-$(ODIR)/ctree_128_32: ctree.cc ctree.h test.h
+$(ODIR)/ctree_128_32: ctree.cc ctree.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=128 -DLEAF_BSIZE=32 -Wall -o $@ $<
-$(ODIR)/ctree_128_64: ctree.cc ctree.h test.h
+$(ODIR)/ctree_128_64: ctree.cc ctree.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=128 -DLEAF_BSIZE=64 -Wall -o $@ $<
-$(ODIR)/ctree_128_128: ctree.cc ctree.h test.h
+$(ODIR)/ctree_128_128: ctree.cc ctree.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=128 -DLEAF_BSIZE=128 -Wall -o $@ $<
-$(ODIR)/ctree_128_256: ctree.cc ctree.h test.h
+$(ODIR)/ctree_128_256: ctree.cc ctree.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=128 -DLEAF_BSIZE=256 -Wall -o $@ $<
-$(ODIR)/ctree_128_1024: ctree.cc ctree.h test.h
+$(ODIR)/ctree_128_1024: ctree.cc ctree.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=128 -DLEAF_BSIZE=1024 -Wall -o $@ $<
-$(ODIR)/ctree_128_4096: ctree.cc ctree.h test.h
+$(ODIR)/ctree_128_4096: ctree.cc ctree.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=128 -DLEAF_BSIZE=4096 -Wall -o $@ $<
 
-$(ODIR)/ctree_256_32: ctree.cc ctree.h test.h
+$(ODIR)/ctree_256_32: ctree.cc ctree.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=256 -DLEAF_BSIZE=32 -Wall -o $@ $<
-$(ODIR)/ctree_256_64: ctree.cc ctree.h test.h
+$(ODIR)/ctree_256_64: ctree.cc ctree.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=256 -DLEAF_BSIZE=64 -Wall -o $@ $<
-$(ODIR)/ctree_256_128: ctree.cc ctree.h test.h
+$(ODIR)/ctree_256_128: ctree.cc ctree.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=256 -DLEAF_BSIZE=128 -Wall -o $@ $<
-$(ODIR)/ctree_256_256: ctree.cc ctree.h test.h
+$(ODIR)/ctree_256_256: ctree.cc ctree.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=256 -DLEAF_BSIZE=256 -Wall -o $@ $<
-$(ODIR)/ctree_256_1024: ctree.cc ctree.h test.h
+$(ODIR)/ctree_256_1024: ctree.cc ctree.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=256 -DLEAF_BSIZE=1024 -Wall -o $@ $<
-$(ODIR)/ctree_256_4096: ctree.cc ctree.h test.h
+$(ODIR)/ctree_256_4096: ctree.cc ctree.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=256 -DLEAF_BSIZE=4096 -Wall -o $@ $<
 
 
