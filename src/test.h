@@ -147,7 +147,7 @@ int main(int argc, char *argv[]) {
     query_w.set_max(update.max_element() + 1);
     if (U == 3) update.prepare_queue(s.N);
   } else {
-    update.load(1000000);
+    update.load(10000000);
     s.N = update.size();
     query_w.set_max(update.max_element() + 1);
   }
