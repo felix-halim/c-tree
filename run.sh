@@ -8,6 +8,7 @@ case $1 in
 test)         make -C src "../bin/$2_tests" && bin/$2_tests;;
 
 algo)         make -s -C src "../bin/$2" || exit;
+              make -s -C src "../$N" || exit;
               bin/$2 $N $Q 0.1 1 $3;;
 
 skew)         make -s -C src "../bin/$2" || exit;
