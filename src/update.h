@@ -12,7 +12,7 @@ class Update {
   vector<int> arr;
   FILE *in;
   int U;
-  int next_smallest = 1050000000;
+  int next_smallest = 1080000000;
   int max_value;
   mt19937 gen;
   uniform_int_distribution<> dis;
