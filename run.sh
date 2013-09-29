@@ -7,9 +7,14 @@ case $1 in
 
 test)         make -C src "../bin/$2_tests" && bin/$2_tests;;
 
-algo)         make -s -C src "../bin/$2" || exit;
-              make -s -C src "../$N" || exit;
+compile)      make -s -C src "../bin/$2" || exit;
+              make -s -C src "../$N" || exit;;
+
+algo)         ./run.sh compile $2
               bin/$2 $N $Q 0.1 1 $3;;
+
+sky_append)   ./run.sh compile $2
+              bin/$2 ../scrack/data/skyserver.data $Q 0.1 1 6;;
 
 skew)         make -s -C src "../bin/$2" || exit;
               bin/$2 `hostname` $N 2 $Q $3;;
@@ -42,7 +47,7 @@ batch_lfhv)   ./run.sh algo comb 1 | tee -a $out
               ;;
 
 batch)        ./run.sh batch_noup
-              for U in {1..6}
+              for U in {1..5}
               do
                      ./run.sh algo comb $U | tee -a $out
                      ./run.sh algo ctree_32_64 $U | tee -a $out

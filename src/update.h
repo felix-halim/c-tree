@@ -32,8 +32,8 @@ class Update {
 
   int get_next_smallest() { return next_smallest; }
 
-  void load(int amt = 1000000000) {
-    if (!in) return; // Already loaded.
+  bool load(int amt = 1000000000) {
+    if (!in) return false; // Already loaded.
     int tmp[1024];
     while (!feof(in)) {
       int need = min(1024, amt - size());
@@ -44,6 +44,7 @@ class Update {
     }
     if (ferror(in)) { fprintf(stderr,"Error reading file!\n"); exit(1); }
     if (feof(in)) { fclose(in); in = NULL; }
+    return true;
   }
 
   void prepare_queue(int N) {
