@@ -25,6 +25,6 @@ int main(int argc, char *argv[]) {
   sprintf(fn, "%d.data", N);
   FILE *out = fopen(fn, "wb");
   int nw = fwrite(arr, sizeof(int), N * 2, out);
-  assert(nw == N * 2);
+  if (nw != N * 2) fprintf(stderr, "Written %d, expected: %d\n", nw, N * 2);
   fclose(out);
 }

@@ -14,6 +14,7 @@ class Workload {
   int S;    // The selectivity (unused for some workloads).
   int I;    // The I'th query (internal use only).
   int a, b; // The last query range [a,b].
+  double selectivity;
 
   mt19937 gen;
   uniform_int_distribution<> dis;
@@ -256,13 +257,18 @@ class Workload {
 
 public : 
 
-  Workload(int nElem, int w, double selectivity): N(nElem), W(w), S(nElem * selectivity), I(0), gen(140384) {
+  Workload(int w, double selectivity_): W(w), I(0), selectivity(selectivity_), gen(140384) {
     if (W < 0 || W >= 17) {
       fprintf(stderr,"Workload number %d is not found!\n", W);
       exit(1);
     }
   }
   
+  void set_max(int mx) {
+    N = mx;
+    S = mx * selectivity;
+  }
+
   bool query(int &na, int &nb) {
     switch (W) {
       case 0 : if (!skyserver_w()) return false; break;

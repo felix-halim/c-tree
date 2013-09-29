@@ -3,11 +3,14 @@
 
 #include <algorithm>
 
+#include "query.h"
+#include "update.h"
 #include "checksum.h"
-#include "workload.h"
 
 using namespace std;
 using namespace std::chrono;
+
+#define REP(i, n) for (int i = 0, _n = n; i < _n; i++)
 
 template<typename Func>
 double time_it(Func f) {
@@ -99,34 +102,14 @@ void results(Statistics &s);  // Optionally fill in statistics.
 
 static mt19937 gen(140384);
 static uniform_int_distribution<> dis;
-static int U, next_smallest = 1010000000;
 static Statistics s;
 
-static const char *update_workload[] = {
-  "NOUP",   // 0. Read only queries.
-  "LFHV",   // 1. Update 1000 tuples every 1000 queries.
-  "HFLV",   // 2. Update 10 tuples every 10 queries.
-  "QUEUE",  // 3. Remove the largest value, insert new smaller value than any existing value.
-  "TRASH",  // 4. Insert values in the middle of the domain.
-  "DELETE", // 5. Delete 1000 tuples every 1000 queries.
-  "APPEND", // 6. Insert 10M tuples every 1000 queries. 
-};
-
-static vector<int> read_dataset(char *fn) {
-  FILE *in = fopen(fn, "rb");
-  if (!in) { fprintf(stderr,"Error opening file %s\n", fn); exit(1); }
-
-  vector<int> arr;
-  int tmp[1024];
-  while (!feof(in)) {
-    int N = fread(tmp, sizeof(int), 1024, in);
-    for (int i = 0; i < N; i++) arr.push_back(tmp[i]);
+static char* algorithm_name(char *prog) {
+  while (true) {
+    char *p = strstr(prog, "/");
+    if (p) prog = p + 1; else break;
   }
-
-  if (ferror(in)) { fprintf(stderr,"Error reading %s!\n", fn); exit(1); }
-  fclose(in);
-
-  return arr;
+  return prog;
 }
 
 int main(int argc, char *argv[]) {
@@ -142,68 +125,45 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
 
-  char *prog = argv[0];
-  while (true) {
-    char *p = strstr(prog, "/");
-    if (p) prog = p + 1; else break;
-  }
-  s.algorithm = prog;
-
-  vector<int> arr = read_dataset(argv[1]);
-
-  int MAXQ;
+  int MAXQ, W, U;
+  s.algorithm = algorithm_name(argv[0]);
   sscanf(argv[2], "%d", &MAXQ);
   sscanf(argv[3], "%lf", &s.selectivity);
-
-  int W; sscanf(argv[4], "%d", &W);
-  int mx = *max_element(arr.begin(), arr.end()) + 1;
-  Workload query_workload(mx, W, s.selectivity);
-  s.query_workload = workload_name[W];
-
+  sscanf(argv[4], "%d", &W);
   sscanf(argv[5], "%d", &U);
+  Update update(argv[1], U);
+
+  Workload query_w(W, s.selectivity);
+  s.query_workload = workload_name[W];
   s.update_workload = update_workload[U];
 
-  s.N = arr.size();
-  if (U != 6) s.N /= 2;
-
-  if (U == 3) {                     // QUEUE update workload.
-    for (int i = 0; i < s.N; i++)
-      if (arr[i] <= next_smallest)
-        arr[i] += next_smallest;
-    sort(arr.begin(), arr.begin() + s.N);
-  } else if (U == 6) {              // APPEND update workload.
-    assert(s.N >= 500000000);
-    s.N = 10000000;
+  if (U != 6) {
+    update.load();
+    s.N = update.size() / 2;
+    query_w.set_max(update.max_element() + 1);
+    if (U == 3) update.prepare_queue(s.N);
   }
-
-  // for (int i = 0; i < s.N * 2; i++) {
-  //   if (i % 100 == 0)
-  //   fprintf(stderr, "%d -> %d\n", i, arr[i]);
-  // }
 
   fprintf(stderr, "N = %d\n", s.N);
 
-  s.insert_time = time_it([&] { init(&arr[0], s.N); });
-  s.checksum = 0;
-  s.query_time = 0;
+  s.insert_time = time_it([&] { init(update.get_arr(), s.N); });
 
   fprintf(stderr, "I = %.6lf\n", s.insert_time);
 
   if (U == 5) {
-    shuffle(arr.begin(), arr.end() + s.N, gen);
+    update.prepare_deletion(s.N);
   }
 
   uniform_int_distribution<> disN(0, s.N - 1);
-  int qidx = s.N - 1;
   for (s.Q = 1; ; s.Q *= 10) {
     double update_time = 0;
     s.query_time += time_it([&] {
       int nQ = s.Q - s.Q / 10; // nQ = how many queries needed.
       for (int i = 1, a, b; i <= nQ; i++) {
         if (U == 3) {
-          a = next_smallest;
+          a = update.get_next_smallest();
         } else {
-          bool ok = query_workload.query(a,b); // get query endpoints based on the workload
+          bool ok = query_w.query(a,b); // get query endpoints based on the workload
           if (!ok){ s.Q = i; break; }
         }
 
@@ -215,46 +175,38 @@ int main(int argc, char *argv[]) {
 
           // LFHV.
           case 1: if (i % 1000 == 0) update_time += time_it([&] {
-                    for (int j = 0; j < 1000; j++) {
-                      int k = disN(gen);
-                      erase(arr[k]);
-                      int l = s.N + disN(gen);
-                      swap(arr[k], arr[l]);
-                      insert(arr[k]);
+                    REP(j, 1000) {
+                      update.update(s.N, a, b);
+                      erase(a);
+                      insert(b);
                     }
                   });
                   break;
 
           // HFLV.
           case 2: if (i % 10 == 0) update_time += time_it([&] {
-                    for (int j = 0; j < 10; j++) {
-                      int k = disN(gen);
-                      erase(arr[k]);
-                      int l = s.N + disN(gen);
-                      swap(arr[k], arr[l]);
-                      insert(arr[k]);
+                    REP(j, 10) {
+                      update.update(s.N, a, b);
+                      erase(a);
+                      insert(b);
                     }
                   });
                   break;
 
           // QUEUE.
           case 3: if (i % 10 == 0) update_time += time_it([&] {
-                    // if ((i + 1) % 1000000 == 0)
-                    //   fprintf(stderr, "arr[%d] = %d, next = %d\n", qidx,arr[qidx],next_smallest);
-                    for (int j = 0; j < 10; j++) {
-                      erase(arr[qidx]);
-                      insert(next_smallest);
-                      arr[qidx--] = next_smallest--;
-                      if (qidx < 0) qidx = s.N - 1;
-                      assert(next_smallest >= 0);
+                    REP(j, 10) {
+                      update.update_queue(s.N, a, b);
+                      erase(a);
+                      insert(b);
                     }
                   });
                   break;
 
           // TRASH.
           case 4: if (i == 10000) update_time += time_it([&] {
-                    // Insert 1M in the middle domain.
-                    for (int j = 0; j < 1000000; j++) {
+                    int *arr = update.get_arr();
+                    REP(j, 1000000) {
                       insert(arr[s.N + j]);
                     }
                   });
@@ -262,8 +214,8 @@ int main(int argc, char *argv[]) {
 
           // DELETE.
           case 5: if (i % 1000 == 0) update_time += time_it([&] {
-                    for (int j = 0; j < 1000; j++) {
-                      erase(arr[--s.N]);
+                    REP(j, 1000) {
+                      erase(update.update_delete(s.N));
                     }
                   });
                   break;
@@ -271,10 +223,10 @@ int main(int argc, char *argv[]) {
           // APPEND.
           case 6: if (i % 1000 == 0) update_time += time_it([&] {
                     if (s.N < 580000000) {
-                      // insert 10M tuples
-                      for (int j = 0; j < 10000000; j++) {
-                        insert(arr[s.N++]);
-                      }
+                      update.clear();
+                      update.load(10000000);
+                      int *arr = update.get_arr();
+                      REP(j, 10000000) insert(arr[j]);
                     }
                   });
                   break;
