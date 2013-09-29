@@ -90,6 +90,7 @@ static int verify(int U, Statistics &s) {
                     (s.N == 100000000 ? checksum_match(lfhv_checksum8, s.Q, s.checksum) : 0);
     case 2 : return (s.N == 10000000) ? checksum_match2(skew_checksum7, s.selectivity, s.Q, s.checksum) :
                     (s.N == 100000000 ? checksum_match2(skew_checksum8, s.selectivity, s.Q, s.checksum) : 0);
+    case 3 : return s.N == 100000000 ? checksum_match(queue_checksum8, s.Q, s.checksum) : 0;
   }
   return false;
 }
@@ -160,12 +161,12 @@ int main(int argc, char *argv[]) {
     s.query_time += time_it([&] {
       int nQ = s.Q - s.Q / 10; // nQ = how many queries needed.
       for (int i = 1, a, b; i <= nQ; i++) {
-        if (U == 3) {
-          a = update.get_next_smallest();
-        } else {
+        // if (U == 3) {
+        //   a = update.get_next_smallest();
+        // } else {
           bool ok = query_w.query(a,b); // get query endpoints based on the workload
           if (!ok){ s.Q = i; break; }
-        }
+        // }
 
         s.checksum = s.checksum * 13 + query(a);
 

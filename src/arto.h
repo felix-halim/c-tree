@@ -334,11 +334,11 @@ Node* lower_bound(Node *node, Node **nodeRef, uint8_t key[], unsigned keyLength,
       if (depth && depth != keyLength && !bigger) {
          uint8_t leafKey[maxKeyLength];
          loadKey(getLeafValue(node),leafKey);
-         if (art_debug) {
+         #ifndef NDEBUG
             for (unsigned i = 0; i < keyLength; i++) {
                ART_DEBUG("i = %d, %u %u\n", i, leafKey[i], key[i]);
             }
-         }
+         #endif
          for (unsigned i=(skippedPrefix?0:depth);i<keyLength;i++) {
             ART_DEBUG("i => %u, %u %u\n", i, leafKey[i], key[i]);
             if (leafKey[i] < key[i]) {

@@ -12,7 +12,7 @@ class Update {
   vector<int> arr;
   FILE *in;
   int U;
-  int next_smallest = 1010000000;
+  int next_smallest = 1050000000;
   int max_value;
   mt19937 gen;
   uniform_int_distribution<> dis;
@@ -48,12 +48,15 @@ class Update {
 
   void prepare_queue(int N) {
     assert(size() >= N);
+    sort(arr.begin(), arr.end());
     for (int i = 0; i < N; i++) {
-      if (arr[i] <= next_smallest) {
+      if (arr[i] > next_smallest)
+        fprintf(stderr, "%d %d\n", i, arr[i]);
+      assert(arr[i] <= next_smallest);
+      // if (arr[i] <= next_smallest) {
         arr[i] += next_smallest;
-      }
+      // }
     }
-    sort(arr.begin(), arr.begin() + N);
   }
 
   void update_queue(int N, int &to_del, int &to_add) {
