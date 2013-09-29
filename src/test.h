@@ -91,6 +91,9 @@ static int verify(int U, Statistics &s) {
     case 2 : return (s.N == 10000000) ? checksum_match2(skew_checksum7, s.selectivity, s.Q, s.checksum) :
                     (s.N == 100000000 ? checksum_match2(skew_checksum8, s.selectivity, s.Q, s.checksum) : 0);
     case 3 : return s.N == 100000000 ? checksum_match(queue_checksum8, s.Q, s.checksum) : 0;
+    case 4 : return s.N == 100000000 ? checksum_match(trash_checksum8, s.Q, s.checksum) : 0;
+    case 5 : return s.N == 100000000 ? checksum_match(delete_checksum8, s.Q, s.checksum) : 0;
+    case 6 : return s.N == 100000000 ? checksum_match(append_checksum8, s.Q, s.checksum) : 0;
   }
   return false;
 }
@@ -153,6 +156,7 @@ int main(int argc, char *argv[]) {
 
   if (U == 5) {
     update.prepare_deletion(s.N);
+    MAXQ = min(s.N, MAXQ);
   }
 
   uniform_int_distribution<> disN(0, s.N - 1);
