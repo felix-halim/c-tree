@@ -7,7 +7,7 @@
 using namespace std;
 using namespace art_crack;
 
-ArtCrack<long long> c;
+ArtCrack<int> c;
 
 inline uintptr_t getLeafValue(Node* node) {
   // The the value stored in the pseudo-leaf
@@ -15,15 +15,15 @@ inline uintptr_t getLeafValue(Node* node) {
   return c.bucket_head_value(reinterpret_cast<uintptr_t>(node)>>1);
 }
 
-void init(long long *arr, int N) {
+void init(int *arr, int N) {
   c.batch_insert(arr, N);
 }
 
-void insert(long long value) {
+void insert(int value) {
   c.insert(value);
 }
 
-void erase(long long value) {
+void erase(int value) {
   #ifdef NDEBUG
     c.erase(value);
   #else
@@ -32,11 +32,11 @@ void erase(long long value) {
   #endif
 }
 
-long long query(long long value) {
+int query(int value) {
   // art_debug = 1;
   if (value == 1904630696647192210LL) art_debug = 1;
   auto it = c.lower_bound(value);
-  long long ret = it.first ? it.second : 0;
+  int ret = it.first ? it.second : 0;
   // fprintf(stdout, "%lld (%lld)\n", ret, value);
   if (value == 1904630696647192210LL) fprintf(stderr, "%d %lld\n", it.first, it.second);
   art_debug = 0;

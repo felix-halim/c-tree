@@ -8,6 +8,7 @@ FLAGS    = -I.
 
 all: \
 	$(ODIR)/art \
+	$(ODIR)/art_best \
 	$(ODIR)/art_crack \
 	$(ODIR)/crack \
 	$(ODIR)/comb \
@@ -43,6 +44,9 @@ $(ODIR)/art: art.cc art.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
 
 $(ODIR)/arto: arto.cc arto.h test.h update.h query.h checksum.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
+
+$(ODIR)/art_best: art_best.cc art_best.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
 
 $(ODIR)/art_crack: art_crack.cc art_crack.h art.h test.h update.h query.h checksum.h

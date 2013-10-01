@@ -12,6 +12,9 @@
 #include <assert.h>
 #include <sys/time.h>  // gettime
 #include <algorithm>   // std::random_shuffle
+#include <vector>   // std::random_shuffle
+
+using namespace std;
 
 // Constants for the node types
 static const int8_t NodeType4=0;
@@ -601,65 +604,117 @@ Node* lookupPessimistic(Node* node,uint8_t key[],unsigned keyLength,unsigned dep
 }
 
 // Forward references
-void insertNode4(Node4* node,Node** nodeRef,uint8_t keyByte,Node* child);
-void insertNode16(Node16 *&node,uint8_t keyByte,Node* child);
-void insertNode48(Node48 *&node,uint8_t keyByte,Node* child);
-void insertNode256(Node256 *&node,uint8_t keyByte,Node* child);
+void insertNode4(Node4 *&node, uint8_t keyByte, Node* child);
+void insertNode16(Node16 *&node, uint8_t keyByte, Node* child);
+void insertNode48(Node48 *&node, uint8_t keyByte, Node* child);
+void insertNode256(Node256 *&node, uint8_t keyByte, Node* child);
 
 unsigned min(unsigned a,unsigned b) {
    // Helper function
    return (a<b)?a:b;
 }
 
-void copyPrefix(Node* src,Node* dst) {
+void copyPrefix(Node* src, Node* dst) {
    // Helper function that copies the prefix from the source to the destination node
-   dst->prefixLength=src->prefixLength;
-   memcpy(dst->prefix,src->prefix,min(src->prefixLength,maxPrefixLength));
+   dst->prefixLength = src->prefixLength;
+   memcpy(dst->prefix, src->prefix, min(src->prefixLength, maxPrefixLength));
 }
 
-void insert(Node *node, Node **nodeRef,uint8_t key[],unsigned depth,uintptr_t value,unsigned maxKeyLength, bool eager);
-void flush_inserts(Node* node,Node** nodeRef,uint8_t key[],unsigned depth,uintptr_t value,unsigned maxKeyLength, bool eager) {
+void insert(Node *&node,uint8_t key[],unsigned depth,uintptr_t value,unsigned maxKeyLength, bool eager);
+
+void rec_insert(Node *&node, int depth, int maxKeyLength, uintptr_t *tmp, int lo, int hi, uintptr_t *tmp2) {
+   if (depth < 6) fprintf(stderr, "depth = %d, lo = %d, %d\n", depth, lo, hi);
+   if (hi - lo < 256) return;
+   if (depth >= maxKeyLength) return;
+   int cnt[256] { 0 };
+   for (int i = lo; i < hi; i++) {
+      uint8_t *key = (uint8_t*) &tmp[i];
+      cnt[key[depth]]++;
+   }
+   int sidx = 0, nchild = 0;
+   for (int i = 0; i < 256; i++) {
+      int cur = cnt[i];
+      if (cur) nchild++;
+      cnt[i] = sidx;
+      sidx += cur;
+   }
+   if (nchild <= 4) {
+
+   } else if (nchild <= 16) {
+
+   } else if (nchild <= 48) {
+
+   } else {
+
+   }
+
+   uintptr_t *arr = tmp2 + lo;
+   for (int i = lo; i < hi; i++) {
+      uint8_t *key = (uint8_t*) &tmp[i];
+      arr[cnt[key[depth]]++] = tmp[i];
+   }
+   sidx = 0;
+   for (int i = 0; i < 256; i++) {
+      rec_insert(node, depth + 1, maxKeyLength, tmp2, lo + sidx, lo + cnt[i], tmp);
+      sidx = cnt[i];
+   }
+}
+
+void bulk_insert(Node *&node, int *arr, int N) {
+   uintptr_t *tmp = new uintptr_t[N];
+   uintptr_t *tmp2 = new uintptr_t[N];
+   for (int i = 0; i < N; i++) {
+      uint8_t *key = (uint8_t*) &tmp[i];
+      loadKey(arr[i], key);
+      // insert(node, key, 0, arr[i], 8, false); // Lazy insert, chain buckets.
+   }
+   rec_insert(node, 0, 8, tmp, 0, N, tmp2);
+   delete[] tmp;
+   delete[] tmp2;
+}
+
+void flush_inserts(Node *&node,uint8_t key[],unsigned depth,uintptr_t value,unsigned maxKeyLength, bool eager) {
    // ART_DEBUG("continue insert %d\n", depth);
 
    // Handle prefix of inner node
    if (node->prefixLength) {
       unsigned mismatchPos=prefixMismatch(node,key,depth,maxKeyLength);
-      if (mismatchPos!=node->prefixLength) {
+      Node *oldNode = node;
+      if (mismatchPos!=oldNode->prefixLength) {
          // Prefix differs, create new node
          ART_DEBUG("Prefix Differs\n");
          Node4* newNode=new Node4();
-         *nodeRef=newNode;
-         newNode->next = node->next;
-         newNode->tail = node->tail;
-         node->next = node->tail = 0;
+         node = newNode;
+         newNode->next = oldNode->next;
+         newNode->tail = oldNode->tail;
+         oldNode->next = oldNode->tail = 0;
          newNode->prefixLength=mismatchPos;
-         memcpy(newNode->prefix,node->prefix,min(mismatchPos,maxPrefixLength));
+         memcpy(newNode->prefix,oldNode->prefix,min(mismatchPos,maxPrefixLength));
          // Break up prefix
-         if (node->prefixLength<maxPrefixLength) {
+         if (oldNode->prefixLength<maxPrefixLength) {
             ART_DEBUG("Break Prefix\n");
-            insertNode4(newNode,nodeRef,node->prefix[mismatchPos],node);
-            node->prefixLength-=(mismatchPos+1);
-            memmove(node->prefix,node->prefix+mismatchPos+1,min(node->prefixLength,maxPrefixLength));
+            insertNode4((Node4*&) node, oldNode->prefix[mismatchPos], oldNode);
+            oldNode->prefixLength-=(mismatchPos+1);
+            memmove(oldNode->prefix,oldNode->prefix+mismatchPos+1,min(oldNode->prefixLength,maxPrefixLength));
          } else {
             ART_DEBUG("Break Prefix2\n");
-            node->prefixLength-=(mismatchPos+1);
+            oldNode->prefixLength-=(mismatchPos+1);
             uint8_t minKey[maxKeyLength];
-            loadKey(getLeafValue(minimum(node)),minKey);
-            insertNode4(newNode,nodeRef,minKey[depth+mismatchPos],node);
-            memmove(node->prefix,minKey+depth+mismatchPos+1,min(node->prefixLength,maxPrefixLength));
+            loadKey(getLeafValue(minimum(oldNode)),minKey);
+            insertNode4((Node4*&) node,minKey[depth+mismatchPos],oldNode);
+            memmove(oldNode->prefix,minKey+depth+mismatchPos+1,min(oldNode->prefixLength,maxPrefixLength));
          }
-         insertNode4(newNode,nodeRef,key[depth+mismatchPos],makeLeaf(value));
+         insertNode4((Node4*&) node,key[depth+mismatchPos],makeLeaf(value));
          return;
       }
-      depth+=node->prefixLength;
+      depth+=oldNode->prefixLength;
    }
 
-   assert(node == *nodeRef);
    // Recurse
    Node** child=findChild(node,key[depth]);
    if (*child) {
       ART_DEBUG("Recurse %d from %p to %p; ", depth, node, *child);
-      insert(*child,child,key,depth+1,value,maxKeyLength,eager);
+      insert(*child,key,depth+1,value,maxKeyLength,eager);
       return;
    }
 
@@ -667,10 +722,10 @@ void flush_inserts(Node* node,Node** nodeRef,uint8_t key[],unsigned depth,uintpt
    Node* newNode=makeLeaf(value);
    // ART_DEBUG("Insert Inner\n");
    switch (node->type) {
-      case NodeType4: insertNode4(static_cast<Node4*>(node),nodeRef,key[depth],newNode); break;
-      case NodeType16: insertNode16((Node16*&) *nodeRef,key[depth],newNode); break;
-      case NodeType48: insertNode48((Node48*&) *nodeRef,key[depth],newNode); break;
-      case NodeType256: insertNode256((Node256*&) *nodeRef,key[depth],newNode); break;
+      case NodeType4: insertNode4((Node4*&) node, key[depth], newNode); break;
+      case NodeType16: insertNode16((Node16*&) node, key[depth], newNode); break;
+      case NodeType48: insertNode48((Node48*&) node, key[depth], newNode); break;
+      case NodeType256: insertNode256((Node256*&) node, key[depth], newNode); break;
    }
    ART_DEBUG("done inner \n");
 }
@@ -686,7 +741,7 @@ void flush_inserts(Node *&node, int depth, int maxKeyLength) {
       for (int i = 0; i < node->next->N; i++) {
          loadKey(node->next->D[i], key);
          // ART_DEBUG("LOADED KEY %d / %d\n", i, node->next->N);
-         flush_inserts(node, &node, key, depth, node->next->D[i], maxKeyLength, eager);
+         flush_inserts(node, key, depth, node->next->D[i], maxKeyLength, eager);
          assert(node->next);
          // ART_DEBUG("f %d / %d\n", i, node->next->N);
       }
@@ -700,13 +755,13 @@ void flush_inserts(Node *&node, int depth, int maxKeyLength) {
    ART_DEBUG("flushing_inserts done\n");
 }
 
-void insert(Node *node, Node **nodeRef,uint8_t key[],unsigned depth,uintptr_t value,unsigned maxKeyLength, bool eager) {
+void insert(Node *&node,uint8_t key[],unsigned depth,uintptr_t value,unsigned maxKeyLength, bool eager) {
    // Insert the leaf value into the tree
    // ART_DEBUG("Insert depth = %d, %u, node = %p\n", depth, depth < maxKeyLength ? key[depth] : 0, node);
 
    if (node==NULL) {
       ART_DEBUG("null leaf %d %lu\n", depth, value);
-      *nodeRef=makeLeaf(value);
+      node=makeLeaf(value);
       return;
    }
 
@@ -722,15 +777,16 @@ void insert(Node *node, Node **nodeRef,uint8_t key[],unsigned depth,uintptr_t va
       Node4* newNode=new Node4();
       newNode->prefixLength=newPrefixLength;
       memcpy(newNode->prefix,key+depth,min(newPrefixLength,maxPrefixLength));
-      *nodeRef=newNode;
+      Node *oldNode = node;
+      node=newNode;
 
-      insertNode4(newNode,nodeRef,existingKey[depth+newPrefixLength],node);
-      insertNode4(newNode,nodeRef,key[depth+newPrefixLength],makeLeaf(value));
+      insertNode4((Node4*&) node,existingKey[depth+newPrefixLength],oldNode);
+      insertNode4((Node4*&) node,key[depth+newPrefixLength],makeLeaf(value));
       return;
    }
 
    if (eager) {
-      flush_inserts(node, nodeRef, key, depth, value, maxKeyLength, eager);
+      flush_inserts(node, key, depth, value, maxKeyLength, eager);
    } else {
       // Buffer inserts
       if (!node->next) {
@@ -752,9 +808,9 @@ void insert(Node *node, Node **nodeRef,uint8_t key[],unsigned depth,uintptr_t va
    }
 }
 
-void insertNode4(Node4* node,Node** nodeRef,uint8_t keyByte,Node* child) {
+void insertNode4(Node4 *&node, uint8_t keyByte, Node *child) {
    // Insert leaf into inner node
-   if (node->count<4) {
+   if (node->count < 4) {
       // Insert element
       ART_DEBUG("insert4 %d\n", node->count);
       int pos;
@@ -769,7 +825,6 @@ void insertNode4(Node4* node,Node** nodeRef,uint8_t keyByte,Node* child) {
       // Grow to Node16
       ART_DEBUG("insert4to16 %d\n", node->count);
       Node16* newNode=new Node16();
-      *nodeRef=newNode;
       newNode->count=4;
       copyPrefix(node,newNode);
       for (unsigned i=0;i<4;i++)
@@ -778,7 +833,8 @@ void insertNode4(Node4* node,Node** nodeRef,uint8_t keyByte,Node* child) {
       newNode->next = node->next;
       newNode->tail = node->tail;
       delete node;
-      return insertNode16((Node16*&) *nodeRef,keyByte,child);
+      node = (Node4*&) newNode;
+      return insertNode16((Node16*&) node,keyByte,child);
    }
 }
 
