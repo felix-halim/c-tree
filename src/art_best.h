@@ -622,9 +622,17 @@ void copyPrefix(Node* src, Node* dst) {
 
 void insert(Node *&node,uint8_t key[],unsigned depth,uintptr_t value,unsigned maxKeyLength, bool eager);
 
+int ccc = 0;
 void rec_insert(Node *&node, int depth, int maxKeyLength, uintptr_t *tmp, int lo, int hi, uintptr_t *tmp2) {
+   if (hi - lo < 256) {
+      for (int i = lo; i < hi; i++) {
+         uint8_t *key = (uint8_t*) &tmp[i];
+         insert(node, key, 0, __builtin_bswap64(tmp[i]), maxKeyLength, true);
+         ccc++;
+      }
+      return;
+   }
    if (depth < 6) fprintf(stderr, "depth = %d, lo = %d, %d\n", depth, lo, hi);
-   if (hi - lo < 256) return;
    if (depth >= maxKeyLength) return;
    int cnt[256] { 0 };
    for (int i = lo; i < hi; i++) {
@@ -638,6 +646,7 @@ void rec_insert(Node *&node, int depth, int maxKeyLength, uintptr_t *tmp, int lo
       cnt[i] = sidx;
       sidx += cur;
    }
+
    if (nchild <= 4) {
 
    } else if (nchild <= 16) {
@@ -669,6 +678,7 @@ void bulk_insert(Node *&node, int *arr, int N) {
       // insert(node, key, 0, arr[i], 8, false); // Lazy insert, chain buckets.
    }
    rec_insert(node, 0, 8, tmp, 0, N, tmp2);
+   fprintf(stderr, "ccc = %d\n", ccc);
    delete[] tmp;
    delete[] tmp2;
 }
