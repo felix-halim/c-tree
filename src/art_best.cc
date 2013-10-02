@@ -28,9 +28,9 @@ void erase(int value) {
   uint8_t key[8];
   uint64_t value64 = value;
   loadKey(value64, key);
-  // assert(lookup(tree,key,8,0,8));
+  assert(lookup(&tree,key,8,0,8));
   erase(tree,&tree,key,8,0,8);
-  // assert(!lookup(tree,key,8,0,8));
+  // assert(!lookup(&tree,key,8,0,8));
 }
 
 int query(int value) {

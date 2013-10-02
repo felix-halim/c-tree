@@ -768,7 +768,7 @@ void erase(Node* node,Node** nodeRef,uint8_t key[],unsigned keyLength,unsigned d
    // Delete a leaf from a tree
 
    ART_DEBUG("ERASE %p %d\n", node, depth);
-
+   assert(node);
    if (!node) {
       ART_DEBUG("NO NODE\n");
       return;
