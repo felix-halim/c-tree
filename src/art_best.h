@@ -35,8 +35,6 @@ int art_debug = 0;
    #define ART_DEBUG(...) { if (art_debug) fprintf(stderr, __VA_ARGS__); }
 #endif
 
-#define BSIZE 1024
-
 // Shared header of all inner nodes
 struct Node {
    // length of the compressed path (prefix)
@@ -329,6 +327,7 @@ int ccc = 0, NN = 0;
 static uintptr_t *pending_tmp;
 
 void flush_bulk_insert(Node *&node, int depth, int maxKeyLength, int parr, int N, bool lower) {
+   if (node->count) return;
    uintptr_t *tmp, *tmp2;
    if (lower) {
       tmp = pending_tmp + parr;
@@ -338,7 +337,6 @@ void flush_bulk_insert(Node *&node, int depth, int maxKeyLength, int parr, int N
       tmp = pending_tmp + parr + NN;
    }
 
-   if (node->count) return;
    // fprintf(stderr, "bulk insert depth = %d, %d, %p\n", depth, N, node);
    delete node;
    node = NULL;
