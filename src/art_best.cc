@@ -14,7 +14,7 @@ using namespace std;
 Node* tree = NULL;
 
 void init(int *arr, int N) {
-  bulk_insert(tree, arr, N); // Lazy insert, chain buckets.
+  pending_bulk_insert(tree, arr, N); // Lazy insert, chain buckets.
   // art_debug = 1;
 }
 
@@ -47,7 +47,7 @@ int query(int value) {
   int ret = 0;
   if (isLeaf(leaf)) {
     ret = getLeafValue(leaf);
-    // fprintf(stdout, "%lld (%lld)\n", ret, value);
+    // fprintf(stdout, "%d (%d)\n", ret, value); fflush(stdout);
   }
     // art_debug = 0;
   return ret;
