@@ -329,7 +329,7 @@ Node* lookup(Node* node,uint8_t key[],unsigned keyLength,unsigned depth,unsigned
 
 void flush_inserts(Node *&node, int depth, int maxKeyLength);
 
-Node* lower_bound(Node *&node, uint8_t key[], unsigned keyLength, unsigned depth, unsigned maxKeyLength, bool skippedPrefix=false, bool bigger = false) {
+Node* lower_bound(Node *node, Node **nodeRef, uint8_t key[], unsigned keyLength, unsigned depth, unsigned maxKeyLength, bool skippedPrefix=false, bool bigger = false) {
    ART_DEBUG("lower_boundx depth = %u, %p, bigger = %d\n", depth, node, bigger);
    if (!node) return NULL;
 
@@ -360,7 +360,8 @@ Node* lower_bound(Node *&node, uint8_t key[], unsigned keyLength, unsigned depth
       return node;
    }
 
-   flush_inserts(node, depth, maxKeyLength);
+   flush_inserts(*nodeRef, depth, maxKeyLength);
+   node = *nodeRef;
 
    // ART_DEBUG("prefixLength = %u\n", node->prefixLength);
    if (node->prefixLength) {
@@ -390,7 +391,7 @@ Node* lower_bound(Node *&node, uint8_t key[], unsigned keyLength, unsigned depth
                ART_DEBUG("i = %d, key4 = %d >= %d, %lu\n", i, node->key[i], keyByte, isLeaf(c) ? getLeafValue(c) : 0);
                if (node->key[i] >= keyByte || bigger) {
                   // ART_DEBUG("got it\n");
-                  Node *ret = lower_bound(node->child[i], key, keyLength, depth, maxKeyLength, skippedPrefix, bigger || node->key[i] > keyByte);
+                  Node *ret = lower_bound(c, &node->child[i], key, keyLength, depth, maxKeyLength, skippedPrefix, bigger || node->key[i] > keyByte);
                   if (ret) return ret;
                }
             }
@@ -409,7 +410,7 @@ Node* lower_bound(Node *&node, uint8_t key[], unsigned keyLength, unsigned depth
             }
             ART_DEBUG("pos = %d\n", pos);
             while (pos < node->count) {
-               Node *ret = lower_bound(node->child[pos], key, keyLength, depth, maxKeyLength, skippedPrefix, bigger || flipSign(node->key[pos]) > keyByte);
+               Node *ret = lower_bound(node->child[pos], &node->child[pos], key, keyLength, depth, maxKeyLength, skippedPrefix, bigger || flipSign(node->key[pos]) > keyByte);
                if (ret) return ret;
                pos++;
             }
@@ -423,7 +424,7 @@ Node* lower_bound(Node *&node, uint8_t key[], unsigned keyLength, unsigned depth
             while (keyByte < 256) {
                if (node->childIndex[keyByte] != emptyMarker) {
                   int i = node->childIndex[keyByte];
-                  Node *ret = lower_bound(node->child[i], key, keyLength, depth, maxKeyLength, skippedPrefix, bigger);
+                  Node *ret = lower_bound(node->child[i], &node->child[i], key, keyLength, depth, maxKeyLength, skippedPrefix, bigger);
                   if (ret) return ret;
                }
                keyByte++;
@@ -439,7 +440,7 @@ Node* lower_bound(Node *&node, uint8_t key[], unsigned keyLength, unsigned depth
             while (keyByte < 256) {
                ART_DEBUG("LoweBound256 keyByte = %d, bigger = %d\n", keyByte, bigger);
                if (node->child[keyByte]) {
-                  Node *ret = lower_bound(node->child[keyByte], key, keyLength, depth, maxKeyLength, skippedPrefix, bigger);
+                  Node *ret = lower_bound(node->child[keyByte], &node->child[keyByte], key, keyLength, depth, maxKeyLength, skippedPrefix, bigger);
                   if (ret) return ret;
                }
                keyByte++;
@@ -719,7 +720,7 @@ void flush_bulk_insert(Node *&node, int depth, int maxKeyLength, uintptr_t *tmp,
       }
       return;
    }
-   if (depth < 6) fprintf(stderr, "depth = %d, lo = %d, %d\n", depth, lo, hi);
+   // if (depth < 6) fprintf(stderr, "depth = %d, lo = %d, %d\n", depth, lo, hi);
    if (depth >= maxKeyLength) return;
    int cnt[256], sidx, nchild, ndepth = depth;
    while (true) {
