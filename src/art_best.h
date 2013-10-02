@@ -276,45 +276,6 @@ unsigned prefixMismatch(Node* node,uint8_t key[],unsigned depth,unsigned maxKeyL
    return pos;
 }
 
-Node* lookup(Node* node,uint8_t key[],unsigned keyLength,unsigned depth,unsigned maxKeyLength) {
-   // Find the node with a matching key, optimistic version
-   if (!node) return NULL;
-
-   bool skippedPrefix=false; // Did we optimistically skip some prefix without checking it?
-
-   while (node!=NULL) {
-      if (isLeaf(node)) {
-         if (!skippedPrefix&&depth==keyLength) // No check required
-            return node;
-
-         if (depth!=keyLength) {
-            // Check leaf
-            uint8_t leafKey[maxKeyLength];
-            loadKey(getLeafValue(node),leafKey);
-            for (unsigned i=(skippedPrefix?0:depth);i<keyLength;i++)
-               if (leafKey[i]!=key[i])
-                  return NULL;
-         }
-         return node;
-      }
-
-      if (node->prefixLength) {
-         if (node->prefixLength<maxPrefixLength) {
-            for (unsigned pos=0;pos<node->prefixLength;pos++)
-               if (key[depth+pos]!=node->prefix[pos])
-                  return NULL;
-         } else
-            skippedPrefix=true;
-         depth+=node->prefixLength;
-      }
-
-      node=*findChild(node,key[depth]);
-      depth++;
-   }
-
-   return NULL;
-}
-
 // Forward references
 Node** insertNode4(Node4 *&node, uint8_t keyByte, Node* child);
 Node** insertNode16(Node16 *&node, uint8_t keyByte, Node* child);
@@ -433,6 +394,69 @@ void pending_bulk_insert(Node *&node, int *arr, int N) {
    }
    // rec_insert(node, 0, 8, tmp, 0, N, tmp2);
 }
+
+Node* lookup(Node **nodeRef,uint8_t key[],unsigned keyLength,unsigned depth,unsigned maxKeyLength) {
+   // Find the node with a matching key, optimistic version
+   // fprintf(stderr, "lookup %p\n", *nodeRef);
+   assert(*nodeRef);
+   if (!isLeaf(*nodeRef)) {
+      // fprintf(stderr, "nodep = %p, cnt = %d, psize = %d, depth = %d\n", node, node->count, node->psize, depth);
+      assert(depth < maxKeyLength);
+      flush_bulk_insert(*nodeRef, depth, maxKeyLength, (*nodeRef)->parr, abs((*nodeRef)->psize), (*nodeRef)->psize >= 0);
+   }
+   // fprintf(stderr, "lookup2 %p\n", *nodeRef);
+
+   Node *node = *nodeRef;
+
+   if (!node) return NULL;
+
+   bool skippedPrefix=false; // Did we optimistically skip some prefix without checking it?
+
+   while (node!=NULL) {
+      if (isLeaf(node)) {
+         if (!skippedPrefix&&depth==keyLength) {// No check required
+            // fprintf(stderr, "ketemu\n");
+            return node;
+         }
+
+         if (depth!=keyLength) {
+            // Check leaf
+            uint8_t leafKey[maxKeyLength];
+            loadKey(getLeafValue(node),leafKey);
+            for (unsigned i=(skippedPrefix?0:depth);i<keyLength;i++)
+               if (leafKey[i]!=key[i])
+                  return NULL;
+         }
+         // fprintf(stderr, "ketemu2\n");
+         return node;
+      }
+
+      if (node->prefixLength) {
+         if (node->prefixLength<maxPrefixLength) {
+            for (unsigned pos=0;pos<node->prefixLength;pos++)
+               if (key[depth+pos]!=node->prefix[pos])
+                  return NULL;
+         } else
+            skippedPrefix=true;
+         depth+=node->prefixLength;
+      }
+      Node **child = findChild(node,key[depth]);
+      // fprintf(stderr, "node cnt = %d\n", node->count);
+      assert(node->count);
+      assert(*child);
+      if (!isLeaf(*child)) {
+         // fprintf(stderr, "fluchild %p\n", *child);
+         flush_bulk_insert(*child, depth + 1, maxKeyLength, (*child)->parr, abs((*child)->psize), (*child)->psize >= 0);
+         // fprintf(stderr, "fluchild2 %p\n", *child);
+      }
+
+      node=*child;
+      depth++;
+   }
+
+   return NULL;
+}
+
 
 
 Node* lower_bound(Node *&node, uint8_t key[], unsigned keyLength, unsigned depth, unsigned maxKeyLength, bool skippedPrefix=false, bool bigger = false) {
@@ -827,6 +851,12 @@ void insert(Node *&node,uint8_t key[],unsigned depth,uintptr_t value,unsigned ma
       return;
    }
 
+   if (!isLeaf(node)) {
+      // fprintf(stderr, "nodep = %p, cnt = %d, psize = %d, depth = %d\n", node, node->count, node->psize, depth);
+      assert(depth < maxKeyLength);
+      flush_bulk_insert(node, depth, maxKeyLength, node->parr, abs(node->psize), node->psize >= 0);
+   }
+
    if (isLeaf(node)) {
       ART_DEBUG("insert leaf %d %lu\n", depth, value);
       // Replace leaf with Node4 and store both leaves in it
@@ -1007,11 +1037,20 @@ void erase(Node* node,Node** nodeRef,uint8_t key[],unsigned keyLength,unsigned d
    // Delete a leaf from a tree
 
    ART_DEBUG("ERASE %p %d\n", node, depth);
-
+   assert(node);
+   // fprintf(stderr, "erase %p\n", node);
    if (!node) {
       ART_DEBUG("NO NODE\n");
       return;
    }
+
+   if (!isLeaf(node)) {
+      // fprintf(stderr, "nodep = %p, cnt = %d, psize = %d, depth = %d\n", node, node->count, node->psize, depth);
+      assert(depth < maxKeyLength);
+      flush_bulk_insert(*nodeRef, depth, maxKeyLength, (*nodeRef)->parr, abs((*nodeRef)->psize), (*nodeRef)->psize >= 0);
+      node = *nodeRef;
+   }
+   assert(node);
 
    if (isLeaf(node)) {
       // Make sure we have the right leaf
@@ -1039,8 +1078,10 @@ void erase(Node* node,Node** nodeRef,uint8_t key[],unsigned keyLength,unsigned d
 
    // ART_DEBUG("PREFIX LEN2 = %d, depth = %u\n", node->prefixLength, depth);
    Node** child = findChild(node,key[depth]);
+   assert(*child);
    // ART_DEBUG("PREFIX LEN3 = %p\n", child);
    // ART_DEBUG("CHILD = %p\n", *child);
+
    if (isLeaf(*child)&&leafMatches(*child,key,keyLength,depth,maxKeyLength)) {
       // Leaf found, delete it in inner node
       ART_DEBUG("LEAF FOUND\n");
