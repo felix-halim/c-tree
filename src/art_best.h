@@ -624,7 +624,7 @@ void insert(Node *&node,uint8_t key[],unsigned depth,uintptr_t value,unsigned ma
 
 int ccc = 0;
 void rec_insert(Node *&node, int depth, int maxKeyLength, uintptr_t *tmp, int lo, int hi, uintptr_t *tmp2) {
-   if (hi - lo < 256) {
+   if (hi - lo < 1024) {
       for (int i = lo; i < hi; i++) {
          uint8_t *key = (uint8_t*) &tmp[i];
          insert(node, key, depth, __builtin_bswap64(tmp[i]), maxKeyLength, true);
