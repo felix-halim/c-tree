@@ -635,7 +635,7 @@ void rec_insert(Node *&node, int depth, int maxKeyLength, uintptr_t *tmp, int lo
       }
       return;
    }
-   if (depth < 6) fprintf(stderr, "depth = %d, lo = %d, %d\n", depth, lo, hi);
+   // if (depth < 6) fprintf(stderr, "depth = %d, lo = %d, %d\n", depth, lo, hi);
    if (depth >= maxKeyLength) return;
    int cnt[256], sidx, nchild, ndepth = depth;
    while (true) {
