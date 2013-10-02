@@ -55,6 +55,9 @@ struct Node {
    // compressed path (prefix)
    uint8_t prefix[maxPrefixLength];
 
+   int *parr, *parr2;
+   int psize;
+
    Bucket *next, *tail;
 
    Node(int8_t type) : prefixLength(0),count(0),type(type),next(0),tail(0) {}
@@ -326,7 +329,7 @@ Node* lookup(Node* node,uint8_t key[],unsigned keyLength,unsigned depth,unsigned
 
 void flush_inserts(Node *&node, int depth, int maxKeyLength);
 
-Node* lower_bound(Node *node, Node **nodeRef, uint8_t key[], unsigned keyLength, unsigned depth, unsigned maxKeyLength, bool skippedPrefix=false, bool bigger = false) {
+Node* lower_bound(Node *&node, uint8_t key[], unsigned keyLength, unsigned depth, unsigned maxKeyLength, bool skippedPrefix=false, bool bigger = false) {
    ART_DEBUG("lower_boundx depth = %u, %p, bigger = %d\n", depth, node, bigger);
    if (!node) return NULL;
 
@@ -357,8 +360,7 @@ Node* lower_bound(Node *node, Node **nodeRef, uint8_t key[], unsigned keyLength,
       return node;
    }
 
-   flush_inserts(*nodeRef, depth, maxKeyLength);
-   node = *nodeRef;
+   flush_inserts(node, depth, maxKeyLength);
 
    // ART_DEBUG("prefixLength = %u\n", node->prefixLength);
    if (node->prefixLength) {
@@ -388,7 +390,7 @@ Node* lower_bound(Node *node, Node **nodeRef, uint8_t key[], unsigned keyLength,
                ART_DEBUG("i = %d, key4 = %d >= %d, %lu\n", i, node->key[i], keyByte, isLeaf(c) ? getLeafValue(c) : 0);
                if (node->key[i] >= keyByte || bigger) {
                   // ART_DEBUG("got it\n");
-                  Node *ret = lower_bound(c, &node->child[i], key, keyLength, depth, maxKeyLength, skippedPrefix, bigger || node->key[i] > keyByte);
+                  Node *ret = lower_bound(node->child[i], key, keyLength, depth, maxKeyLength, skippedPrefix, bigger || node->key[i] > keyByte);
                   if (ret) return ret;
                }
             }
@@ -407,7 +409,7 @@ Node* lower_bound(Node *node, Node **nodeRef, uint8_t key[], unsigned keyLength,
             }
             ART_DEBUG("pos = %d\n", pos);
             while (pos < node->count) {
-               Node *ret = lower_bound(node->child[pos], &node->child[pos], key, keyLength, depth, maxKeyLength, skippedPrefix, bigger || flipSign(node->key[pos]) > keyByte);
+               Node *ret = lower_bound(node->child[pos], key, keyLength, depth, maxKeyLength, skippedPrefix, bigger || flipSign(node->key[pos]) > keyByte);
                if (ret) return ret;
                pos++;
             }
@@ -421,7 +423,7 @@ Node* lower_bound(Node *node, Node **nodeRef, uint8_t key[], unsigned keyLength,
             while (keyByte < 256) {
                if (node->childIndex[keyByte] != emptyMarker) {
                   int i = node->childIndex[keyByte];
-                  Node *ret = lower_bound(node->child[i], &node->child[i], key, keyLength, depth, maxKeyLength, skippedPrefix, bigger);
+                  Node *ret = lower_bound(node->child[i], key, keyLength, depth, maxKeyLength, skippedPrefix, bigger);
                   if (ret) return ret;
                }
                keyByte++;
@@ -437,7 +439,7 @@ Node* lower_bound(Node *node, Node **nodeRef, uint8_t key[], unsigned keyLength,
             while (keyByte < 256) {
                ART_DEBUG("LoweBound256 keyByte = %d, bigger = %d\n", keyByte, bigger);
                if (node->child[keyByte]) {
-                  Node *ret = lower_bound(node->child[keyByte], &node->child[keyByte], key, keyLength, depth, maxKeyLength, skippedPrefix, bigger);
+                  Node *ret = lower_bound(node->child[keyByte], key, keyLength, depth, maxKeyLength, skippedPrefix, bigger);
                   if (ret) return ret;
                }
                keyByte++;
@@ -624,7 +626,7 @@ void insert(Node *&node,uint8_t key[],unsigned depth,uintptr_t value,unsigned ma
 
 int ccc = 0;
 void rec_insert(Node *&node, int depth, int maxKeyLength, uintptr_t *tmp, int lo, int hi, uintptr_t *tmp2) {
-   if (hi - lo < 1024) {
+   if (hi - lo < 256) {
       for (int i = lo; i < hi; i++) {
          uint8_t *key = (uint8_t*) &tmp[i];
          insert(node, key, depth, __builtin_bswap64(tmp[i]), maxKeyLength, true);
@@ -707,6 +709,91 @@ void bulk_insert(Node *&node, int *arr, int N) {
    delete[] tmp;
    delete[] tmp2;
 }
+
+void flush_bulk_insert(Node *&node, int depth, int maxKeyLength, uintptr_t *tmp, int lo, int hi, uintptr_t *tmp2) {
+   if (hi - lo < 256) {
+      for (int i = lo; i < hi; i++) {
+         uint8_t *key = (uint8_t*) &tmp[i];
+         insert(node, key, depth, __builtin_bswap64(tmp[i]), maxKeyLength, true);
+         ccc++;
+      }
+      return;
+   }
+   if (depth < 6) fprintf(stderr, "depth = %d, lo = %d, %d\n", depth, lo, hi);
+   if (depth >= maxKeyLength) return;
+   int cnt[256], sidx, nchild, ndepth = depth;
+   while (true) {
+      for (int i = 0; i < 256; i++) cnt[i] = 0;
+      for (int i = lo; i < hi; i++) {
+         uint8_t *key = (uint8_t*) &tmp[i];
+         cnt[key[ndepth]]++;
+      }
+      sidx = nchild = 0;
+      for (int i = 0; i < 256; i++) {
+         int cur = cnt[i];
+         if (cur) nchild++;
+         cnt[i] = sidx;
+         sidx += cur;
+      }
+      ndepth++;
+      if (nchild > 1 || ndepth >= maxKeyLength) break;
+   }
+
+   assert(!node);
+   if (nchild <= 4) {
+      node = new Node4();
+   } else if (nchild <= 16) {
+      node = new Node16();
+   } else if (nchild <= 48) {
+      node = new Node48();
+   } else {
+      node = new Node256();
+   }
+
+   if (depth + 1 < ndepth) {
+      // Path compression.
+      while (depth + 1 < ndepth) {
+         uint8_t *key = (uint8_t*) &tmp[lo];
+         node->prefix[node->prefixLength++] = key[depth++];
+      }
+   }
+
+   uintptr_t *arr = tmp2 + lo;
+   for (int i = lo; i < hi; i++) {
+      uint8_t *key = (uint8_t*) &tmp[i];
+      arr[cnt[key[depth]]++] = tmp[i];
+   }
+   sidx = 0;
+   for (int i = 0; i < 256; i++) {
+      if (sidx < cnt[i]) {
+         Node** child = NULL;
+         switch (node->type) {
+            case NodeType4: child = insertNode4((Node4*&) node, (uint8_t) i, NULL); break;
+            case NodeType16: child = insertNode16((Node16*&) node, (uint8_t) i, NULL); break;
+            case NodeType48: child = insertNode48((Node48*&) node, (uint8_t) i, NULL); break;
+            case NodeType256: child = insertNode256((Node256*&) node, (uint8_t) i, NULL); break;
+         }
+         // fprintf(stderr, "nchild = %d\n", nchild);
+         assert(child);
+         rec_insert(*child, ndepth, maxKeyLength, tmp2, lo + sidx, lo + cnt[i], tmp);
+      }
+      sidx = cnt[i];
+   }
+}
+
+static uintptr_t *pending_tmp;
+static uintptr_t *pending_tmp2;
+void pending_bulk_insert(Node *&node, int *arr, int N) {
+   pending_tmp = new uintptr_t[N];
+   pending_tmp2 = new uintptr_t[N];
+   for (int i = 0; i < N; i++) {
+      uint8_t *key = (uint8_t*) &pending_tmp[i];
+      loadKey(arr[i], key);
+      // insert(node, key, 0, arr[i], 8, false); // Lazy insert, chain buckets.
+   }
+   // rec_insert(node, 0, 8, tmp, 0, N, tmp2);
+}
+
 
 void flush_inserts(Node *&node,uint8_t key[],unsigned depth,uintptr_t value,unsigned maxKeyLength, bool eager) {
    // ART_DEBUG("continue insert %d\n", depth);
