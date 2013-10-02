@@ -37,13 +37,6 @@ int art_debug = 0;
 
 #define BSIZE 1024
 
-struct Bucket {
-   int D[BSIZE], N;
-   Bucket *next;
-
-   Bucket() { N = 0; next = 0; };
-};
-
 // Shared header of all inner nodes
 struct Node {
    // length of the compressed path (prefix)
@@ -55,12 +48,9 @@ struct Node {
    // compressed path (prefix)
    uint8_t prefix[maxPrefixLength];
 
-   uintptr_t *parr, *parr2;
-   int psize;
+   int parr, psize;
 
-   Bucket *next, *tail;
-
-   Node(int8_t type) : prefixLength(0),count(0),type(type),parr(0),parr2(0),psize(0), next(0),tail(0) {}
+   Node(int8_t type) : prefixLength(0),count(0),type(type),parr(0),psize(0) {}
 };
 
 // Node with up to 4 children
@@ -335,9 +325,19 @@ Node** insertNode256(Node256 *&node, uint8_t keyByte, Node* child);
 
 void flush_inserts(Node *&node, int depth, int maxKeyLength);
 void insert(Node *&node,uint8_t key[],unsigned depth,uintptr_t value,unsigned maxKeyLength, bool eager);
-int ccc = 0;
+int ccc = 0, NN = 0;
+static uintptr_t *pending_tmp;
 
-void flush_bulk_insert(Node *&node, int depth, int maxKeyLength, uintptr_t *tmp, int N, uintptr_t *tmp2) {
+void flush_bulk_insert(Node *&node, int depth, int maxKeyLength, int parr, int N, bool lower) {
+   uintptr_t *tmp, *tmp2;
+   if (lower) {
+      tmp = pending_tmp + parr;
+      tmp2 = pending_tmp + parr + NN;
+   } else {
+      tmp2 = pending_tmp + parr;
+      tmp = pending_tmp + parr + NN;
+   }
+
    if (node->count) return;
    // fprintf(stderr, "bulk insert depth = %d, %d, %p\n", depth, N, node);
    delete node;
@@ -406,9 +406,8 @@ void flush_bulk_insert(Node *&node, int depth, int maxKeyLength, uintptr_t *tmp,
          Node** child = NULL;
          Node* dum = new Node4();
          assert(!isLeaf(dum));
-         dum->parr = tmp2 + sidx;
-         dum->parr2 = tmp + sidx;
-         dum->psize = cnt[i] - sidx;
+         dum->parr = parr + sidx;
+         dum->psize = lower? (sidx - cnt[i]) : (cnt[i] - sidx);
          switch (node->type) {
             case NodeType4: child = insertNode4((Node4*&) node, (uint8_t) i, dum); break;
             case NodeType16: child = insertNode16((Node16*&) node, (uint8_t) i, dum); break;
@@ -425,11 +424,12 @@ void flush_bulk_insert(Node *&node, int depth, int maxKeyLength, uintptr_t *tmp,
 
 void pending_bulk_insert(Node *&node, int *arr, int N) {
    node = new Node4(); // Placeholder
-   node->parr = new uintptr_t[N];
-   node->parr2 = new uintptr_t[N];
+   pending_tmp = new uintptr_t[N * 2];
+   NN = N;
+   node->parr = 0;
    node->psize = N;
    for (int i = 0; i < N; i++) {
-      uint8_t *key = (uint8_t*) &node->parr[i];
+      uint8_t *key = (uint8_t*) &pending_tmp[i];
       loadKey(arr[i], key);
       // insert(node, key, 0, arr[i], 8, false); // Lazy insert, chain buckets.
    }
@@ -445,7 +445,7 @@ Node* lower_bound(Node *&node, uint8_t key[], unsigned keyLength, unsigned depth
    if (!isLeaf(node)) {
       // fprintf(stderr, "nodep = %p, cnt = %d, psize = %d, depth = %d\n", node, node->count, node->psize, depth);
       assert(depth < maxKeyLength);
-      flush_bulk_insert(node, depth, maxKeyLength, node->parr, node->psize, node->parr2);
+      flush_bulk_insert(node, depth, maxKeyLength, node->parr, abs(node->psize), node->psize >= 0);
    }
 
    if (isLeaf(node)) {
@@ -507,7 +507,7 @@ Node* lower_bound(Node *&node, uint8_t key[], unsigned keyLength, unsigned depth
                Node *c = node->child[i];
                ART_DEBUG("i = %d, key4 = %d >= %d, %lu\n", i, node->key[i], keyByte, isLeaf(c) ? getLeafValue(c) : 0);
                if (node->key[i] >= keyByte || bigger) {
-                  ART_DEBUG("got it, %llu\n", isLeaf(node->child[i]));
+                  ART_DEBUG("got it, %d\n", isLeaf(node->child[i]));
                   Node *ret = lower_bound(node->child[i], key, keyLength, depth, maxKeyLength, skippedPrefix, bigger || node->key[i] > keyByte);
                   if (ret) return ret;
                }
@@ -819,8 +819,36 @@ void bulk_insert(Node *&node, int *arr, int N) {
    delete[] tmp2;
 }
 
+void insert(Node *&node,uint8_t key[],unsigned depth,uintptr_t value,unsigned maxKeyLength, bool eager) {
+   // Insert the leaf value into the tree
+   // ART_DEBUG("Insert depth = %d, %u, node = %p\n", depth, depth < maxKeyLength ? key[depth] : 0, node);
 
-void flush_inserts(Node *&node,uint8_t key[],unsigned depth,uintptr_t value,unsigned maxKeyLength, bool eager) {
+   if (node==NULL) {
+      ART_DEBUG("null leaf %d %lu\n", depth, value);
+      node=makeLeaf(value);
+      return;
+   }
+
+   if (isLeaf(node)) {
+      ART_DEBUG("insert leaf %d %lu\n", depth, value);
+      // Replace leaf with Node4 and store both leaves in it
+      uint8_t existingKey[maxKeyLength];
+      loadKey(getLeafValue(node),existingKey);
+      unsigned newPrefixLength=0;
+      while (existingKey[depth+newPrefixLength]==key[depth+newPrefixLength])
+         newPrefixLength++;
+
+      Node4* newNode=new Node4();
+      newNode->prefixLength=newPrefixLength;
+      memcpy(newNode->prefix,key+depth,min(newPrefixLength,maxPrefixLength));
+      Node *oldNode = node;
+      node=newNode;
+
+      insertNode4((Node4*&) node,existingKey[depth+newPrefixLength],oldNode);
+      insertNode4((Node4*&) node,key[depth+newPrefixLength],makeLeaf(value));
+      return;
+   }
+
    // ART_DEBUG("continue insert %d\n", depth);
 
    // Handle prefix of inner node
@@ -832,9 +860,6 @@ void flush_inserts(Node *&node,uint8_t key[],unsigned depth,uintptr_t value,unsi
          ART_DEBUG("Prefix Differs\n");
          Node4* newNode=new Node4();
          node = newNode;
-         newNode->next = oldNode->next;
-         newNode->tail = oldNode->tail;
-         oldNode->next = oldNode->tail = 0;
          newNode->prefixLength=mismatchPos;
          memcpy(newNode->prefix,oldNode->prefix,min(mismatchPos,maxPrefixLength));
          // Break up prefix
@@ -877,85 +902,6 @@ void flush_inserts(Node *&node,uint8_t key[],unsigned depth,uintptr_t value,unsi
    ART_DEBUG("done inner \n");
 }
 
-void flush_inserts(Node *&node, int depth, int maxKeyLength) {
-   if (!node->next) return;
-
-   ART_DEBUG("flushing_inserts %d, next = %p\n", depth, node->next);
-   while (node->next) {
-      uint8_t key[8];
-      ART_DEBUG("flushing bucket = %p\n", node->next);
-      bool eager = node->next == node->tail;
-      for (int i = 0; i < node->next->N; i++) {
-         loadKey(node->next->D[i], key);
-         // ART_DEBUG("LOADED KEY %d / %d\n", i, node->next->N);
-         flush_inserts(node, key, depth, node->next->D[i], maxKeyLength, eager);
-         assert(node->next);
-         // ART_DEBUG("f %d / %d\n", i, node->next->N);
-      }
-      Bucket *next = node->next->next;
-      ART_DEBUG("deleting %p, next = %p, host = %p\n", node->next, next, node);
-      delete node->next;
-      // ART_DEBUG("deleting done, host = %p\n", *nodeRef);
-      node->next = next;
-   }
-   node->tail = 0;
-   ART_DEBUG("flushing_inserts done\n");
-}
-
-void insert(Node *&node,uint8_t key[],unsigned depth,uintptr_t value,unsigned maxKeyLength, bool eager) {
-   // Insert the leaf value into the tree
-   // ART_DEBUG("Insert depth = %d, %u, node = %p\n", depth, depth < maxKeyLength ? key[depth] : 0, node);
-
-   if (node==NULL) {
-      ART_DEBUG("null leaf %d %lu\n", depth, value);
-      node=makeLeaf(value);
-      return;
-   }
-
-   if (isLeaf(node)) {
-      ART_DEBUG("insert leaf %d %lu\n", depth, value);
-      // Replace leaf with Node4 and store both leaves in it
-      uint8_t existingKey[maxKeyLength];
-      loadKey(getLeafValue(node),existingKey);
-      unsigned newPrefixLength=0;
-      while (existingKey[depth+newPrefixLength]==key[depth+newPrefixLength])
-         newPrefixLength++;
-
-      Node4* newNode=new Node4();
-      newNode->prefixLength=newPrefixLength;
-      memcpy(newNode->prefix,key+depth,min(newPrefixLength,maxPrefixLength));
-      Node *oldNode = node;
-      node=newNode;
-
-      insertNode4((Node4*&) node,existingKey[depth+newPrefixLength],oldNode);
-      insertNode4((Node4*&) node,key[depth+newPrefixLength],makeLeaf(value));
-      return;
-   }
-
-   if (eager) {
-      flush_inserts(node, key, depth, value, maxKeyLength, eager);
-   } else {
-      assert(0);
-      // Buffer inserts
-      if (!node->next) {
-         node->next = node->tail = new Bucket();
-         ART_DEBUG("NEW NEXT\n");
-         assert(!node->tail->next);
-      }
-      assert(node->tail);
-      if (node->tail->N == BSIZE) {
-         assert(!node->tail->next);
-         ART_DEBUG("HOST %p -> ... -> %p -> ", node, node->tail);
-         node->tail->next = new Bucket();
-         node->tail = node->tail->next;
-         ART_DEBUG("%p\n", node->tail);
-      }
-      assert(node->tail->N < BSIZE);
-      node->tail->D[node->tail->N++] = value;
-      ART_DEBUG("append %lu to %p\n", value, node->tail);
-   }
-}
-
 Node** insertNode4(Node4 *&node, uint8_t keyByte, Node *child) {
    // Insert leaf into inner node
    if (node->count < 4) {
@@ -979,8 +925,6 @@ Node** insertNode4(Node4 *&node, uint8_t keyByte, Node *child) {
       for (unsigned i=0;i<4;i++)
          newNode->key[i]=flipSign(node->key[i]);
       memcpy(newNode->child,node->child,node->count*sizeof(uintptr_t));
-      newNode->next = node->next;
-      newNode->tail = node->tail;
       delete node;
       node = (Node4*&) newNode;
       insertNode16((Node16*&) node,keyByte,child);
@@ -1012,8 +956,6 @@ Node** insertNode16(Node16* &node,uint8_t keyByte,Node* child) {
          newNode->childIndex[flipSign(node->key[i])]=i;
       copyPrefix(node,newNode);
       newNode->count=node->count;
-      newNode->next = node->next;
-      newNode->tail = node->tail;
       delete node;
       node = (Node16*) newNode;
       insertNode48((Node48*&) node,keyByte,child);
@@ -1042,8 +984,6 @@ Node** insertNode48(Node48 *&node,uint8_t keyByte,Node* child) {
             newNode->child[i]=node->child[node->childIndex[i]];
       newNode->count=node->count;
       copyPrefix(node,newNode);
-      newNode->next = node->next;
-      newNode->tail = node->tail;
       delete node;
       node = (Node48*) newNode;
       insertNode256((Node256*&) node,keyByte,child);
@@ -1087,7 +1027,6 @@ void erase(Node* node,Node** nodeRef,uint8_t key[],unsigned keyLength,unsigned d
       return;
    }
 
-   flush_inserts(*nodeRef, depth, maxKeyLength);
    node = *nodeRef;
 
    // Handle prefix
