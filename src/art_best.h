@@ -341,7 +341,7 @@ void flush_bulk_insert(Node *&node, int depth, int maxKeyLength, int parr, int N
    delete node;
    node = NULL;
 
-   if (N < 256) {
+   if (N < 512) {
       // fprintf(stderr, "insert all\n");
       for (int i = 0; i < N; i++) {
          uint8_t *key = (uint8_t*) &tmp[i];
