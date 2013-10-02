@@ -55,8 +55,8 @@ struct Node {
    // compressed path (prefix)
    uint8_t prefix[maxPrefixLength];
 
-   int *parr, *parr2;
-   int psize;
+   // int *parr, *parr2;
+   // int psize;
 
    Bucket *next, *tail;
 
