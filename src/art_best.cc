@@ -43,7 +43,7 @@ int query(int value) {
   loadKey(value64, key);
 
   // if (value == 61554031375105761) art_debug = 1;
-  Node* leaf=lower_bound(tree,key,8,0,8);
+  Node* leaf=lower_bound(tree,&tree,key,8,0,8);
   int ret = 0;
   if (isLeaf(leaf)) {
     ret = getLeafValue(leaf);
