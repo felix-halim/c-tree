@@ -634,17 +634,22 @@ void rec_insert(Node *&node, int depth, int maxKeyLength, uintptr_t *tmp, int lo
    }
    if (depth < 6) fprintf(stderr, "depth = %d, lo = %d, %d\n", depth, lo, hi);
    if (depth >= maxKeyLength) return;
-   int cnt[256] { 0 };
-   for (int i = lo; i < hi; i++) {
-      uint8_t *key = (uint8_t*) &tmp[i];
-      cnt[key[depth]]++;
-   }
-   int sidx = 0, nchild = 0;
-   for (int i = 0; i < 256; i++) {
-      int cur = cnt[i];
-      if (cur) nchild++;
-      cnt[i] = sidx;
-      sidx += cur;
+   int cnt[256], sidx, nchild, ndepth = depth;
+   while (true) {
+      for (int i = 0; i < 256; i++) cnt[i] = 0;
+      for (int i = lo; i < hi; i++) {
+         uint8_t *key = (uint8_t*) &tmp[i];
+         cnt[key[ndepth]]++;
+      }
+      sidx = nchild = 0;
+      for (int i = 0; i < 256; i++) {
+         int cur = cnt[i];
+         if (cur) nchild++;
+         cnt[i] = sidx;
+         sidx += cur;
+      }
+      ndepth++;
+      if (nchild > 1 || ndepth >= maxKeyLength) break;
    }
 
    assert(!node);
@@ -657,9 +662,14 @@ void rec_insert(Node *&node, int depth, int maxKeyLength, uintptr_t *tmp, int lo
    } else {
       node = new Node256();
    }
-   // TODO: path compression.
-   // node->prefixLength = 1;
-   // memcpy(node->prefix, key+depth, min(1, maxPrefixLength));
+
+   if (depth + 1 < ndepth) {
+      // Path compression.
+      while (depth + 1 < ndepth) {
+         uint8_t *key = (uint8_t*) &tmp[lo];
+         node->prefix[node->prefixLength++] = key[depth++];
+      }
+   }
 
    uintptr_t *arr = tmp2 + lo;
    for (int i = lo; i < hi; i++) {
@@ -678,7 +688,7 @@ void rec_insert(Node *&node, int depth, int maxKeyLength, uintptr_t *tmp, int lo
          }
          // fprintf(stderr, "nchild = %d\n", nchild);
          assert(child);
-         rec_insert(*child, depth + 1, maxKeyLength, tmp2, lo + sidx, lo + cnt[i], tmp);
+         rec_insert(*child, ndepth, maxKeyLength, tmp2, lo + sidx, lo + cnt[i], tmp);
       }
       sidx = cnt[i];
    }
