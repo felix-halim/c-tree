@@ -401,7 +401,6 @@ Node* lookup(Node **nodeRef,uint8_t key[],unsigned keyLength,unsigned depth,unsi
    assert(*nodeRef);
    if (!isLeaf(*nodeRef)) {
       // fprintf(stderr, "nodep = %p, cnt = %d, psize = %d, depth = %d\n", node, node->count, node->psize, depth);
-      assert(depth < maxKeyLength);
       flush_bulk_insert(*nodeRef, depth, maxKeyLength, (*nodeRef)->parr, abs((*nodeRef)->psize), (*nodeRef)->psize >= 0);
    }
    // fprintf(stderr, "lookup2 %p\n", *nodeRef);
@@ -466,7 +465,6 @@ Node* lower_bound(Node *&node, uint8_t key[], unsigned keyLength, unsigned depth
 
    if (!isLeaf(node)) {
       // fprintf(stderr, "nodep = %p, cnt = %d, psize = %d, depth = %d\n", node, node->count, node->psize, depth);
-      // assert(depth < maxKeyLength);
       flush_bulk_insert(node, depth, maxKeyLength, node->parr, abs(node->psize), node->psize >= 0);
    }
 
@@ -853,7 +851,6 @@ void insert(Node *&node,uint8_t key[],unsigned depth,uintptr_t value,unsigned ma
 
    if (!isLeaf(node)) {
       // fprintf(stderr, "nodep = %p, cnt = %d, psize = %d, depth = %d\n", node, node->count, node->psize, depth);
-      // assert(depth < maxKeyLength);
       flush_bulk_insert(node, depth, maxKeyLength, node->parr, abs(node->psize), node->psize >= 0);
    }
 
@@ -1046,7 +1043,6 @@ void erase(Node* node,Node** nodeRef,uint8_t key[],unsigned keyLength,unsigned d
 
    if (!isLeaf(node)) {
       // fprintf(stderr, "nodep = %p, cnt = %d, psize = %d, depth = %d\n", node, node->count, node->psize, depth);
-      assert(depth < maxKeyLength);
       flush_bulk_insert(*nodeRef, depth, maxKeyLength, (*nodeRef)->parr, abs((*nodeRef)->psize), (*nodeRef)->psize >= 0);
       node = *nodeRef;
    }

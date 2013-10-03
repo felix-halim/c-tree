@@ -14,7 +14,11 @@ using namespace std;
 Node* tree = NULL;
 
 void init(int *arr, int N) {
-  pending_bulk_insert(tree, arr, N); // Lazy insert, chain buckets.
+  #ifdef EAGER
+    bulk_insert(tree, arr, N); // Lazy insert, chain buckets.
+  #else
+    pending_bulk_insert(tree, arr, N); // Lazy insert, chain buckets.
+  #endif
   // art_debug = 1;
 }
 
