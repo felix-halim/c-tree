@@ -48,10 +48,11 @@ batch_lfhv)   ./run.sh algo comb 1 | tee -a $out
 
 batch_sky)    ./run.sh append comb | tee -a $out
               ./run.sh append ctree_32_64 | tee -a $out
-              ./run.sh append art | tee -a $out
-              ./run.sh append art_crack | tee -a $out
               ./run.sh append btree_google | tee -a $out
               ./run.sh append btree_stx | tee -a $out
+              ./run.sh append art | tee -a $out
+              ./run.sh append arto | tee -a $out
+              ./run.sh append art_best | tee -a $out
               ;;
 
 art_best)        for U in {0..5}
