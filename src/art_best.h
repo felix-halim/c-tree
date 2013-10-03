@@ -466,7 +466,7 @@ Node* lower_bound(Node *&node, uint8_t key[], unsigned keyLength, unsigned depth
 
    if (!isLeaf(node)) {
       // fprintf(stderr, "nodep = %p, cnt = %d, psize = %d, depth = %d\n", node, node->count, node->psize, depth);
-      assert(depth < maxKeyLength);
+      // assert(depth < maxKeyLength);
       flush_bulk_insert(node, depth, maxKeyLength, node->parr, abs(node->psize), node->psize >= 0);
    }
 
@@ -853,7 +853,7 @@ void insert(Node *&node,uint8_t key[],unsigned depth,uintptr_t value,unsigned ma
 
    if (!isLeaf(node)) {
       // fprintf(stderr, "nodep = %p, cnt = %d, psize = %d, depth = %d\n", node, node->count, node->psize, depth);
-      assert(depth < maxKeyLength);
+      // assert(depth < maxKeyLength);
       flush_bulk_insert(node, depth, maxKeyLength, node->parr, abs(node->psize), node->psize >= 0);
    }
 
