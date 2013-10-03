@@ -1,5 +1,5 @@
 mkdir bin 2> /dev/null
-N=data/10000000.data
+N=data/100000000.data
 Q=1000000000
 out=results.js
 
@@ -54,11 +54,11 @@ batch_sky)    ./run.sh append comb | tee -a $out
               ./run.sh append btree_stx | tee -a $out
               ;;
 
-crack)        for U in {4..5}
+art_best)        for U in {0..5}
               do
-                     ./run.sh algo crack $U | tee -a $out
+                     ./run.sh algo art_best $U | tee -a $out
               done
-              ./run.sh append crack | tee -a $out;;
+              ./run.sh sky_append art_best | tee -a $out;;
 
 batch)        ./run.sh batch_noup
               for U in {1..5}
