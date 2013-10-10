@@ -293,7 +293,7 @@ void insert(Node *&node,uint8_t key[],unsigned depth,uintptr_t value,unsigned ma
 int ccc = 0, NN = 0;
 static uintptr_t *pending_tmp;
 
-void flush_bulk_insert(Node *&node, int depth, int maxKeyLength, int parr, int N, bool lower) {
+static void flush_bulk_insert(Node *&node, int depth, int maxKeyLength, int parr, int N, bool lower) {
    if (node->count) return;
    uintptr_t *tmp, *tmp2;
    if (lower) {
