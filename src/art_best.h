@@ -849,10 +849,12 @@ void insert(Node *&node,uint8_t key[],unsigned depth,uintptr_t value,unsigned ma
       return;
    }
 
+   #ifndef EAGER
    if (!isLeaf(node)) {
       // fprintf(stderr, "nodep = %p, cnt = %d, psize = %d, depth = %d\n", node, node->count, node->psize, depth);
       flush_bulk_insert(node, depth, maxKeyLength, node->parr(), abs(node->psize()), node->psize() >= 0);
    }
+   #endif
 
    if (isLeaf(node)) {
       // Replace leaf with Node4 and store both leaves in it
@@ -1034,18 +1036,19 @@ void erase(Node* node,Node** nodeRef,uint8_t key[],unsigned keyLength,unsigned d
 
    ART_DEBUG("ERASE %p %d\n", node, depth);
    assert(node);
-   // fprintf(stderr, "erase %p\n", node);
    if (!node) {
       ART_DEBUG("NO NODE\n");
       return;
    }
 
+   #ifndef EAGER
    if (!isLeaf(node)) {
       // fprintf(stderr, "nodep = %p, cnt = %d, psize = %d, depth = %d\n", node, node->count, node->psize, depth);
       flush_bulk_insert(*nodeRef, depth, maxKeyLength, (*nodeRef)->parr(), abs((*nodeRef)->psize()), (*nodeRef)->psize() >= 0);
       node = *nodeRef;
    }
    assert(node);
+   #endif
 
    if (isLeaf(node)) {
       // Make sure we have the right leaf
@@ -1058,8 +1061,6 @@ void erase(Node* node,Node** nodeRef,uint8_t key[],unsigned keyLength,unsigned d
       }
       return;
    }
-
-   node = *nodeRef;
 
    // Handle prefix
    // ART_DEBUG("PREFIX LEN = %d\n", node->prefixLength);
