@@ -755,7 +755,7 @@ void copyPrefix(Node* src, Node* dst) {
 }
 
 void rec_insert(Node *&node, int depth, int maxKeyLength, uintptr_t *tmp, int N, uintptr_t *tmp2) {
-   if (N < 256) {
+   if (N < 25600) {
       for (int i = 0; i < N; i++) {
          uint8_t *key = (uint8_t*) &tmp[i];
          insert(node, key, depth, __builtin_bswap64(tmp[i]), maxKeyLength, true);
