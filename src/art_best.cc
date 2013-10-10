@@ -38,10 +38,6 @@ void erase(int value) {
 }
 
 int query(int value) {
-  // art_debug = value == 754275843;
-  // art_debug = 1;
-  ART_DEBUG("\nquery %d\n", value);
-  // fprintf(stderr, "query %lld\n", value);
   uint64_t value64 = value;
   uint8_t key[8];
   loadKey(value64, key);

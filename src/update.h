@@ -12,7 +12,7 @@ class Update {
   vector<int> arr;
   FILE *in;
   int U;
-  int next_smallest = 1080000000;
+  int next_smallest;
   int max_value;
   mt19937 gen;
   uniform_int_distribution<> dis;
@@ -20,6 +20,7 @@ class Update {
  public:
 
   Update(char *fn, int U_): U(U_), gen(81188) {
+    next_smallest = 1080000000;
     in = fopen(fn, "rb");
     if (!in) { fprintf(stderr,"Error opening file %s\n", fn); exit(1); }
   }
