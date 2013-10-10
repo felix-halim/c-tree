@@ -46,9 +46,15 @@ struct Node {
    // compressed path (prefix)
    uint8_t prefix[maxPrefixLength];
 
-   int parr, psize;
+   void set_parr(int parr) { prefixLength = parr; }
+   void set_psize(int psize) { char *a = (char*) prefix; *((int*) a)  = psize; }
+   int parr() { return prefixLength; }
+   int psize() { char *a = (char*) prefix; return *((int*)a); }
 
-   Node(int8_t type) : prefixLength(0),count(0),type(type),parr(0),psize(0) {}
+   Node(int8_t type) : prefixLength(0),count(0),type(type) {
+      set_parr(0);
+      set_psize(0);
+   }
 };
 
 // Node with up to 4 children
@@ -365,8 +371,8 @@ void flush_bulk_insert(Node *&node, int depth, int maxKeyLength, int parr, int N
          Node** child = NULL;
          Node* dum = new Node4();
          assert(!isLeaf(dum));
-         dum->parr = parr + sidx;
-         dum->psize = lower? (sidx - cnt[i]) : (cnt[i] - sidx);
+         dum->set_parr(parr + sidx);
+         dum->set_psize(lower? (sidx - cnt[i]) : (cnt[i] - sidx));
          switch (node->type) {
             case NodeType4: child = insertNode4((Node4*&) node, (uint8_t) i, dum); break;
             case NodeType16: child = insertNode16((Node16*&) node, (uint8_t) i, dum); break;
@@ -385,8 +391,8 @@ void pending_bulk_insert(Node *&node, int *arr, int N) {
    node = new Node4(); // Placeholder
    pending_tmp = new uintptr_t[N * 2];
    NN = N;
-   node->parr = 0;
-   node->psize = N;
+   node->set_parr(0);
+   node->set_psize(N);
    for (int i = 0; i < N; i++) {
       uint8_t *key = (uint8_t*) &pending_tmp[i];
       loadKey(arr[i], key);
@@ -401,7 +407,7 @@ Node* lookup(Node **nodeRef,uint8_t key[],unsigned keyLength,unsigned depth,unsi
    assert(*nodeRef);
    if (!isLeaf(*nodeRef)) {
       // fprintf(stderr, "nodep = %p, cnt = %d, psize = %d, depth = %d\n", node, node->count, node->psize, depth);
-      flush_bulk_insert(*nodeRef, depth, maxKeyLength, (*nodeRef)->parr, abs((*nodeRef)->psize), (*nodeRef)->psize >= 0);
+      flush_bulk_insert(*nodeRef, depth, maxKeyLength, (*nodeRef)->parr(), abs((*nodeRef)->psize()), (*nodeRef)->psize() >= 0);
    }
    // fprintf(stderr, "lookup2 %p\n", *nodeRef);
 
@@ -445,7 +451,7 @@ Node* lookup(Node **nodeRef,uint8_t key[],unsigned keyLength,unsigned depth,unsi
       assert(*child);
       if (!isLeaf(*child)) {
          // fprintf(stderr, "fluchild %p\n", *child);
-         flush_bulk_insert(*child, depth + 1, maxKeyLength, (*child)->parr, abs((*child)->psize), (*child)->psize >= 0);
+         flush_bulk_insert(*child, depth + 1, maxKeyLength, (*child)->parr(), abs((*child)->psize()), (*child)->psize() >= 0);
          // fprintf(stderr, "fluchild2 %p\n", *child);
       }
 
@@ -465,7 +471,7 @@ Node* lower_bound(Node *&node, uint8_t key[], unsigned keyLength, unsigned depth
 
    if (!isLeaf(node)) {
       // fprintf(stderr, "nodep = %p, cnt = %d, psize = %d, depth = %d\n", node, node->count, node->psize, depth);
-      flush_bulk_insert(node, depth, maxKeyLength, node->parr, abs(node->psize), node->psize >= 0);
+      flush_bulk_insert(node, depth, maxKeyLength, node->parr(), abs(node->psize()), node->psize() >= 0);
    }
 
    if (isLeaf(node)) {
@@ -851,7 +857,7 @@ void insert(Node *&node,uint8_t key[],unsigned depth,uintptr_t value,unsigned ma
 
    if (!isLeaf(node)) {
       // fprintf(stderr, "nodep = %p, cnt = %d, psize = %d, depth = %d\n", node, node->count, node->psize, depth);
-      flush_bulk_insert(node, depth, maxKeyLength, node->parr, abs(node->psize), node->psize >= 0);
+      flush_bulk_insert(node, depth, maxKeyLength, node->parr(), abs(node->psize()), node->psize() >= 0);
    }
 
    if (isLeaf(node)) {
@@ -1043,7 +1049,7 @@ void erase(Node* node,Node** nodeRef,uint8_t key[],unsigned keyLength,unsigned d
 
    if (!isLeaf(node)) {
       // fprintf(stderr, "nodep = %p, cnt = %d, psize = %d, depth = %d\n", node, node->count, node->psize, depth);
-      flush_bulk_insert(*nodeRef, depth, maxKeyLength, (*nodeRef)->parr, abs((*nodeRef)->psize), (*nodeRef)->psize >= 0);
+      flush_bulk_insert(*nodeRef, depth, maxKeyLength, (*nodeRef)->parr(), abs((*nodeRef)->psize()), (*nodeRef)->psize() >= 0);
       node = *nodeRef;
    }
    assert(node);
