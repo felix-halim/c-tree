@@ -77,7 +77,7 @@ $(ODIR)/ctree_tests: ctree_tests.cc ctree.h random.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
 
 $(ODIR)/ctree_eager: ctree.cc ctree.h test.h update.h query.h checksum.h
-	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=64 -DLEAF_BSIZE=128 -DEAGER -Wall -o $@ $<
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=32 -DLEAF_BSIZE=64 -DEAGER -Wall -o $@ $<
 
 $(ODIR)/ctree_8_8: ctree.cc ctree.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=8 -DLEAF_BSIZE=8 -Wall -o $@ $<
