@@ -32,8 +32,6 @@ int art_debug = 0;
    #define ART_DEBUG(...) { if (art_debug) fprintf(stderr, __VA_ARGS__); }
 #endif
 
-int n4, n16, n48, n256, nsplit, nadv;
-
 // Shared header of all inner nodes
 struct Node {
    // length of the compressed path (prefix)
@@ -56,7 +54,6 @@ struct Node4 : Node {
    Node4() : Node(NodeType4) {
       memset(key,0,sizeof(key));
       memset(child,0,sizeof(child));
-      n4++;
    }
 };
 
@@ -68,7 +65,6 @@ struct Node16 : Node {
    Node16() : Node(NodeType16) {
       memset(key,0,sizeof(key));
       memset(child,0,sizeof(child));
-      n16++;
    }
 };
 
@@ -82,7 +78,6 @@ struct Node48 : Node {
    Node48() : Node(NodeType48) {
       memset(childIndex,emptyMarker,sizeof(childIndex));
       memset(child,0,sizeof(child));
-      n48++;
    }
 };
 
@@ -92,7 +87,6 @@ struct Node256 : Node {
 
    Node256() : Node(NodeType256) {
       memset(child,0,sizeof(child));
-      n256++;
    }
 };
 
@@ -630,7 +624,6 @@ void insert(Node* node,Node** nodeRef,uint8_t key[],unsigned depth,uintptr_t val
 
       insertNode4(newNode,nodeRef,existingKey[depth+newPrefixLength],node);
       insertNode4(newNode,nodeRef,key[depth+newPrefixLength],makeLeaf(value));
-      nsplit++;
       return;
    }
 
@@ -662,7 +655,6 @@ void insert(Node* node,Node** nodeRef,uint8_t key[],unsigned depth,uintptr_t val
          return;
       }
       depth+=node->prefixLength;
-      nadv++;
    }
 
    // Recurse

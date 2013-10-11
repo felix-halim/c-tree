@@ -1,6 +1,6 @@
 mkdir bin 2> /dev/null
 N=data/100000000.data
-Q=1000000000
+Q=100000000
 out=results.js
 
 case $1 in
@@ -27,26 +27,23 @@ n_leaves,n_capacity,n_internals,max_depth,slack,in_size,ln_size,ia_free,ia_size,
               ;;
 
 batch_noup)   ./run.sh algo comb 0 | tee -a $out
+              ./run.sh algo sort 0 | tee -a $out
+              ./run.sh algo crack 0 | tee -a $out
+              ./run.sh algo ctree_eager 0 | tee -a $out
               ./run.sh algo ctree_32_64 0 | tee -a $out
+              ./run.sh algo ctree_32_1024 0 | tee -a $out
               ./run.sh algo art 0 | tee -a $out
-              ./run.sh algo arto 0 | tee -a $out
+              ./run.sh algo art_best 0 | tee -a $out
+              ./run.sh algo art_best_eager 0 | tee -a $out
               # ./run.sh algo art_crack 0 | tee -a $out
               # ./run.sh algo ctree_exp_leafsize 0 | tee -a $out
-              ./run.sh algo ctree_eager 0 | tee -a $out
-              ./run.sh algo sort 0 | tee -a $out
               ./run.sh algo btree_google 0 | tee -a $out
               ./run.sh algo btree_stx 0 | tee -a $out
               ;;
 
-batch_lfhv)   ./run.sh algo comb 1 | tee -a $out
-              ./run.sh algo ctree_32_64 1 | tee -a $out
-              ./run.sh algo art 1 | tee -a $out
-              ./run.sh algo art_crack 1 | tee -a $out
-              ./run.sh algo btree_google 1 | tee -a $out
-              ./run.sh algo btree_stx 1 | tee -a $out
-              ;;
-
 batch_sky)    ./run.sh append comb | tee -a $out
+              ./run.sh append crack | tee -a $out
+              ./run.sh append ctree_eager | tee -a $out
               ./run.sh append ctree_32_64 | tee -a $out
               ./run.sh append btree_google | tee -a $out
               ./run.sh append btree_stx | tee -a $out
@@ -55,24 +52,17 @@ batch_sky)    ./run.sh append comb | tee -a $out
               ./run.sh append art_best | tee -a $out
               ;;
 
-art_batch)    for U in {0..5}
-              do
-                     ./run.sh algo art $U | tee -a $out
-                     ./run.sh algo art_best $U | tee -a $out
-                     ./run.sh algo art_best_eager $U | tee -a $out
-              done
-              ./run.sh sky_append art | tee -a $out
-              ./run.sh sky_append art_best | tee -a $out
-              ./run.sh sky_append art_best_eager | tee -a $out;;
-
 batch)        ./run.sh batch_noup
               for U in {1..5}
               do
                      ./run.sh algo comb $U | tee -a $out
+                     ./run.sh algo crack $U | tee -a $out
+                     ./run.sh algo ctree_eager $U | tee -a $out
                      ./run.sh algo ctree_32_64 $U | tee -a $out
                      ./run.sh algo art $U | tee -a $out
                      # ./run.sh algo art_crack $U | tee -a $out
-                     ./run.sh algo arto $U | tee -a $out
+                     ./run.sh algo art_best $U | tee -a $out
+                     ./run.sh algo art_best_eager $U | tee -a $out
                      ./run.sh algo btree_google $U | tee -a $out
                      ./run.sh algo btree_stx $U | tee -a $out
               done
