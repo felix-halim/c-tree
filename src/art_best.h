@@ -1029,63 +1029,66 @@ void eraseNode256(Node256* node,Node** nodeRef,uint8_t keyByte);
 
 void erase(Node* node,Node** nodeRef,uint8_t key[],unsigned keyLength,unsigned depth,unsigned maxKeyLength) {
    // Delete a leaf from a tree
-
-   ART_DEBUG("ERASE %p %d\n", node, depth);
-   assert(node);
-   if (!node) {
-      ART_DEBUG("NO NODE\n");
-      return;
-   }
-
-   #ifndef EAGER
-   if (!isLeaf(node)) {
-      // fprintf(stderr, "nodep = %p, cnt = %d, psize = %d, depth = %d\n", node, node->count, node->psize, depth);
-      flush_bulk_insert(*nodeRef, depth, maxKeyLength, (*nodeRef)->parr(), abs((*nodeRef)->psize()), (*nodeRef)->psize() >= 0);
-      node = *nodeRef;
-   }
-   assert(node);
-   #endif
-
-   if (isLeaf(node)) {
-      // Make sure we have the right leaf
-      if (leafMatches(node,key,keyLength,depth,maxKeyLength)) {
-         ART_DEBUG("DONE DELETE %p %p\n", node, *nodeRef);
-         *nodeRef=NULL;
-         ART_DEBUG("DONE DELETE %p %p\n", node, *nodeRef);
-      } else {
-         ART_DEBUG("DONE LEAF NOT MATCH\n");
-      }
-      return;
-   }
-
-   // Handle prefix
-   // ART_DEBUG("PREFIX LEN = %d\n", node->prefixLength);
-   if (node->prefixLength) {
-      if (prefixMismatch(node,key,depth,maxKeyLength)!=node->prefixLength) {
-         ART_DEBUG("PREFIX MISMATCH\n");
+   while (true) {
+      ART_DEBUG("ERASE %p %d\n", node, depth);
+      assert(node);
+      if (!node) {
+         ART_DEBUG("NO NODE\n");
          return;
       }
-      depth+=node->prefixLength;
-   }
 
-   // ART_DEBUG("PREFIX LEN2 = %d, depth = %u\n", node->prefixLength, depth);
-   Node** child = findChild(node,key[depth]);
-   assert(*child);
-   // ART_DEBUG("PREFIX LEN3 = %p\n", child);
-   // ART_DEBUG("CHILD = %p\n", *child);
-
-   if (isLeaf(*child)&&leafMatches(*child,key,keyLength,depth,maxKeyLength)) {
-      // Leaf found, delete it in inner node
-      ART_DEBUG("LEAF FOUND\n");
-      switch (node->type) {
-         case NodeType4: eraseNode4(static_cast<Node4*>(node),nodeRef,child); break;
-         case NodeType16: eraseNode16(static_cast<Node16*>(node),nodeRef,child); break;
-         case NodeType48: eraseNode48(static_cast<Node48*>(node),nodeRef,key[depth]); break;
-         case NodeType256: eraseNode256(static_cast<Node256*>(node),nodeRef,key[depth]); break;
+      #ifndef EAGER
+      if (!isLeaf(node)) {
+         // fprintf(stderr, "nodep = %p, cnt = %d, psize = %d, depth = %d\n", node, node->count, node->psize, depth);
+         flush_bulk_insert(*nodeRef, depth, maxKeyLength, (*nodeRef)->parr(), abs((*nodeRef)->psize()), (*nodeRef)->psize() >= 0);
+         node = *nodeRef;
       }
-   } else {
+      assert(node);
+      #endif
+
+      if (isLeaf(node)) {
+         // Make sure we have the right leaf
+         if (leafMatches(node,key,keyLength,depth,maxKeyLength)) {
+            ART_DEBUG("DONE DELETE %p %p\n", node, *nodeRef);
+            *nodeRef=NULL;
+            ART_DEBUG("DONE DELETE %p %p\n", node, *nodeRef);
+         } else {
+            ART_DEBUG("DONE LEAF NOT MATCH\n");
+         }
+         return;
+      }
+
+      // Handle prefix
+      // ART_DEBUG("PREFIX LEN = %d\n", node->prefixLength);
+      if (node->prefixLength) {
+         if (prefixMismatch(node,key,depth,maxKeyLength)!=node->prefixLength) {
+            ART_DEBUG("PREFIX MISMATCH\n");
+            return;
+         }
+         depth+=node->prefixLength;
+      }
+
+      // ART_DEBUG("PREFIX LEN2 = %d, depth = %u\n", node->prefixLength, depth);
+      Node** child = findChild(node,key[depth]);
+      assert(*child);
+      // ART_DEBUG("PREFIX LEN3 = %p\n", child);
+      // ART_DEBUG("CHILD = %p\n", *child);
+
+      if (isLeaf(*child)&&leafMatches(*child,key,keyLength,depth,maxKeyLength)) {
+         // Leaf found, delete it in inner node
+         ART_DEBUG("LEAF FOUND\n");
+         switch (node->type) {
+            case NodeType4: eraseNode4(static_cast<Node4*>(node),nodeRef,child); break;
+            case NodeType16: eraseNode16(static_cast<Node16*>(node),nodeRef,child); break;
+            case NodeType48: eraseNode48(static_cast<Node48*>(node),nodeRef,key[depth]); break;
+            case NodeType256: eraseNode256(static_cast<Node256*>(node),nodeRef,key[depth]); break;
+         }
+         return;
+      }
       //Recurse
-      erase(*child,child,key,keyLength,depth+1,maxKeyLength);
+      node = *child;
+      nodeRef = child;
+      depth++;
    }
 }
 
