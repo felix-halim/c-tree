@@ -40,6 +40,12 @@ void erase(int value) {
 int query(int value) {
   uint64_t value64 = value;
   uint8_t key[8];
+  static int nq = 0;
+  if (nq++ == 10000000) {
+    fprintf(stderr, "flush all inserts ... ");
+    rec_flush_pending(tree,8,0,8);
+    fprintf(stderr, "done\n");
+  }
   loadKey(value64, key);
 
   // if (value == 61554031375105761) art_debug = 1;
