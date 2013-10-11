@@ -455,6 +455,12 @@ void rec_flush_pending(Node *&node, unsigned keyLength, unsigned depth, unsigned
 
       default: assert(0);
    }
+
+   if (depth == 0) {
+      assert(pending_tmp);
+      delete[] pending_tmp;
+      pending_tmp = NULL;
+   }
 }
 
 
