@@ -29,8 +29,6 @@ static const unsigned maxPrefixLength=9;
 
 static int art_debug = 0;
 
-static int n4, n16, n48, n256, nsplit, nadv;
-
 #ifdef DNDEBUG
    #define ART_DEBUG(...)
 #else
@@ -68,7 +66,6 @@ struct Node4 : Node {
    Node4() : Node(NodeType4) {
       memset(key,0,sizeof(key));
       memset(child,0,sizeof(child));
-      n4++;
    }
 };
 
@@ -80,7 +77,6 @@ struct Node16 : Node {
    Node16() : Node(NodeType16) {
       memset(key,0,sizeof(key));
       memset(child,0,sizeof(child));
-      n16++;
    }
 };
 
@@ -94,7 +90,6 @@ struct Node48 : Node {
    Node48() : Node(NodeType48) {
       memset(childIndex,emptyMarker,sizeof(childIndex));
       memset(child,0,sizeof(child));
-      n48++;
    }
 };
 
@@ -104,7 +99,6 @@ struct Node256 : Node {
 
    Node256() : Node(NodeType256) {
       memset(child,0,sizeof(child));
-      n256++;
    }
 };
 
@@ -295,7 +289,6 @@ static void insertNode16(Node16 *&node, uint8_t keyByte, Node* child);
 static void insertNode48(Node48 *&node, uint8_t keyByte, Node* child);
 static void insertNode256(Node256 *&node, uint8_t keyByte, Node* child);
 
-static void flush_inserts(Node *&node, int depth, int maxKeyLength);
 static void insert(Node **node,uint8_t key[],unsigned depth,uintptr_t value,unsigned maxKeyLength);
 static int ccc = 0, NN = 0;
 static uintptr_t *pending_tmp;
@@ -315,7 +308,7 @@ static void flush_bulk_insert(Node *&node, int depth, int maxKeyLength, int parr
    delete node;
    node = NULL;
 
-   if (N < 12048) {
+   if (N < 14384) {
       // fprintf(stderr, "insert all\n");
       for (int i = 0; i < N; i++) {
          uint8_t *key = (uint8_t*) &tmp[i];
@@ -391,7 +384,7 @@ static void flush_bulk_insert(Node *&node, int depth, int maxKeyLength, int parr
    // fprintf(stderr, "done\n");
 }
 
-static void pending_bulk_insert(Node *&node, int *arr, int N) {
+void pending_bulk_insert(Node *&node, int *arr, int N) {
    node = new Node4(); // Placeholder
    pending_tmp = new uintptr_t[N * 2];
    NN = N;
@@ -471,7 +464,7 @@ static void rec_flush_pending(Node *&node, unsigned keyLength, unsigned depth, u
 }
 
 
-static Node* lookup(Node **nodeRef,uint8_t key[],unsigned keyLength,unsigned depth,unsigned maxKeyLength) {
+Node* lookup(Node **nodeRef,uint8_t key[],unsigned keyLength,unsigned depth,unsigned maxKeyLength) {
    // Find the node with a matching key, optimistic version
    // fprintf(stderr, "lookup %p\n", *nodeRef);
    assert(*nodeRef);
@@ -793,7 +786,7 @@ static Node* lower_bound_prev(Node* node, uint8_t key[], unsigned keyLength, uns
    return NULL;
 }
 
-static Node* lookupPessimistic(Node* node,uint8_t key[],unsigned keyLength,unsigned depth,unsigned maxKeyLength) {
+Node* lookupPessimistic(Node* node,uint8_t key[],unsigned keyLength,unsigned depth,unsigned maxKeyLength) {
    // Find the node with a matching key, alternative pessimistic version
 
    while (node!=NULL) {
@@ -827,7 +820,7 @@ static void copyPrefix(Node* src, Node* dst) {
 
 static void rec_insert(Node *&node, int depth, int maxKeyLength, uintptr_t *tmp, int N) {
    assert(!node);
-   if (N < 256) {
+   if (N < 14384) {
       for (int i = 0; i < N; i++) {
          uint8_t *key = (uint8_t*) &tmp[i];
          insert(&node, key, depth, __builtin_bswap64(tmp[i]), maxKeyLength);
@@ -898,7 +891,7 @@ static void rec_insert(Node *&node, int depth, int maxKeyLength, uintptr_t *tmp,
    delete[] tmp2;
 }
 
-static void bulk_insert(Node *&node, int *arr, int N) {
+void bulk_insert(Node *&node, int *arr, int N) {
    uintptr_t *tmp = new uintptr_t[N];
    for (int i = 0; i < N; i++) {
       uint8_t *key = (uint8_t*) &tmp[i];
@@ -944,7 +937,6 @@ static void insert(Node **node,uint8_t key[],unsigned depth,uintptr_t value,unsi
 
          insertNode4((Node4*&) *node,existingKey[depth+newPrefixLength],oldNode);
          insertNode4((Node4*&) *node,key[depth+newPrefixLength],makeLeaf(value));
-         nsplit++;
          return;
       }
 
@@ -979,7 +971,6 @@ static void insert(Node **node,uint8_t key[],unsigned depth,uintptr_t value,unsi
             return;
          }
          depth+=oldNode->prefixLength;
-         nadv++;
       }
 
       // Recurse
