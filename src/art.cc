@@ -17,13 +17,13 @@ void init(int *arr, int N) {
   for (int i = 0; i < N; i++) {
     insert(arr[i]);
   }
-  n4 = 0;
-  n16 = 0;
-  n48 = 0;
-  n256 = 0;
-  // art_debug = 1;
-  nsplit = 0;
-  nadv = 0;
+  // n4 = 0;
+  // n16 = 0;
+  // n48 = 0;
+  // n256 = 0;
+  // // art_debug = 1;
+  // nsplit = 0;
+  // nadv = 0;
 }
 
 void insert(int value) {

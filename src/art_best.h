@@ -29,6 +29,8 @@ static const unsigned maxPrefixLength=9;
 
 static int art_debug = 0;
 
+static int n4, n16, n48, n256, nsplit, nadv;
+
 #ifdef DNDEBUG
    #define ART_DEBUG(...)
 #else
@@ -66,6 +68,7 @@ struct Node4 : Node {
    Node4() : Node(NodeType4) {
       memset(key,0,sizeof(key));
       memset(child,0,sizeof(child));
+      n4++;
    }
 };
 
@@ -77,6 +80,7 @@ struct Node16 : Node {
    Node16() : Node(NodeType16) {
       memset(key,0,sizeof(key));
       memset(child,0,sizeof(child));
+      n16++;
    }
 };
 
@@ -90,6 +94,7 @@ struct Node48 : Node {
    Node48() : Node(NodeType48) {
       memset(childIndex,emptyMarker,sizeof(childIndex));
       memset(child,0,sizeof(child));
+      n48++;
    }
 };
 
@@ -99,6 +104,7 @@ struct Node256 : Node {
 
    Node256() : Node(NodeType256) {
       memset(child,0,sizeof(child));
+      n256++;
    }
 };
 
@@ -820,9 +826,8 @@ static void copyPrefix(Node* src, Node* dst) {
 }
 
 static void rec_insert(Node *&node, int depth, int maxKeyLength, uintptr_t *tmp, int N) {
-   if (N < 25600) {
-      delete node;
-      node = NULL;
+   assert(!node);
+   if (N < 256) {
       for (int i = 0; i < N; i++) {
          uint8_t *key = (uint8_t*) &tmp[i];
          insert(&node, key, depth, __builtin_bswap64(tmp[i]), maxKeyLength);
@@ -850,7 +855,6 @@ static void rec_insert(Node *&node, int depth, int maxKeyLength, uintptr_t *tmp,
       if (nchild > 1 || ndepth >= maxKeyLength) break;
    }
 
-   assert(!node);
    if (nchild <= 4) {
       node = new Node4();
    } else if (nchild <= 16) {
@@ -940,6 +944,7 @@ static void insert(Node **node,uint8_t key[],unsigned depth,uintptr_t value,unsi
 
          insertNode4((Node4*&) *node,existingKey[depth+newPrefixLength],oldNode);
          insertNode4((Node4*&) *node,key[depth+newPrefixLength],makeLeaf(value));
+         nsplit++;
          return;
       }
 
@@ -974,6 +979,7 @@ static void insert(Node **node,uint8_t key[],unsigned depth,uintptr_t value,unsi
             return;
          }
          depth+=oldNode->prefixLength;
+         nadv++;
       }
 
       // Recurse
