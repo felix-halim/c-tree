@@ -289,7 +289,7 @@ void insertNode48(Node48 *&node, uint8_t keyByte, Node* child);
 void insertNode256(Node256 *&node, uint8_t keyByte, Node* child);
 
 void flush_inserts(Node *&node, int depth, int maxKeyLength);
-void insert(Node *&node,uint8_t key[],unsigned depth,uintptr_t value,unsigned maxKeyLength);
+void insert(Node **node,uint8_t key[],unsigned depth,uintptr_t value,unsigned maxKeyLength);
 int ccc = 0, NN = 0;
 static uintptr_t *pending_tmp;
 
@@ -313,7 +313,7 @@ static void flush_bulk_insert(Node *&node, int depth, int maxKeyLength, int parr
       for (int i = 0; i < N; i++) {
          uint8_t *key = (uint8_t*) &tmp[i];
          // fprintf(stderr, "insert %d\n", i);
-         insert(node, key, depth, __builtin_bswap64(tmp[i]), maxKeyLength);
+         insert(&node, key, depth, __builtin_bswap64(tmp[i]), maxKeyLength);
          ccc++;
       }
       // fprintf(stderr, "done insert all\n");
@@ -759,7 +759,7 @@ void rec_insert(Node *&node, int depth, int maxKeyLength, uintptr_t *tmp, int N,
       node = NULL;
       for (int i = 0; i < N; i++) {
          uint8_t *key = (uint8_t*) &tmp[i];
-         insert(node, key, depth, __builtin_bswap64(tmp[i]), maxKeyLength);
+         insert(&node, key, depth, __builtin_bswap64(tmp[i]), maxKeyLength);
          ccc++;
       }
       return;
@@ -840,93 +840,95 @@ void bulk_insert(Node *&node, int *arr, int N) {
    delete[] tmp2;
 }
 
-void insert(Node *&node,uint8_t key[],unsigned depth,uintptr_t value,unsigned maxKeyLength) {
+void insert(Node **node,uint8_t key[],unsigned depth,uintptr_t value,unsigned maxKeyLength) {
    // Insert the leaf value into the tree
    // ART_DEBUG("Insert depth = %d, %u, node = %p\n", depth, depth < maxKeyLength ? key[depth] : 0, node);
 
-   if (node==NULL) {
-      // ART_DEBUG("null leaf %d %lu\n", depth, value);
-      node=makeLeaf(value);
-      return;
-   }
-
-   #ifndef EAGER
-   if (!isLeaf(node)) {
-      // fprintf(stderr, "nodep = %p, cnt = %d, psize = %d, depth = %d\n", node, node->count, node->psize, depth);
-      flush_bulk_insert(node, depth, maxKeyLength, node->parr(), abs(node->psize()), node->psize() >= 0);
-   }
-   #endif
-
-   if (isLeaf(node)) {
-      // Replace leaf with Node4 and store both leaves in it
-      uint8_t existingKey[maxKeyLength];
-      loadKey(getLeafValue(node),existingKey);
-      unsigned newPrefixLength=0;
-      while (existingKey[depth+newPrefixLength]==key[depth+newPrefixLength])
-         newPrefixLength++;
-
-      Node4* newNode=new Node4();
-      newNode->prefixLength=newPrefixLength;
-      memcpy(newNode->prefix,key+depth,min(newPrefixLength,maxPrefixLength));
-      Node *oldNode = node;
-      node=newNode;
-
-      insertNode4((Node4*&) node,existingKey[depth+newPrefixLength],oldNode);
-      insertNode4((Node4*&) node,key[depth+newPrefixLength],makeLeaf(value));
-      return;
-   }
-
-   // ART_DEBUG("continue insert %d\n", depth);
-
-   // Handle prefix of inner node
-   if (node->prefixLength) {
-      unsigned mismatchPos=prefixMismatch(node,key,depth,maxKeyLength);
-      Node *oldNode = node;
-      if (mismatchPos!=oldNode->prefixLength) {
-         // Prefix differs, create new node
-         ART_DEBUG("Prefix Differs\n");
-         Node4* newNode=new Node4();
-         node = newNode;
-         newNode->prefixLength=mismatchPos;
-         memcpy(newNode->prefix,oldNode->prefix,min(mismatchPos,maxPrefixLength));
-         // Break up prefix
-         if (oldNode->prefixLength<maxPrefixLength) {
-            ART_DEBUG("Break Prefix\n");
-            insertNode4((Node4*&) node, oldNode->prefix[mismatchPos], oldNode);
-            oldNode->prefixLength-=(mismatchPos+1);
-            memmove(oldNode->prefix,oldNode->prefix+mismatchPos+1,min(oldNode->prefixLength,maxPrefixLength));
-         } else {
-            ART_DEBUG("Break Prefix2\n");
-            oldNode->prefixLength-=(mismatchPos+1);
-            uint8_t minKey[maxKeyLength];
-            loadKey(getLeafValue(minimum(oldNode)),minKey);
-            insertNode4((Node4*&) node,minKey[depth+mismatchPos],oldNode);
-            memmove(oldNode->prefix,minKey+depth+mismatchPos+1,min(oldNode->prefixLength,maxPrefixLength));
-         }
-         insertNode4((Node4*&) node,key[depth+mismatchPos],makeLeaf(value));
+   while (true) {
+      if (*node==NULL) {
+         // ART_DEBUG("null leaf %d %lu\n", depth, value);
+         *node=makeLeaf(value);
          return;
       }
-      depth+=oldNode->prefixLength;
-   }
 
-   // Recurse
-   Node** child=findChild(node,key[depth]);
-   if (*child) {
+      #ifndef EAGER
+      if (!isLeaf(*node)) {
+         // fprintf(stderr, "nodep = %p, cnt = %d, psize = %d, depth = %d\n", node, node->count, node->psize, depth);
+         flush_bulk_insert(*node, depth, maxKeyLength, (*node)->parr(), abs((*node)->psize()), (*node)->psize() >= 0);
+      }
+      #endif
+
+      if (isLeaf(*node)) {
+         // Replace leaf with Node4 and store both leaves in it
+         uint8_t existingKey[maxKeyLength];
+         loadKey(getLeafValue(*node),existingKey);
+         unsigned newPrefixLength=0;
+         while (existingKey[depth+newPrefixLength]==key[depth+newPrefixLength])
+            newPrefixLength++;
+
+         Node4* newNode=new Node4();
+         newNode->prefixLength=newPrefixLength;
+         memcpy(newNode->prefix,key+depth,min(newPrefixLength,maxPrefixLength));
+         Node *oldNode = *node;
+         *node=newNode;
+
+         insertNode4((Node4*&) *node,existingKey[depth+newPrefixLength],oldNode);
+         insertNode4((Node4*&) *node,key[depth+newPrefixLength],makeLeaf(value));
+         return;
+      }
+
+      // ART_DEBUG("continue insert %d\n", depth);
+
+      // Handle prefix of inner node
+      if ((*node)->prefixLength) {
+         unsigned mismatchPos=prefixMismatch(*node,key,depth,maxKeyLength);
+         Node *oldNode = *node;
+         if (mismatchPos!=oldNode->prefixLength) {
+            // Prefix differs, create new node
+            ART_DEBUG("Prefix Differs\n");
+            Node4* newNode=new Node4();
+            *node = newNode;
+            newNode->prefixLength=mismatchPos;
+            memcpy(newNode->prefix,oldNode->prefix,min(mismatchPos,maxPrefixLength));
+            // Break up prefix
+            if (oldNode->prefixLength<maxPrefixLength) {
+               ART_DEBUG("Break Prefix\n");
+               insertNode4((Node4*&) *node, oldNode->prefix[mismatchPos], oldNode);
+               oldNode->prefixLength-=(mismatchPos+1);
+               memmove(oldNode->prefix,oldNode->prefix+mismatchPos+1,min(oldNode->prefixLength,maxPrefixLength));
+            } else {
+               ART_DEBUG("Break Prefix2\n");
+               oldNode->prefixLength-=(mismatchPos+1);
+               uint8_t minKey[maxKeyLength];
+               loadKey(getLeafValue(minimum(oldNode)),minKey);
+               insertNode4((Node4*&) *node,minKey[depth+mismatchPos],oldNode);
+               memmove(oldNode->prefix,minKey+depth+mismatchPos+1,min(oldNode->prefixLength,maxPrefixLength));
+            }
+            insertNode4((Node4*&) *node,key[depth+mismatchPos],makeLeaf(value));
+            return;
+         }
+         depth+=oldNode->prefixLength;
+      }
+
+      // Recurse
+      Node** child=findChild(*node,key[depth]);
+      if (!*child) {
+         // Insert leaf into inner node
+         Node* newNode=makeLeaf(value);
+         // ART_DEBUG("Insert Inner\n");
+         switch ((*node)->type) {
+            case NodeType4: insertNode4((Node4*&) *node, key[depth], newNode); break;
+            case NodeType16: insertNode16((Node16*&) *node, key[depth], newNode); break;
+            case NodeType48: insertNode48((Node48*&) *node, key[depth], newNode); break;
+            case NodeType256: insertNode256((Node256*&) *node, key[depth], newNode); break;
+         }
+         return;
+      }
+
       // ART_DEBUG("Recurse %d from %p to %p; ", depth, node, *child);
-      insert(*child,key,depth+1,value,maxKeyLength);
-      return;
+      node = child;
+      depth++;
    }
-
-   // Insert leaf into inner node
-   Node* newNode=makeLeaf(value);
-   // ART_DEBUG("Insert Inner\n");
-   switch (node->type) {
-      case NodeType4: insertNode4((Node4*&) node, key[depth], newNode); break;
-      case NodeType16: insertNode16((Node16*&) node, key[depth], newNode); break;
-      case NodeType48: insertNode48((Node48*&) node, key[depth], newNode); break;
-      case NodeType256: insertNode256((Node256*&) node, key[depth], newNode); break;
-   }
-   // ART_DEBUG("done inner \n");
 }
 
 void insertNode4(Node4 *&node, uint8_t keyByte, Node *child) {
