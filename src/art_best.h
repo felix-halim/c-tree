@@ -27,9 +27,9 @@ static const int8_t NodeType256=3;
 // demand
 static const unsigned maxPrefixLength=9;
 
-int art_debug = 0;
+static int art_debug = 0;
 
-int n4, n16, n48, n256, nsplit, nadv;
+static int n4, n16, n48, n256, nsplit, nadv;
 
 #ifdef DNDEBUG
    #define ART_DEBUG(...)
@@ -132,7 +132,7 @@ void loadKey(uintptr_t tid,uint8_t key[]) {
 }
 
 // This address is used to communicate that search failed
-Node* nullNode=NULL;
+static Node* nullNode=NULL;
 
 static inline unsigned ctz(uint16_t x) {
    // Count trailing zeros, only defined for x>0
@@ -148,7 +148,7 @@ static inline unsigned ctz(uint16_t x) {
 #endif
 }
 
-Node** findChild(Node* n,uint8_t keyByte) {
+static Node** findChild(Node* n,uint8_t keyByte) {
    // Find the next child for the keyByte
    // ART_DEBUG("FC = %p, %d\n", n, n->type);
    switch (n->type) {
@@ -185,7 +185,7 @@ Node** findChild(Node* n,uint8_t keyByte) {
    throw; // Unreachable
 }
 
-Node* minimum(Node* node) {
+static Node* minimum(Node* node) {
    // Find the leaf with smallest key
    if (!node)
       return NULL;
@@ -220,7 +220,7 @@ Node* minimum(Node* node) {
    throw; // Unreachable
 }
 
-Node* maximum(Node* node) {
+static Node* maximum(Node* node) {
    // Find the leaf with largest key
    if (!node)
       return NULL;
@@ -255,7 +255,7 @@ Node* maximum(Node* node) {
    throw; // Unreachable
 }
 
-bool leafMatches(Node* leaf,uint8_t key[],unsigned keyLength,unsigned depth,unsigned maxKeyLength) {
+static bool leafMatches(Node* leaf,uint8_t key[],unsigned keyLength,unsigned depth,unsigned maxKeyLength) {
    // Check if the key of the leaf is equal to the searched key
    if (depth!=keyLength) {
       uint8_t leafKey[maxKeyLength];
@@ -269,7 +269,7 @@ bool leafMatches(Node* leaf,uint8_t key[],unsigned keyLength,unsigned depth,unsi
    return true;
 }
 
-unsigned prefixMismatch(Node* node,uint8_t key[],unsigned depth,unsigned maxKeyLength) {
+static unsigned prefixMismatch(Node* node,uint8_t key[],unsigned depth,unsigned maxKeyLength) {
    // Compare the key with the prefix of the node, return the number matching bytes
    unsigned pos;
    if (node->prefixLength>maxPrefixLength) {
@@ -290,14 +290,14 @@ unsigned prefixMismatch(Node* node,uint8_t key[],unsigned depth,unsigned maxKeyL
 }
 
 // Forward references
-void insertNode4(Node4 *&node, uint8_t keyByte, Node* child);
-void insertNode16(Node16 *&node, uint8_t keyByte, Node* child);
-void insertNode48(Node48 *&node, uint8_t keyByte, Node* child);
-void insertNode256(Node256 *&node, uint8_t keyByte, Node* child);
+static void insertNode4(Node4 *&node, uint8_t keyByte, Node* child);
+static void insertNode16(Node16 *&node, uint8_t keyByte, Node* child);
+static void insertNode48(Node48 *&node, uint8_t keyByte, Node* child);
+static void insertNode256(Node256 *&node, uint8_t keyByte, Node* child);
 
-void flush_inserts(Node *&node, int depth, int maxKeyLength);
-void insert(Node **node,uint8_t key[],unsigned depth,uintptr_t value,unsigned maxKeyLength);
-int ccc = 0, NN = 0;
+static void flush_inserts(Node *&node, int depth, int maxKeyLength);
+static void insert(Node **node,uint8_t key[],unsigned depth,uintptr_t value,unsigned maxKeyLength);
+static int ccc = 0, NN = 0;
 static uintptr_t *pending_tmp;
 
 static void flush_bulk_insert(Node *&node, int depth, int maxKeyLength, int parr, int N, bool lower) {
@@ -391,7 +391,7 @@ static void flush_bulk_insert(Node *&node, int depth, int maxKeyLength, int parr
    // fprintf(stderr, "done\n");
 }
 
-void pending_bulk_insert(Node *&node, int *arr, int N) {
+static void pending_bulk_insert(Node *&node, int *arr, int N) {
    node = new Node4(); // Placeholder
    pending_tmp = new uintptr_t[N * 2];
    NN = N;
@@ -405,7 +405,7 @@ void pending_bulk_insert(Node *&node, int *arr, int N) {
    // rec_insert(node, 0, 8, tmp, 0, N, tmp2);
 }
 
-void rec_flush_pending(Node *&node, unsigned keyLength, unsigned depth, unsigned maxKeyLength) {
+static void rec_flush_pending(Node *&node, unsigned keyLength, unsigned depth, unsigned maxKeyLength) {
    // if (!node) return NULL;
    assert(node);
 
@@ -471,7 +471,7 @@ void rec_flush_pending(Node *&node, unsigned keyLength, unsigned depth, unsigned
 }
 
 
-Node* lookup(Node **nodeRef,uint8_t key[],unsigned keyLength,unsigned depth,unsigned maxKeyLength) {
+static Node* lookup(Node **nodeRef,uint8_t key[],unsigned keyLength,unsigned depth,unsigned maxKeyLength) {
    // Find the node with a matching key, optimistic version
    // fprintf(stderr, "lookup %p\n", *nodeRef);
    assert(*nodeRef);
@@ -533,7 +533,7 @@ Node* lookup(Node **nodeRef,uint8_t key[],unsigned keyLength,unsigned depth,unsi
 }
 
 
-Node* lower_bound(Node *&node, uint8_t key[], unsigned keyLength, unsigned depth, unsigned maxKeyLength, bool skippedPrefix=false, bool bigger = false) {
+static Node* lower_bound(Node *&node, uint8_t key[], unsigned keyLength, unsigned depth, unsigned maxKeyLength, bool skippedPrefix=false, bool bigger = false) {
    ART_DEBUG("lower_boundx depth = %u, %p, bigger = %d\n", depth, node, bigger);
    // if (!node) return NULL;
    assert(node);
@@ -664,7 +664,7 @@ Node* lower_bound(Node *&node, uint8_t key[], unsigned keyLength, unsigned depth
    return NULL;
 }
 
-Node* lower_bound_prev(Node* node, uint8_t key[], unsigned keyLength, unsigned depth, unsigned maxKeyLength, bool skippedPrefix=false, bool is_less = false) {
+static Node* lower_bound_prev(Node* node, uint8_t key[], unsigned keyLength, unsigned depth, unsigned maxKeyLength, bool skippedPrefix=false, bool is_less = false) {
    // ART_DEBUG("lower_prev1 %u, leaf = %d\n", depth, isLeaf(node));
    if (!node) return NULL;
 
@@ -793,7 +793,7 @@ Node* lower_bound_prev(Node* node, uint8_t key[], unsigned keyLength, unsigned d
    return NULL;
 }
 
-Node* lookupPessimistic(Node* node,uint8_t key[],unsigned keyLength,unsigned depth,unsigned maxKeyLength) {
+static Node* lookupPessimistic(Node* node,uint8_t key[],unsigned keyLength,unsigned depth,unsigned maxKeyLength) {
    // Find the node with a matching key, alternative pessimistic version
 
    while (node!=NULL) {
@@ -814,18 +814,18 @@ Node* lookupPessimistic(Node* node,uint8_t key[],unsigned keyLength,unsigned dep
    return NULL;
 }
 
-unsigned min(unsigned a,unsigned b) {
+static unsigned min(unsigned a,unsigned b) {
    // Helper function
    return (a<b)?a:b;
 }
 
-void copyPrefix(Node* src, Node* dst) {
+static void copyPrefix(Node* src, Node* dst) {
    // Helper function that copies the prefix from the source to the destination node
    dst->prefixLength = src->prefixLength;
    memcpy(dst->prefix, src->prefix, min(src->prefixLength, maxPrefixLength));
 }
 
-void rec_insert(Node *&node, int depth, int maxKeyLength, uintptr_t *tmp, int N) {
+static void rec_insert(Node *&node, int depth, int maxKeyLength, uintptr_t *tmp, int N) {
    if (N < 25600) {
       delete node;
       node = NULL;
@@ -900,7 +900,7 @@ void rec_insert(Node *&node, int depth, int maxKeyLength, uintptr_t *tmp, int N)
    delete[] tmp2;
 }
 
-void bulk_insert(Node *&node, int *arr, int N) {
+static void bulk_insert(Node *&node, int *arr, int N) {
    uintptr_t *tmp = new uintptr_t[N];
    for (int i = 0; i < N; i++) {
       uint8_t *key = (uint8_t*) &tmp[i];
@@ -912,7 +912,7 @@ void bulk_insert(Node *&node, int *arr, int N) {
    delete[] tmp;
 }
 
-void insert(Node **node,uint8_t key[],unsigned depth,uintptr_t value,unsigned maxKeyLength) {
+static void insert(Node **node,uint8_t key[],unsigned depth,uintptr_t value,unsigned maxKeyLength) {
    // Insert the leaf value into the tree
    // ART_DEBUG("Insert depth = %d, %u, node = %p\n", depth, depth < maxKeyLength ? key[depth] : 0, node);
 
@@ -1005,7 +1005,7 @@ void insert(Node **node,uint8_t key[],unsigned depth,uintptr_t value,unsigned ma
    }
 }
 
-void insertNode4(Node4 *&node, uint8_t keyByte, Node *child) {
+static void insertNode4(Node4 *&node, uint8_t keyByte, Node *child) {
    // Insert leaf into inner node
    if (node->count < 4) {
       // Insert element
@@ -1033,7 +1033,7 @@ void insertNode4(Node4 *&node, uint8_t keyByte, Node *child) {
    }
 }
 
-void insertNode16(Node16* &node,uint8_t keyByte,Node* child) {
+static void insertNode16(Node16* &node,uint8_t keyByte,Node* child) {
    // Insert leaf into inner node
    if (node->count<16) {
       // ART_DEBUG("insert16 %d\n", node->count);
@@ -1062,7 +1062,7 @@ void insertNode16(Node16* &node,uint8_t keyByte,Node* child) {
    }
 }
 
-void insertNode48(Node48 *&node,uint8_t keyByte,Node* child) {
+static void insertNode48(Node48 *&node,uint8_t keyByte,Node* child) {
    // Insert leaf into inner node
    if (node->count<48) {
       // Insert element
@@ -1088,7 +1088,7 @@ void insertNode48(Node48 *&node,uint8_t keyByte,Node* child) {
    }
 }
 
-void insertNode256(Node256* &node,uint8_t keyByte,Node* child) {
+static void insertNode256(Node256* &node,uint8_t keyByte,Node* child) {
    // Insert leaf into inner node
    // ART_DEBUG("insert256 %d\n", node->count);
    node->count++;
@@ -1096,12 +1096,12 @@ void insertNode256(Node256* &node,uint8_t keyByte,Node* child) {
 }
 
 // Forward references
-void eraseNode4(Node4* node,Node** nodeRef,Node** leafPlace);
-void eraseNode16(Node16* node,Node** nodeRef,Node** leafPlace);
-void eraseNode48(Node48* node,Node** nodeRef,uint8_t keyByte);
-void eraseNode256(Node256* node,Node** nodeRef,uint8_t keyByte);
+static void eraseNode4(Node4* node,Node** nodeRef,Node** leafPlace);
+static void eraseNode16(Node16* node,Node** nodeRef,Node** leafPlace);
+static void eraseNode48(Node48* node,Node** nodeRef,uint8_t keyByte);
+static void eraseNode256(Node256* node,Node** nodeRef,uint8_t keyByte);
 
-void erase(Node* node,Node** nodeRef,uint8_t key[],unsigned keyLength,unsigned depth,unsigned maxKeyLength) {
+static void erase(Node* node,Node** nodeRef,uint8_t key[],unsigned keyLength,unsigned depth,unsigned maxKeyLength) {
    // Delete a leaf from a tree
    while (true) {
       ART_DEBUG("ERASE %p %d\n", node, depth);
@@ -1166,7 +1166,7 @@ void erase(Node* node,Node** nodeRef,uint8_t key[],unsigned keyLength,unsigned d
    }
 }
 
-void eraseNode4(Node4* node,Node** nodeRef,Node** leafPlace) {
+static void eraseNode4(Node4* node,Node** nodeRef,Node** leafPlace) {
    // Delete leaf from inner node
    unsigned pos=leafPlace-node->child;
    memmove(node->key+pos,node->key+pos+1,node->count-pos-1);
@@ -1198,7 +1198,7 @@ void eraseNode4(Node4* node,Node** nodeRef,Node** leafPlace) {
    }
 }
 
-void eraseNode16(Node16* node,Node** nodeRef,Node** leafPlace) {
+static void eraseNode16(Node16* node,Node** nodeRef,Node** leafPlace) {
    // Delete leaf from inner node
    unsigned pos=leafPlace-node->child;
    memmove(node->key+pos,node->key+pos+1,node->count-pos-1);
@@ -1219,7 +1219,7 @@ void eraseNode16(Node16* node,Node** nodeRef,Node** leafPlace) {
    }
 }
 
-void eraseNode48(Node48* node,Node** nodeRef,uint8_t keyByte) {
+static void eraseNode48(Node48* node,Node** nodeRef,uint8_t keyByte) {
    // Delete leaf from inner node
    node->child[node->childIndex[keyByte]]=NULL;
    node->childIndex[keyByte]=emptyMarker;
@@ -1242,7 +1242,7 @@ void eraseNode48(Node48* node,Node** nodeRef,uint8_t keyByte) {
    }
 }
 
-void eraseNode256(Node256* node,Node** nodeRef,uint8_t keyByte) {
+static void eraseNode256(Node256* node,Node** nodeRef,uint8_t keyByte) {
    // Delete leaf from inner node
    node->child[keyByte]=NULL;
    node->count--;
