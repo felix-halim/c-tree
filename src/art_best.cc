@@ -25,23 +25,19 @@ void init(int *arr, int N) {
 void insert(int value64) {
   uint8_t key[8];
   loadKey(value64, key);
-  insert(tree,key,0,value64,8,true);
+  insert(&tree,key,0,value64,8);
 }
 
 void erase(int value) {
   uint8_t key[8];
   uint64_t value64 = value;
   loadKey(value64, key);
-  assert(lookup(&tree,key,8,0,8));
+  // assert(lookup(&tree,key,8,0,8));
   erase(tree,&tree,key,8,0,8);
   // assert(!lookup(&tree,key,8,0,8));
 }
 
 int query(int value) {
-  // art_debug = value == 754275843;
-  // art_debug = 1;
-  ART_DEBUG("\nquery %d\n", value);
-  // fprintf(stderr, "query %lld\n", value);
   uint64_t value64 = value;
   uint8_t key[8];
   loadKey(value64, key);

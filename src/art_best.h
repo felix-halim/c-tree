@@ -284,17 +284,17 @@ unsigned prefixMismatch(Node* node,uint8_t key[],unsigned depth,unsigned maxKeyL
 }
 
 // Forward references
-Node** insertNode4(Node4 *&node, uint8_t keyByte, Node* child);
-Node** insertNode16(Node16 *&node, uint8_t keyByte, Node* child);
-Node** insertNode48(Node48 *&node, uint8_t keyByte, Node* child);
-Node** insertNode256(Node256 *&node, uint8_t keyByte, Node* child);
+void insertNode4(Node4 *&node, uint8_t keyByte, Node* child);
+void insertNode16(Node16 *&node, uint8_t keyByte, Node* child);
+void insertNode48(Node48 *&node, uint8_t keyByte, Node* child);
+void insertNode256(Node256 *&node, uint8_t keyByte, Node* child);
 
 void flush_inserts(Node *&node, int depth, int maxKeyLength);
-void insert(Node *&node,uint8_t key[],unsigned depth,uintptr_t value,unsigned maxKeyLength, bool eager);
+void insert(Node **node,uint8_t key[],unsigned depth,uintptr_t value,unsigned maxKeyLength);
 int ccc = 0, NN = 0;
 static uintptr_t *pending_tmp;
 
-void flush_bulk_insert(Node *&node, int depth, int maxKeyLength, int parr, int N, bool lower) {
+static void flush_bulk_insert(Node *&node, int depth, int maxKeyLength, int parr, int N, bool lower) {
    if (node->count) return;
    uintptr_t *tmp, *tmp2;
    if (lower) {
@@ -309,12 +309,12 @@ void flush_bulk_insert(Node *&node, int depth, int maxKeyLength, int parr, int N
    delete node;
    node = NULL;
 
-   if (N < 512) {
+   if (N < 12048) {
       // fprintf(stderr, "insert all\n");
       for (int i = 0; i < N; i++) {
          uint8_t *key = (uint8_t*) &tmp[i];
          // fprintf(stderr, "insert %d\n", i);
-         insert(node, key, depth, __builtin_bswap64(tmp[i]), maxKeyLength, true);
+         insert(&node, key, depth, __builtin_bswap64(tmp[i]), maxKeyLength);
          ccc++;
       }
       // fprintf(stderr, "done insert all\n");
@@ -369,19 +369,16 @@ void flush_bulk_insert(Node *&node, int depth, int maxKeyLength, int parr, int N
    sidx = 0;
    for (int i = 0; i < 256; i++) {
       if (sidx < cnt[i]) {
-         Node** child = NULL;
          Node* dum = new Node4();
          assert(!isLeaf(dum));
          dum->set_parr(parr + sidx);
          dum->set_psize(lower? (sidx - cnt[i]) : (cnt[i] - sidx));
          switch (node->type) {
-            case NodeType4: child = insertNode4((Node4*&) node, (uint8_t) i, dum); break;
-            case NodeType16: child = insertNode16((Node16*&) node, (uint8_t) i, dum); break;
-            case NodeType48: child = insertNode48((Node48*&) node, (uint8_t) i, dum); break;
-            case NodeType256: child = insertNode256((Node256*&) node, (uint8_t) i, dum); break;
+            case NodeType4: insertNode4((Node4*&) node, (uint8_t) i, dum); break;
+            case NodeType16: insertNode16((Node16*&) node, (uint8_t) i, dum); break;
+            case NodeType48: insertNode48((Node48*&) node, (uint8_t) i, dum); break;
+            case NodeType256: insertNode256((Node256*&) node, (uint8_t) i, dum); break;
          }
-         // fprintf(stderr, "nchild = %d\n", nchild);
-         assert(*child == dum);
       }
       sidx = cnt[i];
    }
@@ -470,10 +467,12 @@ Node* lower_bound(Node *&node, uint8_t key[], unsigned keyLength, unsigned depth
    // if (!node) return NULL;
    assert(node);
 
+   #ifndef EAGER
    if (!isLeaf(node)) {
       // fprintf(stderr, "nodep = %p, cnt = %d, psize = %d, depth = %d\n", node, node->count, node->psize, depth);
       flush_bulk_insert(node, depth, maxKeyLength, node->parr(), abs(node->psize()), node->psize() >= 0);
    }
+   #endif
 
    if (isLeaf(node)) {
       if (!skippedPrefix && depth == keyLength) // No check required
@@ -482,11 +481,11 @@ Node* lower_bound(Node *&node, uint8_t key[], unsigned keyLength, unsigned depth
       if (depth && depth != keyLength && !bigger) {
          uint8_t leafKey[maxKeyLength];
          loadKey(getLeafValue(node),leafKey);
-         #ifndef NDEBUG
+         if (art_debug) {
             for (unsigned i = 0; i < keyLength; i++) {
                ART_DEBUG("i = %d, %u %u\n", i, leafKey[i], key[i]);
             }
-         #endif
+         }
          for (unsigned i=(skippedPrefix?0:depth);i<keyLength;i++) {
             ART_DEBUG("i => %u, %u %u\n", i, leafKey[i], key[i]);
             if (leafKey[i] < key[i]) {
@@ -501,10 +500,6 @@ Node* lower_bound(Node *&node, uint8_t key[], unsigned keyLength, unsigned depth
       ART_DEBUG("YES\n");
       return node;
    }
-
-
-   // flush_inserts(node, depth, maxKeyLength);
-   // fprintf(stderr, "depth = %d, prefixLength = %u\n", depth, node->prefixLength);
 
    // ART_DEBUG("prefixLength = %u\n", node->prefixLength);
    if (node->prefixLength) {
@@ -521,7 +516,6 @@ Node* lower_bound(Node *&node, uint8_t key[], unsigned keyLength, unsigned depth
          skippedPrefix=true;
       depth+=node->prefixLength;
    }
-   // fprintf(stderr, "depth = %d, node = %p\n", depth, node);
 
    Node *n = node;
    int keyByte = key[depth++];
@@ -531,11 +525,11 @@ Node* lower_bound(Node *&node, uint8_t key[], unsigned keyLength, unsigned depth
             ART_DEBUG("LoweBound4, count = %d\n", node->count);
             Node4* node = static_cast<Node4*>(n);
             for (int i = 0; i < node->count; i++) {
-               Node *c = node->child[i];
+               Node *&c = node->child[i];
                ART_DEBUG("i = %d, key4 = %d >= %d, %lu\n", i, node->key[i], keyByte, isLeaf(c) ? getLeafValue(c) : 0);
                if (node->key[i] >= keyByte || bigger) {
-                  ART_DEBUG("got it, %d\n", isLeaf(node->child[i]));
-                  Node *ret = lower_bound(node->child[i], key, keyLength, depth, maxKeyLength, skippedPrefix, bigger || node->key[i] > keyByte);
+                  // ART_DEBUG("got it, %d\n", isLeaf(node->child[i]));
+                  Node *ret = lower_bound(c, key, keyLength, depth, maxKeyLength, skippedPrefix, bigger || node->key[i] > keyByte);
                   if (ret) return ret;
                }
             }
@@ -567,8 +561,7 @@ Node* lower_bound(Node *&node, uint8_t key[], unsigned keyLength, unsigned depth
             if (bigger) keyByte = 0;
             while (keyByte < 256) {
                if (node->childIndex[keyByte] != emptyMarker) {
-                  int i = node->childIndex[keyByte];
-                  Node *ret = lower_bound(node->child[i], key, keyLength, depth, maxKeyLength, skippedPrefix, bigger);
+                  Node *ret = lower_bound(node->child[node->childIndex[keyByte]], key, keyLength, depth, maxKeyLength, skippedPrefix, bigger);
                   if (ret) return ret;
                }
                keyByte++;
@@ -762,10 +755,12 @@ void copyPrefix(Node* src, Node* dst) {
 }
 
 void rec_insert(Node *&node, int depth, int maxKeyLength, uintptr_t *tmp, int N, uintptr_t *tmp2) {
-   if (N < 256) {
+   if (N < 25600) {
+      delete node;
+      node = NULL;
       for (int i = 0; i < N; i++) {
          uint8_t *key = (uint8_t*) &tmp[i];
-         insert(node, key, depth, __builtin_bswap64(tmp[i]), maxKeyLength, true);
+         insert(&node, key, depth, __builtin_bswap64(tmp[i]), maxKeyLength);
          ccc++;
       }
       return;
@@ -817,14 +812,14 @@ void rec_insert(Node *&node, int depth, int maxKeyLength, uintptr_t *tmp, int N,
    sidx = 0;
    for (int i = 0; i < 256; i++) {
       if (sidx < cnt[i]) {
-         Node** child = NULL;
          switch (node->type) {
-            case NodeType4: child = insertNode4((Node4*&) node, (uint8_t) i, NULL); break;
-            case NodeType16: child = insertNode16((Node16*&) node, (uint8_t) i, NULL); break;
-            case NodeType48: child = insertNode48((Node48*&) node, (uint8_t) i, NULL); break;
-            case NodeType256: child = insertNode256((Node256*&) node, (uint8_t) i, NULL); break;
+            case NodeType4: insertNode4((Node4*&) node, (uint8_t) i, NULL); break;
+            case NodeType16: insertNode16((Node16*&) node, (uint8_t) i, NULL); break;
+            case NodeType48: insertNode48((Node48*&) node, (uint8_t) i, NULL); break;
+            case NodeType256: insertNode256((Node256*&) node, (uint8_t) i, NULL); break;
          }
          // fprintf(stderr, "nchild = %d\n", nchild);
+         Node **child = findChild(node, i);
          assert(child);
          rec_insert(*child, ndepth, maxKeyLength, tmp2 + sidx, cnt[i] - sidx, tmp + sidx);
       }
@@ -846,99 +841,102 @@ void bulk_insert(Node *&node, int *arr, int N) {
    delete[] tmp2;
 }
 
-void insert(Node *&node,uint8_t key[],unsigned depth,uintptr_t value,unsigned maxKeyLength, bool eager) {
+void insert(Node **node,uint8_t key[],unsigned depth,uintptr_t value,unsigned maxKeyLength) {
    // Insert the leaf value into the tree
    // ART_DEBUG("Insert depth = %d, %u, node = %p\n", depth, depth < maxKeyLength ? key[depth] : 0, node);
 
-   if (node==NULL) {
-      ART_DEBUG("null leaf %d %lu\n", depth, value);
-      node=makeLeaf(value);
-      return;
-   }
-
-   if (!isLeaf(node)) {
-      // fprintf(stderr, "nodep = %p, cnt = %d, psize = %d, depth = %d\n", node, node->count, node->psize, depth);
-      flush_bulk_insert(node, depth, maxKeyLength, node->parr(), abs(node->psize()), node->psize() >= 0);
-   }
-
-   if (isLeaf(node)) {
-      ART_DEBUG("insert leaf %d %lu\n", depth, value);
-      // Replace leaf with Node4 and store both leaves in it
-      uint8_t existingKey[maxKeyLength];
-      loadKey(getLeafValue(node),existingKey);
-      unsigned newPrefixLength=0;
-      while (existingKey[depth+newPrefixLength]==key[depth+newPrefixLength])
-         newPrefixLength++;
-
-      Node4* newNode=new Node4();
-      newNode->prefixLength=newPrefixLength;
-      memcpy(newNode->prefix,key+depth,min(newPrefixLength,maxPrefixLength));
-      Node *oldNode = node;
-      node=newNode;
-
-      insertNode4((Node4*&) node,existingKey[depth+newPrefixLength],oldNode);
-      insertNode4((Node4*&) node,key[depth+newPrefixLength],makeLeaf(value));
-      return;
-   }
-
-   // ART_DEBUG("continue insert %d\n", depth);
-
-   // Handle prefix of inner node
-   if (node->prefixLength) {
-      unsigned mismatchPos=prefixMismatch(node,key,depth,maxKeyLength);
-      Node *oldNode = node;
-      if (mismatchPos!=oldNode->prefixLength) {
-         // Prefix differs, create new node
-         ART_DEBUG("Prefix Differs\n");
-         Node4* newNode=new Node4();
-         node = newNode;
-         newNode->prefixLength=mismatchPos;
-         memcpy(newNode->prefix,oldNode->prefix,min(mismatchPos,maxPrefixLength));
-         // Break up prefix
-         if (oldNode->prefixLength<maxPrefixLength) {
-            ART_DEBUG("Break Prefix\n");
-            insertNode4((Node4*&) node, oldNode->prefix[mismatchPos], oldNode);
-            oldNode->prefixLength-=(mismatchPos+1);
-            memmove(oldNode->prefix,oldNode->prefix+mismatchPos+1,min(oldNode->prefixLength,maxPrefixLength));
-         } else {
-            ART_DEBUG("Break Prefix2\n");
-            oldNode->prefixLength-=(mismatchPos+1);
-            uint8_t minKey[maxKeyLength];
-            loadKey(getLeafValue(minimum(oldNode)),minKey);
-            insertNode4((Node4*&) node,minKey[depth+mismatchPos],oldNode);
-            memmove(oldNode->prefix,minKey+depth+mismatchPos+1,min(oldNode->prefixLength,maxPrefixLength));
-         }
-         insertNode4((Node4*&) node,key[depth+mismatchPos],makeLeaf(value));
+   while (true) {
+      if (*node==NULL) {
+         // ART_DEBUG("null leaf %d %lu\n", depth, value);
+         *node=makeLeaf(value);
          return;
       }
-      depth+=oldNode->prefixLength;
-   }
 
-   // Recurse
-   Node** child=findChild(node,key[depth]);
-   if (*child) {
-      ART_DEBUG("Recurse %d from %p to %p; ", depth, node, *child);
-      insert(*child,key,depth+1,value,maxKeyLength,eager);
-      return;
-   }
+      #ifndef EAGER
+      if (!isLeaf(*node)) {
+         // fprintf(stderr, "nodep = %p, cnt = %d, psize = %d, depth = %d\n", node, node->count, node->psize, depth);
+         flush_bulk_insert(*node, depth, maxKeyLength, (*node)->parr(), abs((*node)->psize()), (*node)->psize() >= 0);
+      }
+      #endif
 
-   // Insert leaf into inner node
-   Node* newNode=makeLeaf(value);
-   // ART_DEBUG("Insert Inner\n");
-   switch (node->type) {
-      case NodeType4: insertNode4((Node4*&) node, key[depth], newNode); break;
-      case NodeType16: insertNode16((Node16*&) node, key[depth], newNode); break;
-      case NodeType48: insertNode48((Node48*&) node, key[depth], newNode); break;
-      case NodeType256: insertNode256((Node256*&) node, key[depth], newNode); break;
+      if (isLeaf(*node)) {
+         // Replace leaf with Node4 and store both leaves in it
+         uint8_t existingKey[maxKeyLength];
+         loadKey(getLeafValue(*node),existingKey);
+         unsigned newPrefixLength=0;
+         while (existingKey[depth+newPrefixLength]==key[depth+newPrefixLength])
+            newPrefixLength++;
+
+         Node4* newNode=new Node4();
+         newNode->prefixLength=newPrefixLength;
+         memcpy(newNode->prefix,key+depth,min(newPrefixLength,maxPrefixLength));
+         Node *oldNode = *node;
+         *node=newNode;
+
+         insertNode4((Node4*&) *node,existingKey[depth+newPrefixLength],oldNode);
+         insertNode4((Node4*&) *node,key[depth+newPrefixLength],makeLeaf(value));
+         return;
+      }
+
+      // ART_DEBUG("continue insert %d\n", depth);
+
+      // Handle prefix of inner node
+      if ((*node)->prefixLength) {
+         unsigned mismatchPos=prefixMismatch(*node,key,depth,maxKeyLength);
+         Node *oldNode = *node;
+         if (mismatchPos!=oldNode->prefixLength) {
+            // Prefix differs, create new node
+            ART_DEBUG("Prefix Differs\n");
+            Node4* newNode=new Node4();
+            *node = newNode;
+            newNode->prefixLength=mismatchPos;
+            memcpy(newNode->prefix,oldNode->prefix,min(mismatchPos,maxPrefixLength));
+            // Break up prefix
+            if (oldNode->prefixLength<maxPrefixLength) {
+               ART_DEBUG("Break Prefix\n");
+               insertNode4((Node4*&) *node, oldNode->prefix[mismatchPos], oldNode);
+               oldNode->prefixLength-=(mismatchPos+1);
+               memmove(oldNode->prefix,oldNode->prefix+mismatchPos+1,min(oldNode->prefixLength,maxPrefixLength));
+            } else {
+               ART_DEBUG("Break Prefix2\n");
+               oldNode->prefixLength-=(mismatchPos+1);
+               uint8_t minKey[maxKeyLength];
+               loadKey(getLeafValue(minimum(oldNode)),minKey);
+               insertNode4((Node4*&) *node,minKey[depth+mismatchPos],oldNode);
+               memmove(oldNode->prefix,minKey+depth+mismatchPos+1,min(oldNode->prefixLength,maxPrefixLength));
+            }
+            insertNode4((Node4*&) *node,key[depth+mismatchPos],makeLeaf(value));
+            return;
+         }
+         depth+=oldNode->prefixLength;
+      }
+
+      // Recurse
+      Node** child=findChild(*node,key[depth]);
+      if (!*child) {
+         // Insert leaf into inner node
+         Node* newNode=makeLeaf(value);
+         // ART_DEBUG("Insert Inner\n");
+         switch ((*node)->type) {
+            case NodeType4: insertNode4((Node4*&) *node, key[depth], newNode); break;
+            case NodeType16: insertNode16((Node16*&) *node, key[depth], newNode); break;
+            case NodeType48: insertNode48((Node48*&) *node, key[depth], newNode); break;
+            case NodeType256: insertNode256((Node256*&) *node, key[depth], newNode); break;
+         }
+         return;
+      }
+
+      // ART_DEBUG("Recurse %d from %p to %p; ", depth, node, *child);
+      node = child;
+      depth++;
    }
-   ART_DEBUG("done inner \n");
 }
 
-Node** insertNode4(Node4 *&node, uint8_t keyByte, Node *child) {
+void insertNode4(Node4 *&node, uint8_t keyByte, Node *child) {
    // Insert leaf into inner node
    if (node->count < 4) {
       // Insert element
-      ART_DEBUG("insert4 %d\n", node->count);
+      // ART_DEBUG("insert4 %d\n", node->count);
       int pos;
       for (pos=0;(pos<node->count)&&(node->key[pos]<keyByte);pos++);
       memmove(node->key+pos+1,node->key+pos,node->count-pos);
@@ -946,11 +944,10 @@ Node** insertNode4(Node4 *&node, uint8_t keyByte, Node *child) {
       node->key[pos]=keyByte;
       node->child[pos]=child;
       node->count++;
-      ART_DEBUG("insert4d %d\n", node->count);
-      return &node->child[pos];
+      // ART_DEBUG("insert4d %d\n", node->count);
    } else {
       // Grow to Node16
-      ART_DEBUG("insert4to16 %d\n", node->count);
+      // ART_DEBUG("insert4to16 %d\n", node->count);
       Node16* newNode=new Node16();
       newNode->count=4;
       copyPrefix(node,newNode);
@@ -960,14 +957,13 @@ Node** insertNode4(Node4 *&node, uint8_t keyByte, Node *child) {
       delete node;
       node = (Node4*&) newNode;
       insertNode16((Node16*&) node,keyByte,child);
-      return NULL;
    }
 }
 
-Node** insertNode16(Node16* &node,uint8_t keyByte,Node* child) {
+void insertNode16(Node16* &node,uint8_t keyByte,Node* child) {
    // Insert leaf into inner node
    if (node->count<16) {
-      ART_DEBUG("insert16 %d\n", node->count);
+      // ART_DEBUG("insert16 %d\n", node->count);
       // Insert element
       uint8_t keyByteFlipped=flipSign(keyByte);
       __m128i cmp=_mm_cmplt_epi8(_mm_set1_epi8(keyByteFlipped),_mm_loadu_si128(reinterpret_cast<__m128i*>(node->key)));
@@ -978,10 +974,9 @@ Node** insertNode16(Node16* &node,uint8_t keyByte,Node* child) {
       node->key[pos]=keyByteFlipped;
       node->child[pos]=child;
       node->count++;
-      return &node->child[pos];
    } else {
       // Grow to Node48
-      ART_DEBUG("insert16to48 %d\n", node->count);
+      // ART_DEBUG("insert16to48 %d\n", node->count);
       Node48* newNode=new Node48();
       memcpy(newNode->child,node->child,node->count*sizeof(uintptr_t));
       for (int i=0;i<node->count;i++)
@@ -991,25 +986,23 @@ Node** insertNode16(Node16* &node,uint8_t keyByte,Node* child) {
       delete node;
       node = (Node16*) newNode;
       insertNode48((Node48*&) node,keyByte,child);
-      return NULL;
    }
 }
 
-Node** insertNode48(Node48 *&node,uint8_t keyByte,Node* child) {
+void insertNode48(Node48 *&node,uint8_t keyByte,Node* child) {
    // Insert leaf into inner node
    if (node->count<48) {
       // Insert element
-      ART_DEBUG("insert48 %d\n", node->count);
+      // ART_DEBUG("insert48 %d\n", node->count);
       unsigned pos=node->count;
       if (node->child[pos])
          for (pos=0;node->child[pos]!=NULL;pos++);
       node->child[pos]=child;
       node->childIndex[keyByte]=pos;
       node->count++;
-      return &node->child[pos];
    } else {
       // Grow to Node256
-      ART_DEBUG("insert48to256 %d\n", node->count);
+      // ART_DEBUG("insert48to256 %d\n", node->count);
       Node256* newNode=new Node256();
       for (unsigned i=0;i<256;i++)
          if (node->childIndex[i]!=48)
@@ -1019,16 +1012,14 @@ Node** insertNode48(Node48 *&node,uint8_t keyByte,Node* child) {
       delete node;
       node = (Node48*) newNode;
       insertNode256((Node256*&) node,keyByte,child);
-      return NULL;
    }
 }
 
-Node** insertNode256(Node256* &node,uint8_t keyByte,Node* child) {
+void insertNode256(Node256* &node,uint8_t keyByte,Node* child) {
    // Insert leaf into inner node
-   ART_DEBUG("insert256 %d\n", node->count);
+   // ART_DEBUG("insert256 %d\n", node->count);
    node->count++;
    node->child[keyByte]=child;
-   return &node->child[keyByte];
 }
 
 // Forward references
@@ -1039,64 +1030,66 @@ void eraseNode256(Node256* node,Node** nodeRef,uint8_t keyByte);
 
 void erase(Node* node,Node** nodeRef,uint8_t key[],unsigned keyLength,unsigned depth,unsigned maxKeyLength) {
    // Delete a leaf from a tree
-
-   ART_DEBUG("ERASE %p %d\n", node, depth);
-   assert(node);
-   // fprintf(stderr, "erase %p\n", node);
-   if (!node) {
-      ART_DEBUG("NO NODE\n");
-      return;
-   }
-
-   if (!isLeaf(node)) {
-      // fprintf(stderr, "nodep = %p, cnt = %d, psize = %d, depth = %d\n", node, node->count, node->psize, depth);
-      flush_bulk_insert(*nodeRef, depth, maxKeyLength, (*nodeRef)->parr(), abs((*nodeRef)->psize()), (*nodeRef)->psize() >= 0);
-      node = *nodeRef;
-   }
-   assert(node);
-
-   if (isLeaf(node)) {
-      // Make sure we have the right leaf
-      if (leafMatches(node,key,keyLength,depth,maxKeyLength)) {
-         ART_DEBUG("DONE DELETE %p %p\n", node, *nodeRef);
-         *nodeRef=NULL;
-         ART_DEBUG("DONE DELETE %p %p\n", node, *nodeRef);
-      } else {
-         ART_DEBUG("DONE LEAF NOT MATCH\n");
-      }
-      return;
-   }
-
-   node = *nodeRef;
-
-   // Handle prefix
-   // ART_DEBUG("PREFIX LEN = %d\n", node->prefixLength);
-   if (node->prefixLength) {
-      if (prefixMismatch(node,key,depth,maxKeyLength)!=node->prefixLength) {
-         ART_DEBUG("PREFIX MISMATCH\n");
+   while (true) {
+      ART_DEBUG("ERASE %p %d\n", node, depth);
+      assert(node);
+      if (!node) {
+         ART_DEBUG("NO NODE\n");
          return;
       }
-      depth+=node->prefixLength;
-   }
 
-   // ART_DEBUG("PREFIX LEN2 = %d, depth = %u\n", node->prefixLength, depth);
-   Node** child = findChild(node,key[depth]);
-   assert(*child);
-   // ART_DEBUG("PREFIX LEN3 = %p\n", child);
-   // ART_DEBUG("CHILD = %p\n", *child);
-
-   if (isLeaf(*child)&&leafMatches(*child,key,keyLength,depth,maxKeyLength)) {
-      // Leaf found, delete it in inner node
-      ART_DEBUG("LEAF FOUND\n");
-      switch (node->type) {
-         case NodeType4: eraseNode4(static_cast<Node4*>(node),nodeRef,child); break;
-         case NodeType16: eraseNode16(static_cast<Node16*>(node),nodeRef,child); break;
-         case NodeType48: eraseNode48(static_cast<Node48*>(node),nodeRef,key[depth]); break;
-         case NodeType256: eraseNode256(static_cast<Node256*>(node),nodeRef,key[depth]); break;
+      #ifndef EAGER
+      if (!isLeaf(node)) {
+         // fprintf(stderr, "nodep = %p, cnt = %d, psize = %d, depth = %d\n", node, node->count, node->psize, depth);
+         flush_bulk_insert(*nodeRef, depth, maxKeyLength, (*nodeRef)->parr(), abs((*nodeRef)->psize()), (*nodeRef)->psize() >= 0);
+         node = *nodeRef;
       }
-   } else {
+      assert(node);
+      #endif
+
+      if (isLeaf(node)) {
+         // Make sure we have the right leaf
+         if (leafMatches(node,key,keyLength,depth,maxKeyLength)) {
+            ART_DEBUG("DONE DELETE %p %p\n", node, *nodeRef);
+            *nodeRef=NULL;
+            ART_DEBUG("DONE DELETE %p %p\n", node, *nodeRef);
+         } else {
+            ART_DEBUG("DONE LEAF NOT MATCH\n");
+         }
+         return;
+      }
+
+      // Handle prefix
+      // ART_DEBUG("PREFIX LEN = %d\n", node->prefixLength);
+      if (node->prefixLength) {
+         if (prefixMismatch(node,key,depth,maxKeyLength)!=node->prefixLength) {
+            ART_DEBUG("PREFIX MISMATCH\n");
+            return;
+         }
+         depth+=node->prefixLength;
+      }
+
+      // ART_DEBUG("PREFIX LEN2 = %d, depth = %u\n", node->prefixLength, depth);
+      Node** child = findChild(node,key[depth]);
+      assert(*child);
+      // ART_DEBUG("PREFIX LEN3 = %p\n", child);
+      // ART_DEBUG("CHILD = %p\n", *child);
+
+      if (isLeaf(*child)&&leafMatches(*child,key,keyLength,depth,maxKeyLength)) {
+         // Leaf found, delete it in inner node
+         ART_DEBUG("LEAF FOUND\n");
+         switch (node->type) {
+            case NodeType4: eraseNode4(static_cast<Node4*>(node),nodeRef,child); break;
+            case NodeType16: eraseNode16(static_cast<Node16*>(node),nodeRef,child); break;
+            case NodeType48: eraseNode48(static_cast<Node48*>(node),nodeRef,key[depth]); break;
+            case NodeType256: eraseNode256(static_cast<Node256*>(node),nodeRef,key[depth]); break;
+         }
+         return;
+      }
       //Recurse
-      erase(*child,child,key,keyLength,depth+1,maxKeyLength);
+      node = *child;
+      nodeRef = child;
+      depth++;
    }
 }
 
