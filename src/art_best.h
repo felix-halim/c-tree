@@ -29,6 +29,8 @@ static const unsigned maxPrefixLength=9;
 
 int art_debug = 0;
 
+int n4, n16, n48, n256, nsplit, nadv;
+
 #ifdef DNDEBUG
    #define ART_DEBUG(...)
 #else
@@ -66,6 +68,7 @@ struct Node4 : Node {
    Node4() : Node(NodeType4) {
       memset(key,0,sizeof(key));
       memset(child,0,sizeof(child));
+      n4++;
    }
 };
 
@@ -77,6 +80,7 @@ struct Node16 : Node {
    Node16() : Node(NodeType16) {
       memset(key,0,sizeof(key));
       memset(child,0,sizeof(child));
+      n16++;
    }
 };
 
@@ -90,6 +94,7 @@ struct Node48 : Node {
    Node48() : Node(NodeType48) {
       memset(childIndex,emptyMarker,sizeof(childIndex));
       memset(child,0,sizeof(child));
+      n48++;
    }
 };
 
@@ -99,6 +104,7 @@ struct Node256 : Node {
 
    Node256() : Node(NodeType256) {
       memset(child,0,sizeof(child));
+      n256++;
    }
 };
 
@@ -460,6 +466,7 @@ void rec_flush_pending(Node *&node, unsigned keyLength, unsigned depth, unsigned
       assert(pending_tmp);
       delete[] pending_tmp;
       pending_tmp = NULL;
+      fprintf(stderr, "pending_tmp deleted ");
    }
 }
 
@@ -818,7 +825,7 @@ void copyPrefix(Node* src, Node* dst) {
    memcpy(dst->prefix, src->prefix, min(src->prefixLength, maxPrefixLength));
 }
 
-void rec_insert(Node *&node, int depth, int maxKeyLength, uintptr_t *tmp, int N, uintptr_t *tmp2) {
+void rec_insert(Node *&node, int depth, int maxKeyLength, uintptr_t *tmp, int N) {
    if (N < 25600) {
       delete node;
       node = NULL;
@@ -868,11 +875,12 @@ void rec_insert(Node *&node, int depth, int maxKeyLength, uintptr_t *tmp, int N,
       }
    }
 
-   uintptr_t *arr = tmp2;
+   uintptr_t *tmp2 = new uintptr_t[N];
    for (int i = 0; i < N; i++) {
       uint8_t *key = (uint8_t*) &tmp[i];
-      arr[cnt[key[depth]]++] = tmp[i];
+      tmp2[cnt[key[depth]]++] = tmp[i];
    }
+
    sidx = 0;
    for (int i = 0; i < 256; i++) {
       if (sidx < cnt[i]) {
@@ -885,24 +893,23 @@ void rec_insert(Node *&node, int depth, int maxKeyLength, uintptr_t *tmp, int N,
          // fprintf(stderr, "nchild = %d\n", nchild);
          Node **child = findChild(node, i);
          assert(child);
-         rec_insert(*child, ndepth, maxKeyLength, tmp2 + sidx, cnt[i] - sidx, tmp + sidx);
+         rec_insert(*child, ndepth, maxKeyLength, tmp2 + sidx, cnt[i] - sidx);
       }
       sidx = cnt[i];
    }
+   delete[] tmp2;
 }
 
 void bulk_insert(Node *&node, int *arr, int N) {
    uintptr_t *tmp = new uintptr_t[N];
-   uintptr_t *tmp2 = new uintptr_t[N];
    for (int i = 0; i < N; i++) {
       uint8_t *key = (uint8_t*) &tmp[i];
       loadKey(arr[i], key);
       // insert(node, key, 0, arr[i], 8, false); // Lazy insert, chain buckets.
    }
-   rec_insert(node, 0, 8, tmp, N, tmp2);
+   rec_insert(node, 0, 8, tmp, N);
    fprintf(stderr, "ccc = %d\n", ccc);
    delete[] tmp;
-   delete[] tmp2;
 }
 
 void insert(Node **node,uint8_t key[],unsigned depth,uintptr_t value,unsigned maxKeyLength) {
@@ -939,6 +946,7 @@ void insert(Node **node,uint8_t key[],unsigned depth,uintptr_t value,unsigned ma
 
          insertNode4((Node4*&) *node,existingKey[depth+newPrefixLength],oldNode);
          insertNode4((Node4*&) *node,key[depth+newPrefixLength],makeLeaf(value));
+         nsplit++;
          return;
       }
 
@@ -973,6 +981,7 @@ void insert(Node **node,uint8_t key[],unsigned depth,uintptr_t value,unsigned ma
             return;
          }
          depth+=oldNode->prefixLength;
+         nadv++;
       }
 
       // Recurse
