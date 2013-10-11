@@ -20,7 +20,7 @@ void init(int *arr, int N) {
   // assert(c.check());
   #ifdef EAGER
     c.optimize();
-    locked = 1;
+    // locked = 1;
   #endif
   // c.save("ctree");
   // // c.debug();
