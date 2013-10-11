@@ -14,9 +14,12 @@ using namespace std;
 Node* tree = NULL;
 
 void init(int *arr, int N) {
-  sort(arr, arr + N);
+  int *a = new int[N];
+  memcpy(a, arr, sizeof(int) * N);
+  sort(a, a + N);
+
   for (int i = 0; i < N; i++) {
-    insert(arr[i]);
+    insert(a[i]);
   }
   n4 = 0;
   n16 = 0;
