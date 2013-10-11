@@ -52,7 +52,7 @@ batch_sky)    ./run.sh append comb | tee -a $out
               ./run.sh append art_best | tee -a $out
               ;;
 
-batch)        ./run.sh batch_noup
+batch)        #./run.sh batch_noup
               for U in {1..5}
               do
                      ./run.sh algo comb $U | tee -a $out
