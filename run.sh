@@ -53,7 +53,7 @@ batch_sky)    ./run.sh append comb | tee -a $out
               ;;
 
 batch)        #./run.sh batch_noup
-              for U in {1..5}
+              for U in {2..5}
               do
                      ./run.sh algo comb $U | tee -a $out
                      ./run.sh algo crack $U | tee -a $out
