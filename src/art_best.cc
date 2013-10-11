@@ -42,14 +42,14 @@ int query(int value) {
   uint8_t key[8];
   loadKey(value64, key);
 
-  #ifndef EAGER
-  static int nq = 0;
-  if (nq++ == 10000000) {
-    fprintf(stderr, "flush all inserts ... ");
-    rec_flush_pending(tree,8,0,8);
-    fprintf(stderr, "done\n");
-  }
-  #endif
+  // #ifndef EAGER
+  // static int nq = 0;
+  // if (nq++ == 10000000) {
+  //   fprintf(stderr, "flush all inserts ... ");
+  //   rec_flush_pending(tree,8,0,8);
+  //   fprintf(stderr, "done\n");
+  // }
+  // #endif
 
   Node* leaf=lower_bound(tree,key,8,0,8);
   int ret = 0;
