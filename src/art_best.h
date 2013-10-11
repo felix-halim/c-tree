@@ -46,6 +46,7 @@ struct Node {
    // compressed path (prefix)
    uint8_t prefix[maxPrefixLength];
 
+   // if parr and psize are used, then none of the above variable is used.
    void set_parr(int parr) { prefixLength = parr; }
    void set_psize(int psize) { char *a = (char*) prefix; *((int*) a)  = psize; }
    int parr() { return prefixLength; }
