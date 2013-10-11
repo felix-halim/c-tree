@@ -20,12 +20,6 @@ void init(int *arr, int N) {
     pending_bulk_insert(tree, arr, N); // Lazy insert, chain buckets.
   #endif
   // art_debug = 1;
-  n4 = 0;
-  n16 = 0;
-  n48 = 0;
-  n256 = 0;
-  nsplit = 0;
-  nadv = 0;
 }
 
 void insert(int value64) {
@@ -46,13 +40,16 @@ void erase(int value) {
 int query(int value) {
   uint64_t value64 = value;
   uint8_t key[8];
+  loadKey(value64, key);
+
+  #ifndef EAGER
   static int nq = 0;
   if (nq++ == 10000000) {
     fprintf(stderr, "flush all inserts ... ");
     rec_flush_pending(tree,8,0,8);
     fprintf(stderr, "done\n");
   }
-  loadKey(value64, key);
+  #endif
 
   // if (value == 61554031375105761) art_debug = 1;
   Node* leaf=lower_bound(tree,key,8,0,8);
@@ -66,10 +63,4 @@ int query(int value) {
 }
 
 void results(Statistics &s) {
-  s.in_size = nsplit;
-  s.ln_size = nadv;
-  s.ia_free = n4;
-  s.ia_size = n16;
-  s.la_free = n48;
-  s.la_size = n256;
 }
