@@ -399,6 +399,65 @@ void pending_bulk_insert(Node *&node, int *arr, int N) {
    // rec_insert(node, 0, 8, tmp, 0, N, tmp2);
 }
 
+void rec_flush_pending(Node *&node, unsigned keyLength, unsigned depth, unsigned maxKeyLength) {
+   // if (!node) return NULL;
+   assert(node);
+
+   #ifndef EAGER
+   if (!isLeaf(node)) {
+      // fprintf(stderr, "nodep = %p, cnt = %d, psize = %d, depth = %d\n", node, node->count, node->psize, depth);
+      flush_bulk_insert(node, depth, maxKeyLength, node->parr(), abs(node->psize()), node->psize() >= 0);
+   }
+   #endif
+
+   if (isLeaf(node)) return;
+   if (node->prefixLength) depth+=node->prefixLength;
+
+   Node *n = node;
+   depth++;
+
+   switch (n->type) {
+      case NodeType4: {
+            Node4* node = static_cast<Node4*>(n);
+            for (int i = 0; i < node->count; i++) {
+               rec_flush_pending(node->child[i], keyLength, depth, maxKeyLength);
+            }
+         }
+         break;
+
+      case NodeType16: {
+            Node16* node = static_cast<Node16*>(n);
+            for (int pos = 0; pos < node->count; pos++) {
+               rec_flush_pending(node->child[pos], keyLength, depth, maxKeyLength);
+            }
+         }
+         break;
+
+      case NodeType48: {
+            Node48* node=static_cast<Node48*>(n);
+            for (int keyByte = 0; keyByte < 256; keyByte++) {
+               if (node->childIndex[keyByte] != emptyMarker) {
+                  rec_flush_pending(node->child[node->childIndex[keyByte]], keyLength, depth, maxKeyLength);
+               }
+            }
+         }
+         break;
+
+      case NodeType256: {
+            Node256* node=static_cast<Node256*>(n);
+            for (int keyByte = 0; keyByte < 256; keyByte++) {
+               if (node->child[keyByte]) {
+                  rec_flush_pending(node->child[keyByte], keyLength, depth, maxKeyLength);
+               }
+            }
+         }
+         break;
+
+      default: assert(0);
+   }
+}
+
+
 Node* lookup(Node **nodeRef,uint8_t key[],unsigned keyLength,unsigned depth,unsigned maxKeyLength) {
    // Find the node with a matching key, optimistic version
    // fprintf(stderr, "lookup %p\n", *nodeRef);
@@ -459,7 +518,6 @@ Node* lookup(Node **nodeRef,uint8_t key[],unsigned keyLength,unsigned depth,unsi
 
    return NULL;
 }
-
 
 
 Node* lower_bound(Node *&node, uint8_t key[], unsigned keyLength, unsigned depth, unsigned maxKeyLength, bool skippedPrefix=false, bool bigger = false) {
