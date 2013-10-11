@@ -289,7 +289,7 @@ void insertNode48(Node48 *&node, uint8_t keyByte, Node* child);
 void insertNode256(Node256 *&node, uint8_t keyByte, Node* child);
 
 void flush_inserts(Node *&node, int depth, int maxKeyLength);
-void insert(Node *&node,uint8_t key[],unsigned depth,uintptr_t value,unsigned maxKeyLength, bool eager);
+void insert(Node *&node,uint8_t key[],unsigned depth,uintptr_t value,unsigned maxKeyLength);
 int ccc = 0, NN = 0;
 static uintptr_t *pending_tmp;
 
@@ -313,7 +313,7 @@ static void flush_bulk_insert(Node *&node, int depth, int maxKeyLength, int parr
       for (int i = 0; i < N; i++) {
          uint8_t *key = (uint8_t*) &tmp[i];
          // fprintf(stderr, "insert %d\n", i);
-         insert(node, key, depth, __builtin_bswap64(tmp[i]), maxKeyLength, true);
+         insert(node, key, depth, __builtin_bswap64(tmp[i]), maxKeyLength);
          ccc++;
       }
       // fprintf(stderr, "done insert all\n");
@@ -757,7 +757,7 @@ void rec_insert(Node *&node, int depth, int maxKeyLength, uintptr_t *tmp, int N,
    if (N < 25600) {
       for (int i = 0; i < N; i++) {
          uint8_t *key = (uint8_t*) &tmp[i];
-         insert(node, key, depth, __builtin_bswap64(tmp[i]), maxKeyLength, true);
+         insert(node, key, depth, __builtin_bswap64(tmp[i]), maxKeyLength);
          ccc++;
       }
       return;
@@ -838,7 +838,7 @@ void bulk_insert(Node *&node, int *arr, int N) {
    delete[] tmp2;
 }
 
-void insert(Node *&node,uint8_t key[],unsigned depth,uintptr_t value,unsigned maxKeyLength, bool eager) {
+void insert(Node *&node,uint8_t key[],unsigned depth,uintptr_t value,unsigned maxKeyLength) {
    // Insert the leaf value into the tree
    // ART_DEBUG("Insert depth = %d, %u, node = %p\n", depth, depth < maxKeyLength ? key[depth] : 0, node);
 
@@ -911,7 +911,7 @@ void insert(Node *&node,uint8_t key[],unsigned depth,uintptr_t value,unsigned ma
    Node** child=findChild(node,key[depth]);
    if (*child) {
       // ART_DEBUG("Recurse %d from %p to %p; ", depth, node, *child);
-      insert(*child,key,depth+1,value,maxKeyLength,eager);
+      insert(*child,key,depth+1,value,maxKeyLength);
       return;
    }
 
