@@ -466,10 +466,12 @@ Node* lower_bound(Node *&node, uint8_t key[], unsigned keyLength, unsigned depth
    // if (!node) return NULL;
    assert(node);
 
+   #ifndef EAGER
    if (!isLeaf(node)) {
       // fprintf(stderr, "nodep = %p, cnt = %d, psize = %d, depth = %d\n", node, node->count, node->psize, depth);
       flush_bulk_insert(node, depth, maxKeyLength, node->parr(), abs(node->psize()), node->psize() >= 0);
    }
+   #endif
 
    if (isLeaf(node)) {
       if (!skippedPrefix && depth == keyLength) // No check required
