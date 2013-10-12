@@ -13,7 +13,7 @@ compile)      make -s -C src "../bin/$2" || exit;
 algo)         ./run.sh compile $2
               bin/$2 $N $Q 0.1 1 $3;;
 
-sky_append)   ./run.sh compile $2
+append)       ./run.sh compile $2
               bin/$2 ../scrack/data/skyserver.data $Q 0.1 1 6;;
 
 skew)         make -s -C src "../bin/$2" || exit;
@@ -41,8 +41,8 @@ batch_noup)   ./run.sh algo comb 0 | tee -a $out
               ./run.sh algo btree_stx 0 | tee -a $out
               ;;
 
-batch_sky)    ./run.sh append comb | tee -a $out
-              ./run.sh append crack | tee -a $out
+batch_sky)    #./run.sh append comb | tee -a $out
+              #./run.sh append crack | tee -a $out
               ./run.sh append ctree_eager | tee -a $out
               ./run.sh append ctree_32_64 | tee -a $out
               ./run.sh append btree_google | tee -a $out
