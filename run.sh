@@ -53,8 +53,10 @@ batch_sky)    #./run.sh append comb | tee -a $out
               ;;
 
 batch)        #./run.sh batch_noup
-              for U in {2..5}
+              for U in {1..5}
               do
+                     ./run.sh algo ctree_32_1024 $U | tee -a $out
+                     ./run.sh algo ctree_32_4096 $U | tee -a $out
                      ./run.sh algo comb $U | tee -a $out
                      ./run.sh algo crack $U | tee -a $out
                      ./run.sh algo ctree_eager $U | tee -a $out
