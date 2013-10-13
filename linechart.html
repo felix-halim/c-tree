@@ -51,13 +51,21 @@
 
 <div class="chart">{
   xAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'log', domain: [0.5, 2e9], format: ticksPow10, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9], margin: 40 },
-  yAxis: { label: 'Ratio to Sort', attr: 'total_time', scale: 'logx', domain: [0, 4], format: d3.format('s'), ticks: [0, 1, 2, 3, 4], margin: 40 },
+  yAxis: { label: 'Ratio to Sort', attr: 'total_time', scale: 'logx', domain: [0, 4], format: noFormat, ticks: [0, 1, 2, 3, 4], margin: 40 },
   base: 'sort',
+  legend: {
+    'sort' : { x: 100, y: 10 },
+    'crack' : { x: 100, y: 30 },
+    'comb' : { x: 100, y: 50 },
+    'ctree_32_4096' : { x: 100, y: 70 },
+  },
   data: group(filter([
     { attr: 'update_workload',   values: ['NOUP'] },
     { attr: 'algorithm',         values: [
       'sort',
       'crack',
+      'comb',
+      'ctree_32_1024',
       'ctree_32_4096',
     ] },
   ]), 'algorithm'),
@@ -71,12 +79,16 @@
   legend: {
     'ctree_32_64' : { x: 100, y: 10 },
     'crack' : { x: 100, y: 30 },
+    'comb' : { x: 100, y: 50 },
   },
   data: group(filter([
     { attr: 'update_workload',   values: ['LFHV'] },
     { attr: 'algorithm',         values: [
       'crack',
+      'comb',
       'ctree_32_64',
+      'ctree_32_1024',
+      'ctree_32_4096',
     ] },
   ]), 'algorithm'),
 }</div>
@@ -88,11 +100,13 @@
   legend: {
     'ctree_32_64' : { x: 100, y: 10 },
     'crack' : { x: 100, y: 30 },
+    'comb' : { x: 100, y: 50 },
   },
   data: group(filter([
     { attr: 'update_workload',   values: ['QUEUE'] },
     { attr: 'algorithm',         values: [
       'crack',
+      'comb',
       'ctree_32_64',
     ] },
   ]), 'algorithm'),
@@ -106,12 +120,18 @@
   legend: {
     'ctree_32_64' : { x: 100, y: 10 },
     'crack' : { x: 100, y: 30 },
+    'comb' : { x: 100, y: 50 },
+    'ctree_32_4096' : { x: 100, y: 70 },
+    'ctree_32_1024' : { x: 100, y: 70 },
   },
   data: group(filter([
     { attr: 'update_workload',   values: ['TRASH'] },
     { attr: 'algorithm',         values: [
       'crack',
+      'comb',
       'ctree_32_64',
+      'ctree_32_1024',
+      'ctree_32_4096',
     ] },
   ]), 'algorithm'),
 }</div>
@@ -136,8 +156,8 @@ var algo_name = {
   sort:            { name: "Sort", symbol: "triangle-down", color: "blue", },
   crack:           { name: "Crack", symbol: "crack", color: "red", },
   ctree_32_64:     { name: "BT64", symbol: "square", color: "orange", },
-  ctree_32_1024:   { name: "BT1024", symbol: "circle", color: "orange", },
-  ctree_32_4096:   { name: "BT4096", symbol: "circle", color: "orange", },
+  ctree_32_1024:   { name: "BT1024", symbol: "circle", color: "magenta", },
+  ctree_32_4096:   { name: "BT4096", symbol: "diamond", color: "blue", },
   ctree_eager:     { name: "BTE", symbol: "triangle-up", color: "magenta", },
 };
 
@@ -168,6 +188,22 @@ function group(arr, by) {
   // }
 }
 
+function expTime(t) {
+  function f(x) {
+    var v = d3.format(".2f")(x) + "";
+    while (v.length > 0 && v[v.length - 1] == '0') v = v.substring(0, v.length - 1);
+    if (v.length > 0 && v[v.length - 1] == '.') v = v.substring(0, v.length - 1);
+    console.log(v);
+    return v;
+  }
+  if (t >= 3600) return f(t / 3600) + 'h';
+  if (t >= 60) return f(t / 60) + 'm';
+  if (t >= 1) return f(t) + 's';
+  if (t >= 1e-3) return f(t*1e3) + 'ms';
+  if (t >= 1e-6) return f(t*1e6) + 'µs';
+  return "?";
+};
+
 function linechart(div) {
   eval('var opts = ' + div.innerText);
   div.innerHTML = '';
@@ -177,27 +213,12 @@ function linechart(div) {
   opts.fontSize = opts.fontSize || 14;
   opts.margin = opts.margin || { top: 20, right: 80, bottom: 30, left: 80 };
 
+  function noFormat() { return ""; };
+  noFormat.replace = noFormat;
 
   var superscript = "⁰¹²³⁴⁵⁶⁷⁸⁹";
   function formatPower(d) { return (d + "").split("").map(function(c) { return superscript[c]; }).join(""); };
   function ticksPow10(d) { return 10 + formatPower(Math.round(Math.log(d) / Math.LN10)); }
-  function noFormat() { return ""; };
-  noFormat.replace = noFormat;
-  function expTime(t) {
-  	function f(x) {
-	  	var v = d3.format(".2f")(x) + "";
-	  	while (v.length > 0 && v[v.length - 1] == '0') v = v.substring(0, v.length - 1);
-	  	if (v.length > 0 && v[v.length - 1] == '.') v = v.substring(0, v.length - 1);
-	  	console.log(v);
-	  	return v;
-  	}
-  	if (t >= 3600) return f(t / 3600) + 'h';
-  	if (t >= 60) return f(t / 60) + 'm';
-  	if (t >= 1) return f(t) + 's';
-  	if (t >= 1e-3) return f(t*1e3) + 'ms';
-  	if (t >= 1e-6) return f(t*1e6) + 'µs';
-    return "?";
-  };
 
   var algos = opts.data;
   if (opts.base) {
@@ -223,6 +244,8 @@ function linechart(div) {
 
   var xAxis = d3.svg.axis().scale(x).orient("bottom").ticks(20, opts.xAxis.format).tickValues(opts.xAxis.ticks).tickSize(-5);
 	var xAxisTop = d3.svg.axis().scale(x).orient("top").ticks(20, noFormat).tickValues(opts.xAxis.ticks).tickSize(-5);
+  var xFormat = (opts.yAxis.scale == 'log') ? opts.yAxis.format : noFormat;
+  // console.log(xFormat);
   var yAxis = d3.svg.axis().scale(y).orient("left").ticks(10).tickValues(opts.yAxis.ticks).tickSize(-5);
   var yAxisRight = d3.svg.axis().scale(y).orient("right").ticks(10, noFormat).tickValues(opts.yAxis.ticks).tickSize(-5);
   
@@ -304,7 +327,9 @@ function linechart(div) {
       .attr("class", "x axis top")
       .attr("transform", "translate(0,0)")
       .style({"shape-rendering": "crispEdges", "font-size": opts.fontSize})
-      .call(xAxisTop);
+      .call(xAxisTop)
+      .selectAll("text")
+      .text(null);
 
 
   console.log('asdf4' + y);
@@ -329,13 +354,15 @@ function linechart(div) {
       .attr("class", "y axis right")
       .attr("transform", "translate(" + width + ",0)")
       .style({"shape-rendering": "crispEdges", "font-size": opts.fontSize})
-      .call(yAxisRight);
+      .call(yAxisRight)
+      .selectAll("text")
+      .text(null);
   console.log('asdf6' + y);
 
   var lines = svg.selectAll(".lines").data(algo_arr).enter().append("g").attr("class", "lines");
   lines.append("path")
       .attr("class", "line")
-      .attr("d", function(d) { return line(d.values); })
+      .attr("d", function(d) { console.log(d); return line(d.values); })
       .style("stroke", function(d) { return color(d.key); });
 
   // lines.append("text")
