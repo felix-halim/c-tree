@@ -36,8 +36,12 @@ void erase(int value) {
   }
 }
 
-int query(int value) {
+int lower_bound(int value) {
   return view_query(value, value + 1) ? value : 0;
+}
+
+int select(int a, int b) {
+  return view_query(a, b) ? a : 0;
 }
 
 void results(Statistics &s) {

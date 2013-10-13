@@ -100,7 +100,8 @@ static int verify(int U, Statistics &s) {
 
 void init(int *arr, int N);   // Initializes the initial values of N integers.
 void insert(int value);       // Inserts the value.
-int query(int value);         // Query for lower bound, returns 0 if not found.
+int lower_bound(int value);   // Query for lower bound, returns 0 if not found.
+int select(int a, int b);     // Select values from [a, b), without fetching the values.
 void erase(int value);        // Deletes the value. The value guaranteed to exists.
 void results(Statistics &s);  // Optionally fill in statistics.
 
@@ -176,7 +177,7 @@ int main(int argc, char *argv[]) {
           if (!ok){ s.Q = i; break; }
         // }
 
-        s.checksum = s.checksum * 13 + query(a);
+        s.checksum = s.checksum * 13 + lower_bound(a);
 
         switch (U) {
           // NOUP.
@@ -192,9 +193,9 @@ int main(int argc, char *argv[]) {
                   });
                   break;
 
-          // HFLV.
+          // HFHV.
           case 2: if (i % 10 == 0) update_time += time_it([&] {
-                    REP(j, 10) {
+                    REP(j, 1000) {
                       update.update(s.N, a, b);
                       erase(a);
                       insert(b);
@@ -217,6 +218,7 @@ int main(int argc, char *argv[]) {
                     int *arr = update.get_arr();
                     REP(j, 1000000) {
                       insert(arr[s.N + j]);
+                      // fprintf(stderr, "%d \n", arr[s.N + j]);
                     }
                   });
                   break;

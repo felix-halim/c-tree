@@ -7,8 +7,7 @@
 Comb<int> c;
 
 void init(int *arr, int N) {
-  for (int i = 0; i < N; i++)
-    c.insert(arr[i]);
+  c.load(arr, N);
 }
 
 void insert(int value) {
@@ -25,11 +24,19 @@ void erase(int value) {
   #endif
 }
 
-int query(int value) {
+int lower_bound(int value) {
   int val = 0;
   int ret = c.lower_bound(value).next(val) ? val : 0;
   // fprintf(stdout, "%lld (%lld)\n", ret, value);
   return ret;
+}
+
+int select(int a, int b) {
+  int aa, bb;
+  int ret1 = c.lower_bound(a).next(aa) ? aa : 0;
+  int ret2 = c.lower_bound(b).next(bb) ? bb : 0;
+  // fprintf(stderr, "%d (%d)\n", ret, value);
+  return ret1 + ret2;
 }
 
 void results(Statistics &s) {

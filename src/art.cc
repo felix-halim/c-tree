@@ -36,7 +36,7 @@ void erase(int value) {
   // assert(!lookup(tree,key,8,0,8));
 }
 
-int query(int value) {
+int lower_bound(int value) {
   uint64_t value64 = value;
   uint8_t key[8];
   loadKey(value64, key);
@@ -48,6 +48,10 @@ int query(int value) {
     // fprintf(stdout, "%lld (%lld)\n", ret, value);
   }
   return ret;
+}
+
+int select(int a, int b) {
+  return lower_bound(a) + lower_bound(b);
 }
 
 void results(Statistics &s) {

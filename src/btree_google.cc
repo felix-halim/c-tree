@@ -20,9 +20,18 @@ void erase(int value) {
   b.erase(it);
 }
 
-int query(int value) {
+int lower_bound(int value) {
   auto it = b.lower_bound(value);
   return (it == b.end()) ? 0 : *it;
+}
+
+int select(int a, int b) {
+  auto it1 = b.lower_bound(a);
+  auto it2 = b.lower_bound(b);
+  int ret1 = (it1 == b.end()) ? 0 : *it1;
+  int ret2 = (it2 == b.end()) ? 0 : *it2;
+  // fprintf(stderr, "%d (%d)\n", ret, value);
+  return ret1 + ret2;
 }
 
 void results(Statistics &s) {

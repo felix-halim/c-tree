@@ -18,9 +18,15 @@ void init(int *iarr, int iN) {
 void insert(int value) {}
 void erase(int value) {}
 
-int query(int value) {
+int lower_bound(int value) {
   auto it = lower_bound(arr, arr + N, value);
   return (it == arr + N) ? 0 : *it;
+}
+
+int select(int a, int b) {
+  auto it1 = lower_bound(arr, arr + N, value);
+  auto it2 = lower_bound(arr, arr + N, value);
+  return it2 - it1;
 }
 
 void results(Statistics &s) {
