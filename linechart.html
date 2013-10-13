@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<script src="d3.v3.min.js"></script>
+<script src="data.js"></script>
+<style type="text/css">
+.axis path,
+.axis line {
+  fill: none;
+  stroke: black;
+}
+.line {
+  fill: none;
+  stroke: steelblue;
+  stroke-width: 1.5px;
+}
+</style>
+</head>
+
+<body>
+<div class="chart">{
+	xAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'log', domain: [0.5, 1e9], format: ticksPow10, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9], margin: 40 },
+	yAxis: { label: 'Cumulative Runtime', attr: 'total_time', scale: 'log', domain: [0.015, 1000], format: ticksPow10, ticks: [0.15, 1, 10, 100, 1000], margin: 40 },
+	data: group(filter([
+		{ attr: 'update_workload', 	values: ['APPEND'] },
+		{ attr: 'algorithm', 				values: [
+			'comb',
+			'ctree_32_64',
+			'crack',
+		] },
+	]), 'algorithm'),
+}</div>
+
+<div class="chart">{
+	xAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'log', domain: [0.5, 1e9], format: ticksPow10, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9], margin: 40 },
+	yAxis: { label: 'Cumulative Runtime', attr: 'total_time', scale: 'log', domain: [0.5, 1000], format: ticksPow10, ticks: [0.5, 1, 10, 100, 1000], margin: 40 },
+	data: group(filter([
+		{ attr: 'update_workload', 	values: ['NOUP'] },
+		{ attr: 'algorithm', 				values: [
+			'sort',
+			'crack',
+		] },
+	]), 'algorithm'),
+}</div>
+
+
+<div class="chart">{
+	xAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'log', domain: [0.5, 1e9], format: ticksPow10, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9], margin: 40 },
+	yAxis: { label: 'Ratio to Sort', attr: 'total_time', scale: 'log', domain: [0.05, 10], format: d3.format('s'), ticks: [0.01, 0.10, 1, 10], margin: 40 },
+	base: 'sort',
+	data: group(filter([
+		{ attr: 'update_workload', 	values: ['NOUP'] },
+		{ attr: 'algorithm', 				values: [
+			'sort',
+			'crack',
+			'ctree_32_1024',
+		] },
+	]), 'algorithm'),
+}</div>
+
+
+<div class="chart">{
+	xAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'log', domain: [0.5, 1e9], format: ticksPow10, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9], margin: 40 },
+	yAxis: { label: 'Cumulative Runtime', attr: 'total_time', scale: 'log', domain: [0.1, 10], format: d3.format('s'), ticks: [0.1, 0.5, 1, 2, 5, 10], margin: 40 },
+	base: 'crack',
+	data: group(filter([
+		{ attr: 'update_workload', 	values: ['LFHV'] },
+		{ attr: 'algorithm', 				values: [
+			'crack',
+			'ctree_32_64',
+			'ctree_eager',
+		] },
+	]), 'algorithm'),
+}</div>
+
+			'comb',
+			'art_best',
+			'art_best_eager',
+
+<script>
+data = d3.csv.parse(data);
+
+data.forEach(function (d) {
+  d.Q = parseInt(d.Q);
+  d.insert_time = parseFloat(d.insert_time);
+  d.query_time = parseFloat(d.query_time) + 1e-9;
+  d.update_time = parseFloat(d.update_time) + 1e-9;
+  d.total_time = d.insert_time + d.query_time + d.update_time;
+});
+
+var algo_name = {
+	art: 'art',
+	art_best: 'ART',
+	art_best_eager: 'ARTE',
+	sort: 'Sort',
+	crack: 'Crack',
+	ctree_32_64: 'BT',
+	ctree_32_1024: 'BT',
+	ctree_eager: 'BTE',
+};
+
+var charts = document.getElementsByClassName('chart');
+Array.prototype.forEach.call(charts, linechart);
+
+function filter(filters) {
+	var ret = data;
+	filters.forEach(function (filter) {
+		ret = ret.filter(function (d) {
+			return filter.values.indexOf(d[filter.attr]) != -1;
+		});
+	});
+	return ret;
+}
+
+function group(arr, by) {
+  var keys = {}, groups = [];
+  arr.forEach(function (d) {
+  	if (!keys[d[by]]) keys[d[by]] = [];
+  	keys[d[by]].push(d);
+  });
+  return keys;
+  // for (var i in keys) if (keys.hasOwnProperty(i)) {
+  //   var a = keys[i];
+  //   keys[i] = [];
+  //   groups.push({ group: i, label: a.label, x: a.x, y: a.y });
+  // }
+}
+
+function linechart(div) {
+	eval('var opts = ' + div.innerText);
+	div.innerHTML = '';
+	console.log(opts);
+
+	opts.width = opts.width || 450;
+	opts.height = opts.height || 200;
+	opts.fontSize = opts.fontSize || '14px';
+	opts.margin = opts.margin || { top: 20, right: 80, bottom: 30, left: 80 };
+
+
+	var superscript = "⁰¹²³⁴⁵⁶⁷⁸⁹";
+  function formatPower(d) { return (d + "").split("").map(function(c) { return superscript[c]; }).join(""); };
+	function ticksPow10(d) { return 10 + formatPower(Math.round(Math.log(d) / Math.LN10)); }
+
+  var algos = opts.data;
+  if (opts.base) {
+  	var base = algos[opts.base];
+  	if (!base) alert('base not found: ' + opts.base);
+  	delete algos[opts.base];
+  	for (var algo in algos) if (algos.hasOwnProperty(algo)) {
+  		var arr = algos[algo];
+  		for (var i = 0; i < base.length; i++) {
+  			arr[i].ratio = arr[i][opts.yAxis.attr] / base[i][opts.yAxis.attr];
+  		}
+  	}
+  	opts.yAxis.attr = 'ratio';
+  }
+  var width = opts.width - (opts.margin.left + opts.margin.right);
+  var height = opts.height - (opts.margin.top + opts.margin.bottom);
+
+  var x = ((opts.xAxis.scale == 'log') ? d3.scale.log() : d3.scale.linear()).range([0, width]);
+  var y = ((opts.yAxis.scale == 'log') ? d3.scale.log() : d3.scale.linear()).range([height, 0]);
+
+  var xAxis = d3.svg.axis().scale(x).orient("bottom").ticks(20, opts.xAxis.format).tickValues(opts.xAxis.ticks);
+  var yAxis = d3.svg.axis().scale(y).orient("left").ticks(10, opts.yAxis.format).tickValues(opts.yAxis.ticks);
+
+  var symbol = d3.scale.ordinal().range(["circle", "cross", "triangle-up", "triangle-down", "diamond", "square"]);
+  
+  function fx(d) { return x(d[opts.xAxis.attr]); }
+  function fy(d) { return y(d[opts.yAxis.attr]); }
+  var line = d3.svg.line().interpolate("linear").x(fx).y(fy);
+
+  // var color = d3.scale.category10();
+  var color = d3.scale.ordinal();
+  color.domain(d3.keys(algos));
+  color.range(["blue", "red", "orange", "green", "magenta"]);
+
+  var algo_arr = color.domain().map(function(key) { return { key: key, values: algos[key] }; });
+  function extreme(f, arr, attr) { return f(arr, function (a) { return f(a.values, function (d) { return d[attr]; }); }); }
+  // x.domain(d3.extent(data, function(d) { return d.Q; }));
+  x.domain(opts.xAxis.domain || [ extreme(d3.min, algo_arr, opts.xAxis.attr), extreme(d3.max, algo_arr, opts.xAxis.attr) ]);
+  y.domain(opts.yAxis.domain || [ extreme(d3.min, algo_arr, opts.yAxis.attr), extreme(d3.max, algo_arr, opts.yAxis.attr) ]);
+
+  var svg = d3.select(div).append('svg');
+  svg.attr('width', opts.width);
+  svg.attr('height', opts.height);
+  div.style.width = opts.width+'px';
+  div.style.height = opts.height+'px';
+  svg = svg.append("g").attr("transform", "translate(" + opts.margin.left + "," + opts.margin.top + ")");
+
+  // var arr = data.filter(function (d) { return algo_name[d.algorithm] && d.update_workload == update_w; });
+  // if (0)
+  // svg.selectAll("path.dot")
+  //    .data(arr)
+  //    .enter().append("path")
+  //    .attr("class", "dot")
+  //    .attr("transform", function (d) { return "translate(" + fy(d) + ", " + fx(d) + ")"; })
+  //    .attr("d", d3.svg.symbol().size(40).type(function (d, i) {
+  //       switch (d.algorithm) {
+  //         case "art_best": return symbol(0);
+  //         case "btree_google": return symbol(1);
+  //         case "art": return symbol(2);
+  //         case "ctree_eager": return symbol(3);
+  //         case "crack": return symbol(4);
+  //         case "ctree_32_64": return symbol(5);
+  //         case "art_best_eager": return symbol(6);
+  //       }
+  //       console.log(d.algorithm)
+  //       return symbol(i);
+  //     })
+  //    )
+  //    .attr("fill", function (d) { return color(d.algorithm); })
+  //    .attr("stroke", function (d) { return color(d.algorithm); });
+
+  // for (var i = 0; i < labels.length; i++) {
+  //   var L = labels[i];
+  //   L.stroke = L.fill = color(L.algorithm);
+  //   L.style = 'font-size:14px;';
+  // }
+  // var labelt = svg.append("g");
+  // labels.forEach(function (a, i) {
+  //   console.log(a);
+  //   labelt.append("text").attr(a).style("text-anchor", "middle").text(a.label);
+  // });
+
+  opts.fontSize = opts.fontSize || "15px";
+
+  var xAxisG = svg.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + height + ")")
+      .style({"shape-rendering": "crispEdges", "font-size": opts.fontSize})
+      .call(xAxis);
+  xAxisG.append("text")
+      .attr("transform", "translate(" + (width / 2) + ", 0)")
+      .attr("y", opts.xAxis.margin)
+      .style({"text-anchor": "middle", "font-size": opts.fontSize })
+      .text(opts.xAxis.label);
+
+
+  var yAxisG = svg.append("g")
+      .attr("class", "y axis")
+      .style({"shape-rendering": "crispEdges", "font-size": opts.fontSize})
+      .call(yAxis);
+  yAxisG.append("text")
+      .attr("transform", "rotate(-90) translate(-" + 1*(height/2) + ", 0)")
+      .attr("y", -opts.yAxis.margin)
+      .style({"text-anchor": "middle", "font-size": opts.fontSize })
+      .text(opts.yAxis.label);
+
+  var lines = svg.selectAll(".lines").data(algo_arr).enter().append("g").attr("class", "lines");
+  lines.append("path")
+      .attr("class", "line")
+      .attr("d", function(d) { return line(d.values); })
+      .style("stroke", function(d) { return color(d.key); });
+
+  lines.append("text")
+      .datum(function(d) { return { key: d.key, value: d.values[d.values.length - 1] }; })
+      .attr("transform", function(d) { return "translate(" + x(d.value[opts.xAxis.attr]) + "," + y(d.value[opts.yAxis.attr]) + ")"; })
+      .attr("x", 3)
+      .attr("y", 5)
+      .style({ "font-size": opts.fontSize })
+      .text(function(d) { return algo_name[d.key]; });
+}
+</script>
+</body>

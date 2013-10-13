@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+text.cell {
+  text-anchor: middle;
+  alignment-baseline: central;
+  font-size: 18px;
+}
+
+.axis path,
+.axis line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+
+/*.x.axis path {
+  display: none;
+}
+*/
+.line {
+  fill: none;
+  stroke: steelblue;
+  stroke-width: 1.5px;
+}
+</style>
+<body>
+
+
+<script src="d3.v3.min.js"></script>
+<script src="data.js"></script>
+<script src="ctree.js"></script>
+
+<h1>Do We Really Need to Pre-Sort?</h1>
+
+<h2>Racing for Queries</h2>
+
+<p>Given a certain amount of time, how many queries can an algorithm answers?<br>
+The setup is: insert 10^8 random integers and perform 10^9 point queries.
+</p>
+
+
+<svg id="bt_race" width="550" height="250"></svg><br>
+<svg id="art_race" width="550" height="250"></svg><br>
+
+<!-- <svg id="bt_race_lfhv" width="550" height="250"></svg><br> -->
+<!-- <svg id="art_race_lfhv" width="550" height="250"></svg><br> -->
+
+<p>Cracking ART (ARTC) answered 10M queries during the first 30 seconds.<br>
+ART starts answering the first query after 29.3 seconds.<br>
+BTree starts answering the first query after 54.5 seconds.<br>
+In the end Cracking ART and ART finishes the 10^9 queries almost together.<br>
+Cracking BTree (BTC) has similar performance with Cracking ART and thus omitted in the graph to reduce clutter.
+<br>
+
+<h3>Initialization Cost vs. Read only Query Cost</h3>
+
+<svg id="fig1" width="225" height="200"></svg>
+<svg id="fig2" width="200" height="200"></svg>
+<svg id="fig3" width="200" height="200"></svg>
+<svg id="fig4" width="200" height="200"></svg>
+<!-- <svg id="fig41" width="150" height="200"></svg> -->
+
+<p>Further breakdowns on the initialization cost (black bar) vs. query cost (gray bar) show that:<br>
+Cracking ART inserts 10^8 random integers in 0.2 seconds and completed the first query in 0.6 second.<br>
+Both ART and BTree requires 29.3 and 54.5 respectively to insert the 10^8 random integers.<br>
+ARTC is 48x, 8x, 2x faster than ART on 1, 1K, 1M queries respectively and comparable on 1B queries.<br>
+</p>
+
+<h3>Initialization Cost vs. LFHV Query Cost</h3>
+
+<svg id="fig5" width="225" height="200"></svg>
+<svg id="fig6" width="200" height="200"></svg>
+<svg id="fig7" width="200" height="200"></svg>
+<svg id="fig8a" width="200" height="200"></svg>
+<!-- <svg id="fig8b" width="200" height="200"></svg> -->
+
+<p>Under low frequency high volume (LFHV) updates (i.e., update 1000 tuples every 1000 read queries),<br>
+we can see the same trend that the cracked version of ART and BTree wins up till 100M LFHV queries.<br>
+On one billion LFHV queries, however the lazy insert took noticeable overhead.<br>
+This can be mitigated by doing eager insert after 100M queries.
+
+<br>
+
+
+Space saving trick using integer bucket id instead of pointer
+
+<br><br><br>
+
+<h3>Cracking BTree Demo</h3>
+
+<form onsubmit="return true;" style="display:inline">
+<input type="submit" value="Reset">
+</form>
+&nbsp; &nbsp;
+<form onsubmit="lower_bound(parseInt(document.getElementById('lower_bound_text').value, 10)); return false;" style="display:inline">
+Lower Bound: <input type="text" value="14" size="3" id="lower_bound_text">
+<input type="submit" value="Find">
+</form>
+<svg id="ctree" width="1200" height="500"></svg>
+
+
+<script>
+data = d3.csv.parse(data);
+
+barchart("#fig1", '(a) 1 Query', 'Total Time (seconds)', data, 'NOUP', '1', {
+  // art: 'ART',
+  art_best_eager: 'ART',
+  art_best: 'ARTC',
+  // btree_google: 'BT',
+  ctree_eager: 'BT',
+  ctree_32_1024: 'BTC',
+  crack: 'CRK',
+  sort: 'SORT',
+});
+
+barchart("#fig2", '(b) 1K Queries', null, data, 'NOUP', '1000', {
+  // art: 'ART',
+  art_best_eager: 'ART',
+  art_best: 'ARTC',
+  // btree_google: 'BT',
+  ctree_eager: 'BT',
+  ctree_32_1024: 'BTC',
+  crack: 'CRK',
+  sort: 'SORT',
+});
+
+barchart("#fig3", '(c) 1M Queries', null, data, 'NOUP', '1000000', {
+  // art: 'ART',
+  art_best_eager: 'ART',
+  art_best: 'ARTC',
+  // btree_google: 'BT',
+  ctree_eager: 'BT',
+  ctree_32_1024: 'BTC',
+  crack: 'CRK',
+  sort: 'SORT',
+});
+
+barchart("#fig4", '(d) 100M Queries', null, data, 'NOUP', '100000000', {
+  // art: 'ART',
+  art_best_eager: 'ART',
+  art_best: 'ARTC',
+  // btree_google: 'BT',
+  ctree_eager: 'BT',
+  ctree_32_1024: 'BTC',
+  crack: 'CRK',
+  sort: 'SORT',
+});
+
+// barchart("#fig41", '(e) 1B Queries', null, data, 'NOUP', '1000000000', {
+//   // art: 'ART',
+//   // art_best: 'ARTC',
+//   // art_best_eager: 'ART',
+//   btree_google: 'BT',
+//   ctree_eager: 'BT',
+//   ctree_32_1024: 'BTC',
+//   // crack: 'CRK',
+//   sort: 'SORT',
+// });
+
+barchart("#fig5", '(a) 1 Query', 'Total Time (s)', data, 'LFHV', '1', {
+  art: 'ART2',
+  art_best_eager: 'ART',
+  art_best: 'ARTC',
+  btree_google: 'BT2',
+  ctree_eager: 'BT',
+  ctree_32_64: 'BTC',
+  crack: 'CRK',
+});
+
+barchart("#fig6", '(b) 1K Queries', null, data, 'LFHV', '1000', {
+  art: 'ART2',
+  art_best_eager: 'ART',
+  art_best: 'ARTC',
+  btree_google: 'BT2',
+  ctree_eager: 'BT',
+  ctree_32_64: 'BTC',
+  crack: 'CRK',
+});
+
+barchart("#fig7", '(c) 1M Queries', null, data, 'LFHV', '1000000', {
+  art: 'ART2',
+  art_best_eager: 'ART',
+  art_best: 'ARTC',
+  btree_google: 'BT2',
+  ctree_eager: 'BT',
+  ctree_32_64: 'BTC',
+  crack: 'CRK',
+});
+
+barchart("#fig8a", '(d) 100M Queries', null, data, 'LFHV', '100000000', {
+  art: 'ART2',
+  art_best_eager: 'ART',
+  art_best: 'ARTC',
+  btree_google: 'BT2',
+  ctree_eager: 'BT',
+  ctree_32_64: 'BTC',
+  crack: 'CRK',
+});
+
+barchart("#fig8b", '(e) 1B Queries', null, data, 'LFHV', '1000000000', {
+  art_best_eager: 'ART',
+  art_best: 'ARTC',
+  // comb: 'COMB',
+  ctree_eager: 'BT',
+  // btree_google: 'BT',
+  ctree_32_64: 'BTC',
+});
+
+linechart('#bt_race', data, 'NOUP', {
+  btree_google: { label: 'BT', x: 230, y: 150 },
+  ctree_eager: { label: 'BT', x: 180, y: 150 },
+  ctree_32_64: { label: 'BTC', x: 105, y: 170 },
+  crack: { label: 'CRK', x: 295, y: 40 },
+});
+
+linechart('#art_race', data, 'NOUP', {
+  art: { label: 'ART', x: 205, y: 130 },
+  art_best_eager: { label: 'ART', x: 155, y: 150 },
+  art_best: { label: 'ARTC', x: 80, y: 180 },
+  // crack: 'CRK',
+});
+
+
+var update = 'QUEUE';
+
+// linechart('#bt_race_lfhv', data, update, {
+//   btree_google: { label: 'BT', x: 230, y: 150 },
+//   ctree_eager: { label: 'BT', x: 180, y: 150 },
+//   ctree_32_64: { label: 'BTC', x: 105, y: 170 },
+//   crack: { label: 'CRK', x: 295, y: 40 },
+// });
+
+// linechart('#art_race_lfhv', data, update, {
+//   art: { label: 'ART', x: 205, y: 130 },
+//   art_best_eager: { label: 'ART', x: 155, y: 150 },
+//   art_best: { label: 'ARTC', x: 80, y: 180 },
+//   // crack: 'CRK',
+// });
+
+
+
+function barchart(id, xcap, ylabel, data, update_w, Q, algo_name) {
+  var algos = {};
+  for (var i in algo_name) if (algo_name.hasOwnProperty(i))
+    algos[i] = [];
+
+  data.forEach(function (d) {
+    if (algos[d.algorithm] && d.Q == Q && d.update_workload == update_w) {
+      d.Q = parseInt(d.Q);
+      d.insert_time = parseFloat(d.insert_time);
+      d.query_time = parseFloat(d.query_time) + 1e-9;
+      d.update_time = parseFloat(d.update_time) + 1e-9;
+      d.total_time = d.insert_time + d.query_time;
+      if (update_w == 'LFHV') d.total_time += d.update_time;
+      algos[d.algorithm].push(d);
+    }
+  });
+
+  console.log(algos);
+
+  var svg = d3.select(id);
+  if (!svg[0][0]) return;
+  var margin = { top: 20, right: 0, bottom: 60, left: 60 };
+  if (!ylabel) margin.left = 35;
+  var width = svg.attr('width') - (margin.left + margin.right);
+  var height = svg.attr('height') - (margin.top + margin.bottom);
+
+  var x = d3.scale.ordinal().rangeRoundBands([0, width], .1);
+  var y = d3.scale.linear().rangeRound([height, 0]);
+
+  var color = d3.scale.ordinal().range(["#000", "#888", "#bbb"]);
+  var xAxis = d3.svg.axis().scale(x).orient("bottom");
+  var yAxis = d3.svg.axis().scale(y).orient("left").tickFormat(d3.format("1s")).ticks(5);
+
+  svg = svg.append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+  color.domain(['insert', 'update', 'query']);
+
+  var arr = d3.keys(algos).map(function(name) {
+    var r = algos[name][0];
+    // console.log(name + ' ' + JSON.stringify(r));
+    var values = [
+      { name:'insert', y0: 0, y1: r.insert_time },
+      { name:'query', y0: r.insert_time, y1: r.total_time },
+    ];
+    if (update_w == 'LFHV') {
+      values[1] = { name:'update', y0: r.insert_time, y1: r.insert_time + r.update_time };
+      values[2] = { name:'query', y0: r.insert_time + r.update_time, y1: r.total_time };
+    }
+    return {
+      name: name,
+      values: values
+    };
+  });
+
+  x.domain(arr.map(function(d) { return algo_name[d.name]; }));
+  y.domain([0, d3.max(arr, function(d) { return d.values[d.values.length - 1].y1; })]);
+
+  var xx = svg.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + height + ")")
+      .call(xAxis);
+  xx.selectAll("text").attr({
+    "font-size": 12,
+    "transform": "rotate(-25) translate(-7,0)",
+    "text-anchor": "end"
+  });
+  xx.append("text")
+    .attr("transform", "translate(" + width/2 + ",0)")
+    .attr("y", 45)
+    // .attr("dy", ".71em")
+    .style("text-anchor", "middle")
+    .text(xcap);
+
+  var yy = svg.append("g")
+      .attr("class", "y axis")
+      .call(yAxis);
+  if (ylabel) yy.append("text")
+      .attr("transform", "rotate(-90) translate(-" + height/2 + ",0)")
+      .attr("y", -45)
+      // .attr("dy", ".71em")
+      .style("text-anchor", "middle")
+      .text(ylabel);
+
+  var state = svg.selectAll(".state")
+      .data(arr)
+    .enter().append("g")
+      .attr("class", "g")
+      .attr("transform", function(d) { return "translate(" + x(d.name) + ",0)"; });
+
+  state.selectAll("rect")
+      .data(function(d) { return d.values; })
+    .enter().append("rect")
+      .attr("width", x.rangeBand())
+      .attr("y", function(d) { return y(d.y1); })
+      .attr("height", function(d) { return y(d.y0) - y(d.y1); })
+      .style("fill", function(d) { return color(d.name); });
+
+  // var legend = svg.selectAll(".legend")
+  //     .data(['insert', 'query'])
+  //   .enter().append("g")
+  //     .attr("class", "legend")
+  //     .attr("transform", function(d, i) { return "translate(0," + i * 20 + ")"; });
+
+  // legend.append("rect")
+  //     .attr("x", width - 18)
+  //     .attr("width", 18)
+  //     .attr("height", 18)
+  //     .style("fill", color);
+
+  // legend.append("text")
+  //     .attr("x", width - 24)
+  //     .attr("y", 9)
+  //     .attr("dy", ".35em")
+  //     .style("text-anchor", "end")
+  //     .text(function(d) { return d; });
+}
+
+
+function linechart(id, data, update_w, algo_name) {
+  var algos = {}, labels = [];
+  for (var i in algo_name) if (algo_name.hasOwnProperty(i)) {
+    var a = algo_name[i];
+    algos[i] = [];
+    labels.push({ algorithm: i, label: a.label, x: a.x, y: a.y });
+  }
+
+  data.forEach(function (d) {
+    if (algos[d.algorithm] && d.update_workload == update_w) {
+      d.Q = parseInt(d.Q);
+      d.insert_time = parseFloat(d.insert_time);
+      d.query_time = parseFloat(d.query_time) + 1e-9;
+      d.update_time = parseFloat(d.update_time) + 1e-9;
+      d.total_time = d.insert_time + d.query_time + d.update_time;
+      algos[d.algorithm].push(d);
+    }
+  });
+
+  var svg = d3.select(id);
+  var margin = { top: 20, right: 80, bottom: 30, left: 80 };
+  var width = svg.attr('width') - (margin.left + margin.right);
+  var height = svg.attr('height') - (margin.top + margin.bottom);
+
+  var x = d3.scale.linear().range([0, width]);
+  var y = d3.scale.log().range([height, 0]);
+  var xAxis = d3.svg.axis().scale(x).orient("bottom");//.ticks(20, d3.format("1")).tickValues([1, 2.5, 5, 10, 25, 50, 100, 250, 500, 1000, 2500]);
+  var yAxis = d3.svg.axis().scale(y).orient("left").ticks(10, d3.format(".1s")).tickValues([1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9]);
+
+  var symbol = d3.scale.ordinal().range(["circle", "cross", "triangle-up", "triangle-down", "diamond", "square"]);
+  
+  function fx(d) { return y(d.Q); }
+  function fy(d) { return x(d.total_time); }
+  var line = d3.svg.line().interpolate("linear").x(fy).y(fx);
+
+  svg = svg.append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+  // var color = d3.scale.category10();
+  var color = d3.scale.ordinal().range(["blue", "red", "orange", "green", "magenta"]);
+  color.domain(d3.keys(algos));
+  var algo_arr = color.domain().map(function(name) { return { name: name, values: algos[name], }; });
+
+  y.domain([1, 1e9]);
+  // x.domain(d3.extent(data, function(d) { return d.Q; }));
+  var xd = [
+    d3.min(algo_arr, function (a) { return d3.min(a.values, function (d) { return d.total_time; }); }) / 2,
+    1000
+    // d3.max(algo_arr, function (a) { return d3.max(a.values, function (d) { return d.total_time; }); })
+  ];
+  xd = [-10, 150];
+  x.domain(xd);
+
+  var arr = data.filter(function (d) { return algo_name[d.algorithm] && d.update_workload == update_w; });
+  if (0)
+  svg.selectAll("path.dot")
+     .data(arr)
+     .enter().append("path")
+     .attr("class", "dot")
+     .attr("transform", function (d) { return "translate(" + fy(d) + ", " + fx(d) + ")"; })
+     .attr("d", d3.svg.symbol().size(40).type(function (d, i) {
+        switch (d.algorithm) {
+          case "art_best": return symbol(0);
+          case "btree_google": return symbol(1);
+          case "art": return symbol(2);
+          case "ctree_eager": return symbol(3);
+          case "crack": return symbol(4);
+          case "ctree_32_64": return symbol(5);
+          case "art_best_eager": return symbol(6);
+        }
+        console.log(d.algorithm)
+        return symbol(i);
+      })
+     )
+     .attr("fill", function (d) { return color(d.algorithm); })
+     .attr("stroke", function (d) { return color(d.algorithm); });
+
+  for (var i = 0; i < labels.length; i++) {
+    var L = labels[i];
+    L.stroke = L.fill = color(L.algorithm);
+    L.style = 'font-size:14px;';
+  }
+  var labelt = svg.append("g");
+  labels.forEach(function (a, i) {
+    console.log(a);
+    labelt.append("text").attr(a).style("text-anchor", "middle").text(a.label);
+  });
+
+  svg.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + height + ")")
+      .call(xAxis)
+    .append("text")
+      .attr("transform", "translate(" + (width) + ", 0)")
+      .attr("y", -20)
+      .attr("dy", ".71em")
+      .style("text-anchor", "end")
+      .text("Timeline (seconds)");
+
+  svg.append("g")
+      .attr("class", "y axis")
+      .call(yAxis)
+    .append("text")
+      .attr("transform", "rotate(-90) translate(-" + 0*(height/2) + ", 0)")
+      .attr("y", 10)
+      .attr("dy", ".71em")
+      .style("text-anchor", "end")
+      .text("Number of Queries Processed");
+
+  var city = svg.selectAll(".city")
+      .data(algo_arr)
+    .enter().append("g")
+      .attr("class", "city");
+
+  city.append("path")
+      .attr("class", "line")
+      .attr("d", function(d) { return line(d.values); })
+      .style("stroke", function(d) { return color(d.name); });
+
+  city.append("text")
+      .datum(function(d) { return { name: d.name, value: d.values[d.values.length - 1] }; })
+      .attr("transform", function(d) { return "translate(" + x(d.value.Q) + "," + y(d.value.total_time) + ")"; })
+      .attr("x", 3)
+      .attr("dy", ".35em")
+      .text(function(d) { return d.name; });
+}
+
+
+
+var c = NewCTree();
+var n = 0;
+var data = [];
+
+for (var i = 1; i < 100; i++) {
+  data[i - 1] = i;
+}
+var seed = 1;
+for (var i = 0; i < data.length; i++) {
+  seed = seed * 13 + i * 7 + 5;
+  var j = seed % data.length;
+  var t = data[j];
+  data[j] = data[i];
+  data[i] = t;
+}
+
+data.length = 60;
+
+function lower_bound(v) {
+  setTimeout(function () {
+    c.lower_bound(v);
+    render(c.snapshot());
+  }, 100);
+}
+
+function add() {
+  if (n >= data.length) {
+    return render(c.snapshot());
+  }
+  c.add(data[n]);
+  n++;
+  // add();
+  setTimeout(add, 1);
+}
+
+add();
+
+var DURATION = 1000;
+
+function render(s) {
+  var svg = d3.select("#ctree");
+
+  draw_leaf_buckets(svg, s.leaves);
+  draw_leaf_connectors(svg, s.leaf_connectors);
+  draw_cell_values(svg, s.cell_values);
+
+  draw_internal_buckets(svg, s.internals);
+  draw_internal_children_links(svg, s.children_links);
+}
+
+function x(d) { return d.x; }
+function y(d) { return d.y; }
+
+function draw_leaf_buckets(svg, data) {
+  var rects = svg.selectAll("rect.leaf").data(data, function (d) { return d.id; });
+  var attr = { class: "leaf", width: CELL_W, height: CELL_H * LEAF_CAPACITY, x: x, y: y, 'stroke-width': 1, stroke: 'black', fill: 'none', };
+  rects.transition().duration(DURATION).attr(attr);
+  rects.enter().append("rect").attr(attr);
+  rects.transition().duration(DURATION).attr(attr);
+  rects.exit().remove();
+}
+
+function draw_leaf_connectors(svg, data) {
+  function lineDataNext(d) {
+    return d3.svg.line().x(x).y(y).interpolate("basis")([
+      { "x": d.x + CELL_W * 0.5,  "y": d.y + CELL_H * LEAF_CAPACITY },
+      { "x": d.x + CELL_W * 0.5,  "y": d.y + CELL_H * (LEAF_CAPACITY + 0.5) },
+      { "x": d.x + CELL_W * 1.5,  "y": d.y + CELL_H * (LEAF_CAPACITY + 0.5) },
+      { "x": d.x + CELL_W * 1.5,  "y": d.y + -CELL_H * 0.5 },
+      { "x": d.x + CELL_W * 2.0,  "y": d.y + -CELL_H * 0.5 },
+      { "x": d.x + CELL_W * 2.5,  "y": d.y + -CELL_H * 0.5 },
+      { "x": d.x + CELL_W * 2.5,  "y": d.y },
+    ]);
+  }
+  var paths = svg.selectAll("path.leaf").data(data, function (d) { return d.id; });
+  var attr = { class: "leaf", d: lineDataNext, stroke: 'black', 'stroke-width': 0, fill: 'none', };
+  paths.enter().append("path").attr(attr);
+  paths.transition().duration(DURATION).attr(attr).attr('stroke-width', 1);
+  paths.exit().remove();
+}
+
+function draw_cell_values(svg, data) {
+  var rects = svg.selectAll("rect.cell").data(data, function (d) { return d.value; });
+  var attr = { class: "cell", width: CELL_W, height: CELL_H, x: x, y: y, 'stroke-width': 0, stroke: 'black', fill: 'none', };
+  rects.enter().append("rect").attr(attr);
+  rects.transition().duration(DURATION).attr(attr).attr('stroke-width', 1);
+  rects.exit().remove();
+
+  var texts = svg.selectAll("text.cell").data(data, function (d) { return d.value; });
+  var attr = {
+    class : 'cell',
+    x : function (d) { return d.x + CELL_W * 0.5; },
+    y : function (d) { return d.y + CELL_H * 0.5; },
+    fill: 'white',
+    style: function (d) { return d.sorted ? 'font-weight:bold' : ''; },
+  };
+  texts.enter().append("text").attr(attr);
+  texts.transition().duration(DURATION).text(function (d) { return d.value; }).attr(attr)
+    .attr('fill', function (d) { return d.sorted ? 'blue' : 'black'; });
+  texts.exit().remove();
+}
+
+function draw_internal_buckets(svg, data) {
+  if (!data) return;
+  var rects = svg.selectAll("rect.internal").data(data, function (d) { return d.id; });
+  var attr = { class: "internal", width: CELL_W * INTERNAL_CAPACITY, height: CELL_H, x: x, y: y, 'stroke-width': 0, stroke: 'black', fill: 'none', };
+  rects.enter().append("rect").attr(attr);
+  rects.transition().duration(DURATION).attr(attr).attr('stroke-width', 1);
+  rects.exit().remove();
+}
+
+function draw_internal_children_links(svg, data) {
+  if (!data) return;
+
+  function childLine(d) {
+    return d3.svg.line().x(x).y(y).interpolate("linear")([ {x:d.x1, y:d.y1}, {x:d.x2, y:d.y2} ]);
+  }
+
+  var circles = svg.selectAll('circle.children').data(data, function (d) { return d.child_id; });
+  var attr = {
+    class: 'children',
+    cx: function (d) { return d.x1; },
+    cy: function (d) { return d.y1; },
+    r: 2,
+    fill: 'none',
+  };
+  circles.enter().append("circle").attr(attr);
+  circles.transition().duration(DURATION).attr(attr).attr('fill', 'black');
+  circles.exit().remove();
+
+  var paths = svg.selectAll('path.children').data(data, function (d) { return d.child_id; });
+  var attr = { class: 'children', d: childLine, 'stroke-width': 0, stroke: 'black', fill: 'black' };
+  paths.enter().append("path").attr(attr);
+  paths.transition().duration(DURATION).attr(attr).attr('stroke-width', 1);
+  paths.exit().remove();
+}
+</script>
+</body>
+</html>
