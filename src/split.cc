@@ -51,13 +51,13 @@ Bucket* hypothetical_partition(Bucket *B, int P) {
   return NULL;
 }
 
-// Partitions the buckets using if-else branch.
+// Use if-else branch and move one-by-one.
 Bucket* use_if(Bucket *B, int P) {
   Bucket *F = NULL; // Free-ed bucket.
   Bucket *L = new Bucket(), *Lh = L;
   Bucket *R = new Bucket();
-  while (B) {
-    Bucket *next = B->next;
+  for (Bucket *next; B; B = next) {
+    next = B->next;
     while (B->n) {
       int n = min(B->n, min(L->slack(), R->slack()));
       assert(n > 0);
@@ -74,18 +74,18 @@ Bucket* use_if(Bucket *B, int P) {
       if (!L->slack()) { assert(F && !F->n); L->next = F; L = F; F = NULL; L->next = NULL; }
       if (!R->slack()) { assert(F && !F->n); R->next = F; R = F; F = NULL; }
     }
-    B = next;
   }
   return Lh;
 }
 
-/*
-int use_par(Bucket *B, int P) {
-  Bucket *L = new Bucket(BSIZE);
-  Bucket *R = new Bucket(BSIZE);
+// Use memmove to move in bulk.
+Bucket* use_par(Bucket *B, int P) {
+  Bucket *L = new Bucket(), *Lh = L;
+  Bucket *R = new Bucket();
   set<Bucket*> F;
-  int nL = 0;
-  while (B) {
+  // int nL = 0;
+  for (Bucket *next; B; B = next) {
+    next = B->next;
     int pos = partition(B->arr, B->arr + B->n, bind2nd(less<int>(), P)) - B->arr;
     if (L->slack() >= pos) {
       memmove(L->arr + L->n, B->arr, sizeof(int) * pos);
@@ -97,15 +97,17 @@ int use_par(Bucket *B, int P) {
       memmove(L->arr + L->n, B->arr + pos - m, sizeof(int) * m);
       L->n += m;
       B->n = pos - m;
-      L = i;
-      nL += BSIZE;
+      L->next = B;
+      L = B;
+      L->next = NULL;
+      // nL += BSIZE;
     }
 
     if (R->slack() >= BSIZE - pos){
       memmove(R->arr + R->n, B->arr + pos, sizeof(int)*(BSIZE-pos));
       R->n += BSIZE-pos;
-      if (L != i){
-        F.insert(i);
+      if (L != B){
+        F.insert(B);
         B->n = 0;
       }
     } else {
@@ -121,10 +123,12 @@ int use_par(Bucket *B, int P) {
       R->n = BSIZE-pos;
     }
   }
-  nL += L->n;
-  return nL;
+  // nL += L->n;
+  // fprintf(stderr, "Ln = %d\n", nL);
+  return Lh;
 }
 
+/*
 int use_paro(Bucket *B, int P) {
   int t1=0,t2=0,t3=0,t4=0;
   vector<pair<int,int> > L, R;
@@ -1139,8 +1143,8 @@ int main(int argc, char *argv[]) {
     switch (algo) {
       case 1 : smaller = hypothetical_partition(B, P); break;
       case 2 : smaller = use_if(B, P); break;
-      /*
       case 3 : smaller = use_par(B, P); break;
+      /*
       case 4 : smaller = use_nb(B, P); break;
       case 5 : smaller = use_nbp(B, P); break;
       case 6 : smaller = use_nbo(B, P); break;
@@ -1172,6 +1176,7 @@ int main(int argc, char *argv[]) {
     }
     smaller = smaller->next;
   }
+  fprintf(stderr, "%d == %d, %d == %d\n", cs1.first, cnt, cs1.second, sum);
   assert(cs1.first == cnt);
   assert(cs1.second == sum);
 
