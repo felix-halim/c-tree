@@ -128,6 +128,7 @@ Bucket* use_par(Bucket *B, int P) {
   return Lh;
 }
 
+
 /*
 int use_paro(Bucket *B, int P) {
   int t1=0,t2=0,t3=0,t4=0;
