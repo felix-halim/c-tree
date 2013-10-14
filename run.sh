@@ -13,6 +13,12 @@ compile)      make -s -C src "../bin/$2" || exit;
 algo)         ./run.sh compile $2
               bin/$2 $N $Q 0.1 1 $3;;
 
+split)        make -s -C src "../bin/split" || exit;
+              for ith in {0..100}
+              do
+                bin/split $N $2 $ith
+              done;;
+
 append)       ./run.sh compile $2
               bin/$2 ../scrack/data/skyserver.data $Q 0.1 1 6;;
 

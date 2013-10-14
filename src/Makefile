@@ -34,6 +34,9 @@ $(ODIR)/dataset_gen: dataset_gen.cc
 	$(ODIR)/dataset_gen 100000000
 	mv 100000000.data ../data
 
+$(ODIR)/split: split.cc update.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DBSIZE=4096 -Wall -o $@ $<
+
 $(ODIR)/comb: comb.cc comb.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
 
