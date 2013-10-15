@@ -2,10 +2,10 @@ function linechart(div) {
   eval('var opts = ' + div.innerText);
   div.innerHTML = '';
 
-  opts.width = opts.width || 450;
+  opts.width = opts.width || 400;
   opts.height = opts.height || 200;
   opts.fontSize = opts.fontSize || 14;
-  opts.margin = opts.margin || { top: 20, right: 80, bottom: 30, left: 80 };
+  opts.margin = opts.margin || { top: 20, right: 40, bottom: 30, left: 60 };
 
   function noFormat() { return ""; };
   noFormat.replace = noFormat;
@@ -137,7 +137,7 @@ function linechart(div) {
       .style({"shape-rendering": "crispEdges", "font-size": opts.fontSize})
       .call(yAxis);
   yAxisG.selectAll("text").attr("x", -5);
-  if (opts.yAxis.scale == 'log')
+  if (opts.yAxis.scale == 'log' && opts.yAxis.format == 'pow10')
     toPower10(yAxisG, opts.fontSize);
 
   yAxisG.append("text")
@@ -169,9 +169,10 @@ function linechart(div) {
 }
 
 function toPower10(g, fontSize) {
-  g.selectAll(".tick text")
-      .text(null)
-    .filter(isPowerOfTen)
+  var texts = g.selectAll(".tick text").text(null);
+  texts.filter(isOneOrTen).text(function (d) { return d; })
+
+  texts.filter(isPowerOfTen)
       .text(10)
     .append("tspan")
       .attr("dy", "-.5em")
@@ -180,5 +181,10 @@ function toPower10(g, fontSize) {
 }
 
 function isPowerOfTen(d) {
+  if (isOneOrTen(d)) return false;
   return d / Math.pow(10, Math.ceil(Math.log(d) / Math.LN10 - 1e-12)) === 1;
+}
+
+function isOneOrTen(d) {
+  return (d == 1 || d == 10);
 }

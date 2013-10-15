@@ -36,7 +36,7 @@ var algo_name = {
   sort:            { name: "Sort", symbol: "triangle-down", color: "blue", },
   crack:           { name: "Crack", symbol: "circle", color: "red", },
   ctree_32_64:     { name: "CT64", symbol: "square", color: "blue", },
-  ctree_32_1024:   { name: "CT1024", symbol: "circle", color: "magenta", },
+  ctree_32_1024:   { name: "CT1024", symbol: "triangle-up", color: "magenta", },
   ctree_32_4096:   { name: "BT4096", symbol: "diamond", color: "blue", },
   ctree_eager:     { name: "BTE", symbol: "triangle-up", color: "magenta", },
 };
@@ -96,51 +96,83 @@ The queries are random point queries.<br>
 The updates are random point updates in the same 32 bit integer domain.<br>
 </p>
 
-<h2>Read Only</h2>
+<h2>Read Only Queries</h2>
 
-<div class="chart">{
+<div class="chart" style="display: inline-block">{
   xAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'log', domain: [0.5, 2e9], format: ticksPow10, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9], margin: 40 },
-  yAxis: { label: 'NOUP: Ratio to Sort', attr: 'total_time', scale: 'logx', domain: [0, 4], format: noFormat, ticks: [0, 1, 2, 3, 4], margin: 40 },
+  yAxis: { label: 'NOUP: Ratio to Sort', attr: 'total_time', scale: 'log', domain: [0.05, 10], format: 'pow10', ticks: [0.05, 0.06, 0.07, 0.08, 0.09, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], margin: 40 },
   legend: {
-    'sort' : { x: 100, y: 20 },
-    'art_best_eager' : { x: 100, y: 40 },
-    'crack' : { x: 100, y: 60 },
-    'comb' : { x: 100, y: 80 },
+    'sort' : { x: 50, y: 50 },
+    'crack' : { x: 250, y: 20 },
+    'comb' : { x: 120, y: 110 },
   },
   base: 'sort',
   data: group(filter([
     { attr: 'update_workload',   values: ['NOUP'] },
-    { attr: 'algorithm',         values: ['sort', 'art_best_eager', 'comb', 'crack'] },
+    { attr: 'algorithm',         values: ['sort', 'comb', 'crack'] },
+  ]), 'algorithm'),
+}</div>
+
+<div class="chart" style="display: inline-block">{
+  xAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'log', domain: [0.5, 2e9], format: ticksPow10, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9], margin: 40 },
+  yAxis: { label: 'NOUP: Ratio to Sort', attr: 'total_time', scale: 'log', domain: [0.05, 10], format: 'pow10', ticks: [0.05, 0.06, 0.07, 0.08, 0.09, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], margin: 40 },
+  legend: {
+    'sort' : { x: 50, y: 50 },
+    'art_best' : { x: 40, y: 130 },
+    'art_best_eager' : { x: 250, y: 100 },
+  },
+  base: 'sort',
+  data: group(filter([
+    { attr: 'update_workload',   values: ['NOUP'] },
+    { attr: 'algorithm',         values: ['sort', 'art_best_eager', 'art_best'] },
   ]), 'algorithm'),
 }</div>
 
 <p>Cumulative runtime compared to Sort under read only queries.
 <ul>
 <li>COMB is consistently faster than Crack on 10th+ queries.
-<li>COMB is <b>never worse</b> than std::Sort on any number of queries.
-<li>ART is faster than std::sort in initialization costs.
+<li>COMB is <b>never worse</b> than Sort on any number of queries.
+<li>ART (with bulk insert) is faster than std::sort in initialization costs.
 <li>ART is perforamnce is consistently fast O(K) per query.
 <li>ART wins for large number of queries.
 <li>Note for ART: if K is large, it may be a different story.
+<li>Cracked ART (ARTC): has low initialization cost while preserve fast cumulative cost.
 </ul>
 </p>
+
 
 
 <h2>Low Frequency High Volume (LFHV) Updates</h2>
 
 <div class="chart">{
-  xAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'log', domain: [0.5, 2e9], format: ticksPow10, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8 ], margin: 40 },
-  yAxis: { label: 'LFHV: Ratio to CTree', attr: 'total_time', scale: 'logx', domain: [0, 3], format: d3.format('s'), ticks: [0, 1, 2, 3, 4, 5, 6, 7], margin: 40 },
+  xAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'log', domain: [0.5, 2e9], format: ticksPow10, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9 ], margin: 40 },
+  yAxis: { label: 'LFHV: Ratio to COMB', attr: 'total_time', scale: 'log', domain: [0.2, 5], format: 'pow10', ticks: [0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 2, 3, 4, 5], margin: 30 },
   base: 'comb',
   legend: {
-    'ctree_32_64' : { x: 100, y: 45 },
-    'ctree_32_1024' : { x: 170, y: 15 },
-    'crack' : { x: 255, y: 35 },
-    'comb' : { x: 100, y: 120 },
+    'crack':          { x: 255, y: 55 },
+    'comb':           { x: 240, y: 90 },
+    'ctree_32_64':    { x: 200, y: 125 },
+    'ctree_32_1024':  { x: 235, y: 20 },
   },
   data: group(filter([
     { attr: 'update_workload',   values: ['LFHV'] },
     { attr: 'algorithm',         values: ['crack', 'comb', 'ctree_32_64', 'ctree_32_1024'] },
+  ]), 'algorithm'),
+}</div>
+
+<div class="chartx" style="display:none">{
+  xAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'log', domain: [0.5, 2e9], format: ticksPow10, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8 ], margin: 40 },
+  yAxis: { label: 'LFHV: Ratio to COMB', attr: 'total_time', scale: 'log', domain: [0.2, 5], format: 'pow10', ticks: [0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 2, 3, 4, 5], margin: 30 },
+  base: 'comb',
+  legend: {
+    'crack':          { x: 255, y: 55 },
+    'comb':           { x: 240, y: 90 },
+    'art_best':    { x: 200, y: 125 },
+    'art_best_eager':  { x: 235, y: 20 },
+  },
+  data: group(filter([
+    { attr: 'update_workload',   values: ['LFHV'] },
+    { attr: 'algorithm',         values: ['crack', 'comb', 'art_best', 'art_best_eager'] },
   ]), 'algorithm'),
 }</div>
 
@@ -149,7 +181,8 @@ The updates are random point updates in the same 32 bit integer domain.<br>
 <ul>
 <li>COMB is consistently faster than Crack on 10th+ queries.
 <li>CTree with 64 bucket size (CT64) is worse than COMB due inefficient Fusion.
-<li>CTree with 1024 bucket size (CT1024) has better Fusion but worse for updating large Bucket without index.
+<li>CTree with 1024 bucket size (CT1024) has better Fusion thus has similar performance to COMB for the first 10^5 queries<br>
+but worse in the long run because of the high cost in updating large Bucket without (mini cracker) indexes.
 <li>CTree can be modified to be "adaptive" in terms of bucket size (need more research).
 </ul>
 </p>
@@ -165,33 +198,19 @@ The updates are random point updates in the same 32 bit integer domain.<br>
 </ul>
 </p>
 
-<div class="chart">{
-  xAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'log', domain: [0.5, 1e9], format: ticksPow10, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9], margin: 40 },
-  yAxis: { label: 'Cumulative Runtime', attr: 'total_time', scale: 'log', domain: [0.015, 1000], format: ticksPow10, ticks: [0.15, 1, 10, 100, 1000], margin: 40 },
-  data: group(filter([
-    { attr: 'update_workload',   values: ['APPEND'] },
-    { attr: 'algorithm',         values: [
-      'comb',
-      'ctree_32_64',
-      'crack',
-    ] },
-  ]), 'algorithm'),
-}</div>
 
 
 <div class="chart">{
-  xAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'log', domain: [0.5, 1e9], format: null, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9], margin: 40 },
-  yAxis: { label: 'Cumulative Runtime', attr: 'total_time', scale: 'log', domain: [0.3, 10000], format: null, ticks: [1, 10, 100, 1000, 1e4], margin: 40 },
+  xAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'log', domain: [0.5, 2e9], format: null, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9], margin: 40 },
+  yAxis: { label: 'Cumulative Runtime', attr: 'total_time', scale: 'log', domain: [0.5, 20], format: 'pow10', ticks: [0.5, 0.6, 0.7, 0.8, 0.9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20], margin: 40 },
   legend: {
     'sort' : { x: 100, y: 10 },
     'crack' : { x: 100, y: 30 },
   },
+  base: 'sort',
   data: group(filter([
     { attr: 'update_workload',   values: ['NOUP'] },
-    { attr: 'algorithm',         values: [
-      'sort',
-      'crack',
-    ] },
+    { attr: 'algorithm',         values: ['crack', 'sort', 'comb', 'art_best'] },
   ]), 'algorithm'),
 }</div>
 
