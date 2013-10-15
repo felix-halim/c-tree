@@ -42,6 +42,12 @@ pair<int, int> count_lower(Bucket *B, int P) {
   return make_pair(cnt, sum);
 }
 
+static void chain(Bucket *&B, Bucket *next) {
+  if (B) B->next = next;
+  B = next;
+  B->next = NULL;
+}
+
 // Count only using std::partition, without actually moving the data.
 Bucket* hypothetical_partition(Bucket *B, int P) {
   for (; B; B = B->next) {
@@ -71,15 +77,15 @@ Bucket* use_if(Bucket *B, int P) {
         }
       }
       if (!B->n) { assert(!F || !next); F = B; }
-      if (!L->slack()) { assert(F && !F->n); L->next = F; L = F; F = NULL; L->next = NULL; }
-      if (!R->slack()) { assert(F && !F->n); R->next = F; R = F; F = NULL; }
+      if (!L->slack()) { assert(F && !F->n); chain(L, F); F = NULL; }
+      if (!R->slack()) { assert(F && !F->n); chain(R, F); F = NULL; }
     }
   }
   return Lh;
 }
 
 // Use memmove to move in bulk.
-Bucket* use_par(Bucket *B, int P) {
+Bucket* use_partition(Bucket *B, int P) {
   Bucket *L = new Bucket(), *Lh = L;
   Bucket *R = new Bucket();
   set<Bucket*> F;
@@ -97,9 +103,7 @@ Bucket* use_par(Bucket *B, int P) {
       memmove(L->arr + L->n, B->arr + pos - m, sizeof(int) * m);
       L->n += m;
       B->n = pos - m;
-      L->next = B;
-      L = B;
-      L->next = NULL;
+      chain(L, B);
       // nL += BSIZE;
     }
 
@@ -128,68 +132,68 @@ Bucket* use_par(Bucket *B, int P) {
   return Lh;
 }
 
-
-/*
-int use_paro(Bucket *B, int P) {
-  int t1=0,t2=0,t3=0,t4=0;
-  vector<pair<int,int> > L, R;
-  REP(i,NBUCKETS){
-    int pos = partition(B[i].arr, B[i].arr + B[i].n, bind2nd(less<int>(), P)) - B[i].arr;
-    if (pos*2 > B[i].n) L.push_back(make_pair(pos, i));
-    else R.push_back(make_pair(pos, i));
+// std::partition minimizing data movement.
+Bucket* use_partition_minimize_move(Bucket *B, int P) {
+  vector<pair<int, Bucket*> > L, R;
+  for (Bucket *next; B; B = next) {
+    next = B->next;
+    int pos = partition(B->arr, B->arr + B->n, bind2nd(less<int>(), P)) - B->arr;
+    if (pos * 2 > B->n) L.push_back(make_pair(pos, B));
+    else R.push_back(make_pair(pos, B));
   }
 
-  // t1 += timit();
-
-  // fprintf(stderr, "%d %d <<\n", L.size(), R.size());
   int nL = 0;
+  Bucket *ret = NULL;
   sort(L.rbegin(), L.rend());
   sort(R.begin(), R.end());
-  while (!L.empty() && !R.empty()){
-    pair<int,int> &pL = L.back(); L.pop_back();
-    pair<int,int> &pR = R.back(); R.pop_back();
-    int *a = B[pL.second].arr, &i = pL.first;
-    int *b = B[pR.second].arr, &j = pR.first;
-    int m = min(B[pL.second].n - i, j);
+  while (!L.empty() && !R.empty()) {
+    pair<int, Bucket*> &pL = L.back(); L.pop_back();
+    pair<int, Bucket*> &pR = R.back(); R.pop_back();
+    int *a = pL.second->arr, &i = pL.first;
+    int *b = pR.second->arr, &j = pR.first;
+    int m = min(pL.second->n - i, j);
     while (m--) swap(a[i++], b[j--]);
-    if (i<B[pL.second].n) L.push_back(pL); else nL += BSIZE;
-    if (j>0) R.push_back(pR);
+    if (i < pL.second->n) L.push_back(pL);
+    else { nL += BSIZE; assert(pL.second->n == BSIZE); chain(ret, pL.second); }
+    if (j > 0) R.push_back(pR);
   }
-  // fprintf(stderr, "%d %d <<\n", L.size(), R.size());
 
-  // t2 += timit();
-
-  for (int k=0; k < (int)L.size(); ){
-    if (k+1 == (int)L.size()){ nL += L.back().first; break; }
-    pair<int,int> &pL = L[k], &pR = L.back();
-    int *a = B[pL.second].arr, &i = pL.first;
-    int *b = B[pR.second].arr, &j = pR.first;
-    int m = min(B[pL.second].n - i, j);
+  for (int k=0; k < (int)L.size(); ) {
+    if (k+1 == (int)L.size()){
+      nL += L.back().first;
+      L.back().second->n = L.back().first;
+      chain(ret, L.back().second);
+      break;
+    }
+    pair<int, Bucket*> &pL = L[k], &pR = L.back();
+    int *a = pL.second->arr, &i = pL.first;
+    int *b = pR.second->arr, &j = pR.first;
+    int m = min(pL.second->n - i, j);
     while (m--) swap(a[i++], b[--j]);
-    if (i>=B[pL.second].n){ k++; nL += BSIZE; }
-    if (j==0) L.pop_back();
+    if (i >= pL.second->n){ k++; nL += BSIZE; assert(pL.second->n == BSIZE); chain(ret, pL.second); }
+    if (j == 0) L.pop_back();
   }
-
-  // t3 += timit();
 
   for (int k=0; k < (int)R.size(); ){
-    if (k+1 == (int)R.size()){ nL += R.back().first; break; }
-    pair<int,int> &pL = R[k], &pR = R.back();
-    int *a = B[pL.second].arr, &i = pL.first;
-    int *b = B[pR.second].arr, &j = pR.first;
-    int m = min(i, B[pR.second].n - j);
-    // fprintf(stderr, ">> %d >> %d %d, m = %d; %d %d\n", R.size(),i,j,m,pL.second,pR.second);
+    if (k+1 == (int)R.size()) {
+      nL += R.back().first;
+      R.back().second->n = R.back().first;
+      chain(ret, R.back().second);
+      break;
+    }
+    pair<int, Bucket*> &pL = R[k], &pR = R.back();
+    int *a = pL.second->arr, &i = pL.first;
+    int *b = pR.second->arr, &j = pR.first;
+    int m = min(i, pR.second->n - j);
     while (m--) swap(a[--i], b[j++]);
-    // fprintf(stderr, ">>> %d %d %d, m = %d\n", i,j,B[pR.second].n,m);
-    if (j>=B[pR.second].n){ R.pop_back(); nL += BSIZE; }
-    if (i==0){ k++;  }
+    if (j >= pR.second->n){ R.pop_back(); nL += BSIZE; assert(pR.second->n == BSIZE); chain(ret, pR.second); }
+    if (i == 0){ k++;  }
   }
 
-  // t4 += timit();
-
-  // fprintf(stderr, "%d == %d %.4lf %.4lf %.4lf %.4lf, %d %d\n", count_lower(P), nL, t1,t2,t3,t4,L.size(),R.size());
-  return nL;
+  fprintf(stderr, "nL = %d\n", nL);
+  return ret;
 }
+/*
 
 int use_nb(Bucket *B, int P) {
   int F = -1, L = NBUCKETS, R = L+1, nL = L->n = B[R].n = 0;
@@ -1144,7 +1148,8 @@ int main(int argc, char *argv[]) {
     switch (algo) {
       case 1 : smaller = hypothetical_partition(B, P); break;
       case 2 : smaller = use_if(B, P); break;
-      case 3 : smaller = use_par(B, P); break;
+      case 3 : smaller = use_partition(B, P); break;
+      case 4 : smaller = use_partition_minimize_move(B, P); break;
       /*
       case 4 : smaller = use_nb(B, P); break;
       case 5 : smaller = use_nbp(B, P); break;
@@ -1163,7 +1168,6 @@ int main(int argc, char *argv[]) {
       case 19 : smaller = use_nbsortswap(B, P); break;
       case 20 : smaller = use_nbsortswap2(B, P); break;
       case 21 : smaller = use_partest(B, P); break;
-      case 22 : smaller = use_paro(B, P); break;
       case 23 : smaller = use_parnb(B, P); break;
       */
     }

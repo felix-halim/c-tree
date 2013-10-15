@@ -25,9 +25,9 @@ int lower_bound(int value) {
   return (it == b.end()) ? 0 : *it;
 }
 
-int select(int a, int b) {
-  auto it1 = b.lower_bound(a);
-  auto it2 = b.lower_bound(b);
+int select(int lo, int hi) {
+  auto it1 = b.lower_bound(lo);
+  auto it2 = b.lower_bound(hi);
   int ret1 = (it1 == b.end()) ? 0 : *it1;
   int ret2 = (it2 == b.end()) ? 0 : *it2;
   // fprintf(stderr, "%d (%d)\n", ret, value);

@@ -43,6 +43,9 @@ $(ODIR)/comb: comb.cc comb.h test.h update.h query.h checksum.h
 $(ODIR)/crack: crack.cc crack.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
 
+$(ODIR)/mdd1r: mdd1r.cc crack.h test.h update.h query.h checksum.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
+
 $(ODIR)/art: art.cc art.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
 
