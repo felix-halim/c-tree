@@ -35,6 +35,7 @@ var algo_name = {
   art_best_eager:  { name: "ART", symbol: "triangle-up", color: "green", },
   sort:            { name: "Sort", symbol: "triangle-down", color: "blue", },
   crack:           { name: "Crack", symbol: "circle", color: "red", },
+  mdd1r:           { name: "MDD1R", symbol: "circle", color: "red", },
   ctree_32_64:     { name: "CT64", symbol: "square", color: "blue", },
   ctree_32_1024:   { name: "CT1024", symbol: "triangle-up", color: "magenta", },
   ctree_32_4096:   { name: "BT4096", symbol: "diamond", color: "blue", },
@@ -201,7 +202,7 @@ but worse in the long run because of the high cost in updating large Bucket with
 
 <div class="chart">{
   width: 250,
-  xAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'log', domain: [0.5, 2e6], format: null, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6], margin: 40 },
+  xAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'log', domain: [0.5, 2e5], format: null, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5], margin: 40 },
   yAxis: { label: 'Cumulative Runtime', attr: 'total_time', scale: 'log', domain: [0.001, 10000], format: 'pow10', ticks: [0.001, 0.01, 0.1, 1, 10, 100, 1e3, 1e4], margin: 40 },
   legend: {
     'comb' : { x: 100, y: 10 },
@@ -211,6 +212,23 @@ but worse in the long run because of the high cost in updating large Bucket with
     { attr: 'update_workload',   values: ['APPEND'] },
     { attr: 'query_workload',   values: ['Random'] },
     { attr: 'algorithm',         values: ['crack', 'comb'] },
+  ]), 'algorithm'),
+}</div>
+
+
+<div class="chart">{
+  width: 250,
+  xAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'log', domain: [0.5, 2e5], format: null, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5], margin: 40 },
+  yAxis: { label: 'Cumulative Runtime', attr: 'total_time', scale: 'log', domain: [0.1, 10000], format: 'pow10', ticks: [0.1, 1, 10, 100, 1e3, 1e4], margin: 40 },
+  base: 'comb',
+  legend: {
+    'comb' : { x: 100, y: 10 },
+    'mdd1r' : { x: 100, y: 30 },
+  },
+  data: group(filter([
+    { attr: 'update_workload',   values: ['APPEND'] },
+    { attr: 'query_workload',   values: ['SkyServer'] },
+    { attr: 'algorithm',         values: ['mdd1r', 'comb'] },
   ]), 'algorithm'),
 }</div>
 

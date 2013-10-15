@@ -232,7 +232,7 @@ int main(int argc, char *argv[]) {
                   break;
 
           // APPEND.
-          case 6: if (i % 10 == 0) update_time += time_it([&] {
+          case 6: if (i % 1 == 0) update_time += time_it([&] {
                     if (MAXQ != -1) {
                       update.clear();
                       bool loaded = false;
