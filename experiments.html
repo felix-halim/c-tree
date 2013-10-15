@@ -200,16 +200,17 @@ but worse in the long run because of the high cost in updating large Bucket with
 
 
 <div class="chart">{
-  xAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'log', domain: [0.5, 2e9], format: null, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9], margin: 40 },
-  yAxis: { label: 'Cumulative Runtime', attr: 'total_time', scale: 'log', domain: [0.5, 20], format: 'pow10', ticks: [0.5, 0.6, 0.7, 0.8, 0.9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20], margin: 40 },
+  width: 250,
+  xAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'log', domain: [0.5, 2e6], format: null, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6], margin: 40 },
+  yAxis: { label: 'Cumulative Runtime', attr: 'total_time', scale: 'log', domain: [0.001, 10000], format: 'pow10', ticks: [0.001, 0.01, 0.1, 1, 10, 100, 1e3, 1e4], margin: 40 },
   legend: {
-    'sort' : { x: 100, y: 10 },
+    'comb' : { x: 100, y: 10 },
     'crack' : { x: 100, y: 30 },
   },
-  base: 'comb',
   data: group(filter([
     { attr: 'update_workload',   values: ['APPEND'] },
-    { attr: 'algorithm',         values: ['crack', 'comb', 'art_best'] },
+    { attr: 'query_workload',   values: ['Random'] },
+    { attr: 'algorithm',         values: ['crack', 'comb'] },
   ]), 'algorithm'),
 }</div>
 

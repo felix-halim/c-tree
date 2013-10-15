@@ -48,14 +48,23 @@ batch_noup)   ./run.sh algo comb 0 | tee -a $out
               ;;
 
 batch_sky)    ./run.sh append comb 0 | tee -a $out
-              ./run.sh append crack 1 | tee -a $out
+              ./run.sh append comb 1 | tee -a $out
               ./run.sh append mdd1r 0 | tee -a $out
+              ./run.sh append ctree_32_64 0 | tee -a $out
+              ./run.sh append ctree_32_1024 0 | tee -a $out
+              ./run.sh append ctree_32_4096 0 | tee -a $out
+              ./run.sh append ctree_eager 0 | tee -a $out
+              ./run.sh append btree_google 0 | tee -a $out
+              ./run.sh append btree_stx 0 | tee -a $out
+              ./run.sh append ctree_32_64 1 | tee -a $out
+              ./run.sh append ctree_32_1024 1 | tee -a $out
+              ./run.sh append ctree_32_4096 1 | tee -a $out
+              ./run.sh append ctree_eager 1 | tee -a $out
+              ./run.sh append btree_google 1 | tee -a $out
+              ./run.sh append btree_stx 1 | tee -a $out
+              ./run.sh append crack 1 | tee -a $out
               ./run.sh append mdd1r 1 | tee -a $out
               ./run.sh append crack 0 | tee -a $out
-              # ./run.sh append ctree_eager | tee -a $out
-              # ./run.sh append ctree_32_64 | tee -a $out
-              # ./run.sh append btree_google | tee -a $out
-              # ./run.sh append btree_stx | tee -a $out
               # ./run.sh append art | tee -a $out
               # ./run.sh append arto | tee -a $out
               # ./run.sh append art_best | tee -a $out
