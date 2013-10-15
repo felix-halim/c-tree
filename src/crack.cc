@@ -12,7 +12,7 @@ void init(int *a, int N_) {
   ci.clear();
   msize = 0;
   N = N_;
-  marr = new int[N*2];
+  // marr = new int[N*2];
   arr = new int[N*2];     // for updates expansion
   for (int i = 0; i < N; i++)
     arr[i] = a[i];  // copy all
