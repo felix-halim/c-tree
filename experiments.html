@@ -89,7 +89,7 @@ function renderCharts() {
 </head>
 
 <body onload="renderCharts()">
-<h1>New experiments on CTree and ART</h1>
+<h1>Additional Experiments</h1>
 
 <p>All experiments uses N = 10^8 random sparse 32 bit integer.<br>
 The queries are random point queries.<br>
@@ -146,13 +146,13 @@ The updates are random point updates in the same 32 bit integer domain.<br>
 
 <div class="chart">{
   xAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'log', domain: [0.5, 2e9], format: ticksPow10, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9 ], margin: 40 },
-  yAxis: { label: 'LFHV: Ratio to COMB', attr: 'total_time', scale: 'log', domain: [0.2, 5], format: 'pow10', ticks: [0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 2, 3, 4, 5], margin: 30 },
-  base: 'comb',
+  yAxis: { label: 'LFHV: Ratio to CTree', attr: 'total_time', scale: 'log', domain: [0.3, 10], format: 'pow10', ticks: [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], margin: 30 },
+  base: 'ctree_32_64',
   legend: {
-    'crack':          { x: 255, y: 55 },
-    'comb':           { x: 240, y: 90 },
-    'ctree_32_64':    { x: 200, y: 125 },
-    'ctree_32_1024':  { x: 235, y: 20 },
+    'ctree_32_1024':  { x: 120, y: 20 },
+    'crack':          { x: 120, y: 40 },
+    'comb':           { x: 120, y: 60 },
+    'ctree_32_64':    { x: 120, y: 80 },
   },
   data: group(filter([
     { attr: 'update_workload',   values: ['LFHV'] },
@@ -177,9 +177,11 @@ The updates are random point updates in the same 32 bit integer domain.<br>
 }</div>
 
 
-<p>Cumulative runtime compared to COMB under LFHV updates.
+<p>Cumulative runtime compared to CTree under LFHV updates.
 <ul>
 <li>COMB is consistently faster than Crack on 10th+ queries.
+<li>COMB does not eliminate the shuffling overhead, it reduces it down to O(sqrt(indexes)).
+<li>CTree does not have shuffling overhead, it wins in the long run on heavy updates.
 <li>CTree with 64 bucket size (CT64) is worse than COMB due inefficient Fusion.
 <li>CTree with 1024 bucket size (CT1024) has better Fusion thus has similar performance to COMB for the first 10^5 queries<br>
 but worse in the long run because of the high cost in updating large Bucket without (mini cracker) indexes.
@@ -189,15 +191,12 @@ but worse in the long run because of the high cost in updating large Bucket with
 
 <h2>Fusion Effectiveness on Different Bucket Sizes</h2>
 
-<p>Cumulative runtime compared to COMB under LFHV updates.
+<p>TODO
 <ul>
-<li>COMB is consistently faster than Crack on 10th+ queries.
-<li>CTree with 64 bucket size (CT64) is worse than COMB due inefficient Fusion.
-<li>CTree with 1024 bucket size (CT1024) has better Fusion but worse for updating large Bucket without index.
-<li>CTree can be modified to be "adaptive" in terms of bucket size (need more research).
 </ul>
 </p>
 
+<h2>SkyServer Streaming Insert</h2>
 
 
 <div class="chart">{
@@ -207,10 +206,10 @@ but worse in the long run because of the high cost in updating large Bucket with
     'sort' : { x: 100, y: 10 },
     'crack' : { x: 100, y: 30 },
   },
-  base: 'sort',
+  base: 'comb',
   data: group(filter([
-    { attr: 'update_workload',   values: ['NOUP'] },
-    { attr: 'algorithm',         values: ['crack', 'sort', 'comb', 'art_best'] },
+    { attr: 'update_workload',   values: ['APPEND'] },
+    { attr: 'algorithm',         values: ['crack', 'comb', 'art_best'] },
   ]), 'algorithm'),
 }</div>
 

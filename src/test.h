@@ -148,7 +148,7 @@ int main(int argc, char *argv[]) {
     query_w.set_max(update.max_element() + 1);
     if (U == 3) update.prepare_queue(s.N);
   } else {
-    update.load(10000000);
+    update.load(1000000);
     s.N = update.size();
     query_w.set_max(update.max_element() + 1);
   }
@@ -233,17 +233,19 @@ int main(int argc, char *argv[]) {
 
           // APPEND.
           case 6: if (i % 1000 == 0) update_time += time_it([&] {
-                    if (s.N < 580000000) {
+                    if (MAXQ != -1) {
                       update.clear();
                       bool loaded = false;
                       load_time += time_it([&] {
-                        loaded = update.load(10000000);
+                        loaded = update.load(1000000);
                         query_w.set_max(update.max_element());
                         s.N += update.size();
                       });
                       if (loaded) {
                         int *arr = update.get_arr();
                         REP(j, update.size()) insert(arr[j]);
+                      } else {
+                        MAXQ = -1;
                       }
                     }
                   });
