@@ -164,11 +164,11 @@ int main(int argc, char *argv[]) {
     MAXQ = min(s.N, MAXQ);
   }
 
-  for (s.Q = 1; ; s.Q *= 10) {
+  for (s.Q = 1; ; s.Q *= 2) {
     double update_time = 0;
     double load_time = 0;
     s.query_time += time_it([&] {
-      int nQ = s.Q - s.Q / 10; // nQ = how many queries needed.
+      int nQ = s.Q - s.Q / 2; // nQ = how many queries needed.
       for (int i = 1, a, b; i <= nQ; i++) {
         // if (U == 3) {
         //   a = update.get_next_smallest();
