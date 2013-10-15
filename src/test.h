@@ -174,7 +174,7 @@ int main(int argc, char *argv[]) {
         //   a = update.get_next_smallest();
         // } else {
           bool ok = query_w.query(a,b); // get query endpoints based on the workload
-          if (!ok){ s.Q = i; break; }
+          if (!ok){ s.Q = i; MAXQ = -1; break; }
         // }
 
         s.checksum = s.checksum * 13 + lower_bound(a);
@@ -234,7 +234,6 @@ int main(int argc, char *argv[]) {
           // APPEND.
           case 6: if (i % 1000 == 0) update_time += time_it([&] {
                     if (MAXQ != -1) {
-                      fprintf(stderr, "N = %d\n", s.N);
                       update.clear();
                       bool loaded = false;
                       load_time += time_it([&] {
