@@ -11,7 +11,8 @@ compile)      make -s -C src "../bin/$2" || exit;
               make -s -C src "../$N" || exit;;
 
 algo)         ./run.sh compile $2
-              bin/$2 $N $Q 0.1 1 $3;;
+              bin/$2 $N $Q 0.0001 1 $3;;
+              # valgrind --leak-check=yes bin/$2 $N $Q 0.001 1 $3;;
 
 split)        make -s -C src "../bin/split" || exit;
               for ith in {0..100}
@@ -20,7 +21,8 @@ split)        make -s -C src "../bin/split" || exit;
               done;;
 
 append)       ./run.sh compile $2
-              bin/$2 ../scrack/data/skyserver.data $Q 0.1 $3 6;;
+              bin/$2 $N $Q $3 1 7;;
+              # bin/$2 data/skyserver.data $Q 0.001 $3 6;;
 
 skew)         make -s -C src "../bin/$2" || exit;
               bin/$2 `hostname` $N 2 $Q $3;;
@@ -30,6 +32,24 @@ N,Q,selectivity,verified,insert_time,update_time,query_time,checksum,\
 n_leaves,n_capacity,n_internals,max_depth,slack,in_size,ln_size,ia_free,ia_size,la_free,la_size\n\\" > data.js;
               sed -e 's/$/\\n\\/' results.js >> data.js;
               echo "';" >> data.js
+              ;;
+
+batch_append) ./run.sh append comb_count 0.000001 | tee -a $out
+              ./run.sh append comb_count 0.00001 | tee -a $out
+              ./run.sh append comb_count 0.0001 | tee -a $out
+              ./run.sh append comb_count 0.001 | tee -a $out
+              ./run.sh append comb_count 0.01 | tee -a $out
+              ./run.sh append comb_count 0.1 | tee -a $out
+              ./run.sh append comb_count 0.5 | tee -a $out
+              ./run.sh append comb_count 0.9 | tee -a $out
+              ./run.sh append crack_count 0.000001 | tee -a $out
+              ./run.sh append crack_count 0.00001 | tee -a $out
+              ./run.sh append crack_count 0.0001 | tee -a $out
+              ./run.sh append crack_count 0.001 | tee -a $out
+              ./run.sh append crack_count 0.01 | tee -a $out
+              ./run.sh append crack_count 0.1 | tee -a $out
+              ./run.sh append crack_count 0.5 | tee -a $out
+              ./run.sh append crack_count 0.9 | tee -a $out
               ;;
 
 batch_noup)   ./run.sh algo comb 0 | tee -a $out

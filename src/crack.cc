@@ -8,12 +8,15 @@
 
 using namespace std;
 
+static int arr_cap;
+
 void init(int *a, int N_) {
   ci.clear();
   msize = 0;
   N = N_;
   // marr = new int[N*2];
-  arr = new int[N*2];     // for updates expansion
+  arr_cap = max(250000000, N * 2);
+  arr = new int[arr_cap];     // for updates expansion
   for (int i = 0; i < N; i++)
     arr[i] = a[i];  // copy all
 }
@@ -35,6 +38,7 @@ void erase(int value) {
 }
 
 int view_query(int a, int b);
+int count_query(int a, int b);
 
 int lower_bound(int value) {
   return view_query(value, value + 1) ? value : 0;
@@ -42,6 +46,11 @@ int lower_bound(int value) {
 
 int select(int a, int b) {
   return view_query(a, b) ? a : 0;
+}
+
+int count(int a, int b) {
+  assert(N + b - a < arr_cap);
+  return count_query(a, b);
 }
 
 void results(Statistics &s) {
@@ -97,11 +106,12 @@ int count_query(int a, int b){
     it2 = find_piece(ci, N, b, L2, R2);
     for (int i=L2; i<R2; i++)
       if (arr[i] >= a && arr[i] < b) cnt++;
-    assert(it1 != it2);
-    it2--;
+    if (it1 == it2) return cnt;
+    if (it2 != ci.begin()) it2--;
   }
 
-  while (true){
+  while (it1 != ci.end()) {
+    if (it1->first > it2->first) break;
     cnt += it1->second.prev_pos() - L;
     L = it1->second.pos;
     if (it1 == it2) break;
