@@ -34,20 +34,21 @@ n_leaves,n_capacity,n_internals,max_depth,slack,in_size,ln_size,ia_free,ia_size,
               echo "';" >> data.js
               ;;
 
-batch_append) ./run.sh append comb_count 0.000001 | tee -a $out
-              ./run.sh append comb_count 0.00001 | tee -a $out
-              ./run.sh append comb_count 0.0001 | tee -a $out
-              ./run.sh append comb_count 0.001 | tee -a $out
-              ./run.sh append comb_count 0.01 | tee -a $out
-              ./run.sh append comb_count 0.1 | tee -a $out
-              ./run.sh append comb_count 0.5 | tee -a $out
-              ./run.sh append comb_count 0.9 | tee -a $out
-              ./run.sh append crack_count 0.000001 | tee -a $out
-              ./run.sh append crack_count 0.00001 | tee -a $out
-              ./run.sh append crack_count 0.0001 | tee -a $out
-              ./run.sh append crack_count 0.001 | tee -a $out
-              ./run.sh append crack_count 0.01 | tee -a $out
-              ./run.sh append crack_count 0.1 | tee -a $out
+batch_append) 
+              # ./run.sh append comb_count 0.000001 | tee -a $out
+              # ./run.sh append comb_count 0.00001 | tee -a $out
+              # ./run.sh append comb_count 0.0001 | tee -a $out
+              # ./run.sh append comb_count 0.001 | tee -a $out
+              # ./run.sh append comb_count 0.01 | tee -a $out
+              # ./run.sh append comb_count 0.1 | tee -a $out
+              # ./run.sh append comb_count 0.5 | tee -a $out
+              # ./run.sh append comb_count 0.9 | tee -a $out
+              # ./run.sh append crack_count 0.000001 | tee -a $out
+              # ./run.sh append crack_count 0.00001 | tee -a $out
+              # ./run.sh append crack_count 0.0001 | tee -a $out
+              # ./run.sh append crack_count 0.001 | tee -a $out
+              # ./run.sh append crack_count 0.01 | tee -a $out
+              # ./run.sh append crack_count 0.1 | tee -a $out
               ./run.sh append crack_count 0.5 | tee -a $out
               ./run.sh append crack_count 0.9 | tee -a $out
               ;;
