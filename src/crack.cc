@@ -15,7 +15,7 @@ void init(int *a, int N_) {
   msize = 0;
   N = N_;
   // marr = new int[N*2];
-  arr_cap = max(250000000, N * 2);
+  arr_cap = max(450000000, N * 2);
   arr = new int[arr_cap];     // for updates expansion
   for (int i = 0; i < N; i++)
     arr[i] = a[i];  // copy all
