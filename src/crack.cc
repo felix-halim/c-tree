@@ -49,7 +49,7 @@ int select(int a, int b) {
 }
 
 int count(int a, int b) {
-  assert(N + b - a < arr_cap);
+  assert(N + 1000000 < arr_cap);
   return count_query(a, b);
 }
 
