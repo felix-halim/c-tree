@@ -35,7 +35,7 @@ var algo_name = {
   art_best_eager:  { name: "ART", symbol: "triangle-up", color: "green", },
   sort:            { name: "Sort", symbol: "triangle-down", color: "blue", },
   crack:           { name: "Crack", symbol: "circle", color: "red", },
-  mdd1r:           { name: "MDD1R", symbol: "circle", color: "red", },
+  mdd1r:           { name: "Scrack", symbol: "circle", color: "red", },
   ctree_32_64:     { name: "CT64", symbol: "square", color: "blue", },
   ctree_32_1024:   { name: "CT1024", symbol: "triangle-up", color: "magenta", },
   ctree_32_4096:   { name: "BT4096", symbol: "diamond", color: "blue", },
@@ -199,31 +199,13 @@ but worse in the long run because of the high cost in updating large Bucket with
 
 <h2>SkyServer Streaming Insert</h2>
 
-
 <div class="chart">{
   width: 250,
-  xAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'log', domain: [0.5, 2e5], format: null, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5], margin: 40 },
-  yAxis: { label: 'Cumulative Runtime', attr: 'total_time', scale: 'log', domain: [0.001, 10000], format: 'pow10', ticks: [0.001, 0.01, 0.1, 1, 10, 100, 1e3, 1e4], margin: 40 },
+  xAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'log', domain: [0.5, 2e4], format: null, ticks: [1, 10, 1e2, 1e3, 1e4], margin: 40 },
+  yAxis: { label: 'Cumulative Runtime', attr: 'total_time', scale: 'logx', domain: [-30, 500], format: null, ticks: [0, 100, 200, 300, 400, 500], margin: 40 },
   legend: {
-    'comb' : { x: 100, y: 10 },
-    'crack' : { x: 100, y: 30 },
-  },
-  data: group(filter([
-    { attr: 'update_workload',   values: ['APPEND'] },
-    { attr: 'query_workload',   values: ['Random'] },
-    { attr: 'algorithm',         values: ['crack', 'comb'] },
-  ]), 'algorithm'),
-}</div>
-
-
-<div class="chart">{
-  width: 250,
-  xAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'log', domain: [0.5, 2e5], format: null, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5], margin: 40 },
-  yAxis: { label: 'Cumulative Runtime', attr: 'total_time', scale: 'log', domain: [0.1, 10000], format: 'pow10', ticks: [0.1, 1, 10, 100, 1e3, 1e4], margin: 40 },
-  base: 'comb',
-  legend: {
-    'comb' : { x: 100, y: 10 },
-    'mdd1r' : { x: 100, y: 30 },
+    'mdd1r' : { x: 50, y: 30 },
+    'comb' : { x: 50, y: 50 },
   },
   data: group(filter([
     { attr: 'update_workload',   values: ['APPEND'] },
@@ -232,6 +214,16 @@ but worse in the long run because of the high cost in updating large Bucket with
   ]), 'algorithm'),
 }</div>
 
+<p>The SkyServer dataset has 580M tuples.<br>
+<ul>
+<li>We gradually insert 100K tuples every query, thus after ~5.8K queries, all the dataset is inserted.<br>
+Then, we continue executing the queries until 10K queries (all queries are from the SkyServer query log).
+<li>COMB completed the whole 10K queries interleaving with inserts in 43 seconds.
+<li>Stochastic Cracking (Scrack) is not resilient in this case, completing the 10K queries in 4000 seconds.
+<li>Plain Crack is not used because it is not robust (see the Stochastic Cracking paper).
+<li>With huge insert rate, even for <b>small number of queries</b>, stochastic cracking is performing very poor.
+</ul>
+</p>
 
 <div class="chart">{
   xAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'log', domain: [0.5, 2e9], format: ticksPow10, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9], margin: 40 },
