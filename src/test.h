@@ -102,6 +102,7 @@ void init(int *arr, int N);   // Initializes the initial values of N integers.
 void insert(int value);       // Inserts the value.
 int lower_bound(int value);   // Query for lower bound, returns 0 if not found.
 int select(int a, int b);     // Select values from [a, b), without fetching the values.
+int count(int a, int b);      // Count values in range [a, b) .
 void erase(int value);        // Deletes the value. The value guaranteed to exists.
 void results(Statistics &s);  // Optionally fill in statistics.
 
@@ -147,6 +148,7 @@ int main(int argc, char *argv[]) {
     s.N = update.size() / 2;
     query_w.set_max(update.max_element() + 1);
     if (U == 3) update.prepare_queue(s.N);
+    else if (U == 7) s.N = 100000;
   } else {
     update.load(100000);
     s.N = update.size();
@@ -164,7 +166,7 @@ int main(int argc, char *argv[]) {
     MAXQ = min(s.N, MAXQ);
   }
 
-  int qm = U == 6 ? 2 : 10; // Query multiplier
+  int qm = (U == 6 || U == 7) ? 2 : 10; // Query multiplier
   for (s.Q = 1; ; s.Q *= qm) {
     double update_time = 0;
     double load_time = 0;
@@ -178,7 +180,11 @@ int main(int argc, char *argv[]) {
           if (!ok){ s.Q = i; MAXQ = -1; break; }
         // }
 
-        s.checksum = s.checksum * 13 + lower_bound(a);
+        #ifdef COUNT_QUERY
+          s.checksum = s.checksum * 13 + count(a, b);
+        #else
+          s.checksum = s.checksum * 13 + lower_bound(a);
+        #endif
 
         switch (U) {
           // NOUP.
@@ -232,7 +238,7 @@ int main(int argc, char *argv[]) {
                   });
                   break;
 
-          // APPEND.
+          // APPEND SKY SERVER.
           case 6: if (i % 1 == 0) update_time += time_it([&] {
                     if (MAXQ != -1) {
                       update.clear();
@@ -251,14 +257,33 @@ int main(int argc, char *argv[]) {
                     }
                   });
                   break;
+
+          // APPEND.
+          case 7: if (i % 1 == 0) update_time += time_it([&] {
+                    if (MAXQ != -1) {
+                      int add = update.size() / 2 - s.N;
+                      if (add > 0) {
+                        int *arr = update.get_arr();
+                        REP(j, min(add, 100000)) insert(arr[s.N++]);
+                      } else {
+                        MAXQ = -1;
+                      }
+                    }
+                  });
+                  break;
         }
       }
     });
     update_time -= load_time;
     s.query_time -= update_time;
     s.update_time += update_time;
-
+    s.note = "";
     results(s);
+    #ifdef COUNT_QUERY
+      s.note = "count " + s.note;
+    #else
+      s.note = "view " + s.note;
+    #endif
     s.verified = verify(U, s);
 
     s.print();

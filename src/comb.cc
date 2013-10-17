@@ -39,6 +39,12 @@ int select(int a, int b) {
   return ret1 + ret2;
 }
 
+int count(int a, int b) {
+  auto it1 = c.lower_bound(a);
+  auto it2 = c.lower_bound(b);
+  return c.count(it1, it2);
+}
+
 void results(Statistics &s) {
   // assert(c.check());
   s.note = "Lazy";

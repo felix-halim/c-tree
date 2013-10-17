@@ -6,9 +6,7 @@
 
 using namespace std;
 
-
 #include "crack.h"
-
 
 void init(int *a, int N_) {
   ci.clear();

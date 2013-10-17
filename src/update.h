@@ -19,7 +19,7 @@ class Update {
 
  public:
 
-  Update(char *fn, int U_): U(U_), gen(81188) {
+  Update(char *fn, int U_): U(U_), max_value(0), gen(81188) {
     next_smallest = 1080000000;
     in = fopen(fn, "rb");
     if (!in) { fprintf(stderr,"Error opening file %s\n", fn); exit(1); }
@@ -35,7 +35,7 @@ class Update {
 
   bool load(int amt = 1000000000) {
     if (!in) return false; // Already loaded.
-    int tmp[1024];
+    int tmp[1024] = { 0 };
     while (!feof(in)) {
       int need = min(1024, amt - size());
       if (need <= 0) break;
@@ -95,5 +95,6 @@ static const char *update_workload[] = {
   "QUEUE",  // 3. Remove the largest value, insert new smaller value than any existing value.
   "TRASH",  // 4. Insert values in the middle of the domain.
   "DELETE", // 5. Delete 1000 tuples every 1000 queries.
-  "APPEND", // 6. Insert 10M tuples every 1000 queries. 
+  "APPENDSKY", // 6. Insert 100K tuples every query. 
+  "APPEND", // 7. Insert 100K tuples every query. 
 };

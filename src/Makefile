@@ -40,8 +40,14 @@ $(ODIR)/split: split.cc update.h
 $(ODIR)/comb: comb.cc comb.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
 
+$(ODIR)/comb_count: comb.cc comb.h test.h update.h query.h checksum.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -DCOUNT_QUERY -o $@ $<
+
 $(ODIR)/crack: crack.cc crack.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
+
+$(ODIR)/crack_count: crack.cc crack.h test.h update.h query.h checksum.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -DCOUNT_QUERY -o $@ $<
 
 $(ODIR)/mdd1r: mdd1r.cc crack.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
