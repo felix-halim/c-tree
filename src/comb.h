@@ -258,11 +258,12 @@ class Comb {
     T get(int i) const { assert(i>=0 && i<N); return D[i]; }
     T* getp(int i) { assert(i>=0 && i<N); return &D[i]; }
     void insert(T const &v){ assert(N < BLOCK_SIZE); D[N++] = v; }
-    void bulk_insert(T const *v, int sidx, int length){
+    void bulk_insert(T const *v, int length){
       assert(N==0);
       for (int j = 0; j < length; j++) {
-        D[N++] = v[sidx++];
+        D[j] = v[j];
       }
+      N = length;
     }
     void mark_hi(T const &P, CMP &cmp, int *hi, int &nhi){
       for (int i=0; i<N; i++){
@@ -834,7 +835,7 @@ public:
     int i = 0;
     while (i + BLOCK_SIZE <= n) {
       assert(B[Pe[0]].free() == BLOCK_SIZE);
-      B[Pe[0]].bulk_insert(v, i, BLOCK_SIZE);
+      B[Pe[0]].bulk_insert(v + i, BLOCK_SIZE);
       i += BLOCK_SIZE;
       int bidx = new_bidx();
       B[Pe[0]].next(bidx);
