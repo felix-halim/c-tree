@@ -363,9 +363,9 @@ class Comb {
           return R;
         }
       }
-      // for (int pos = L; pos < R; pos++) if (!cmp(D[pos], v)) return pos;
-      // return R;
-      return std::lower_bound(D+L, D+R, v, cmp) - D;    // find the element v using binary search
+      for (int pos = L; pos < R; pos++) if (!cmp(D[pos], v)) return pos;
+      return R;
+      // return std::lower_bound(D+L, D+R, v, cmp) - D;    // find the element v using binary search
     }
 
     bool erase(T const &v, CMP &cmp, Random &rng){
