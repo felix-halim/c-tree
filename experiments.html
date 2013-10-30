@@ -15,8 +15,8 @@
 }
 </style>
 <script src="d3.v3.min.js"></script>
-<script src="data.js"></script>
-<script src="linechart.js"></script>
+<script src="data.js?1"></script>
+<script src="linechart.js?1"></script>
 <script>
 data = d3.csv.parse(data);
 
@@ -30,11 +30,13 @@ data.forEach(function (d) {
 
 var algo_name = {
   comb:            { name: "COMB", symbol: "diamond", color: "orange" },
+  comb_count:      { name: "COMB", symbol: "diamond", color:"orange" },
   art:             { name: "ART", symbol: "diamond", color: "red", },
   art_best:        { name: "ARTC", symbol: "cross", color: "red", },
   art_best_eager:  { name: "ART", symbol: "triangle-up", color: "green", },
   sort:            { name: "Sort", symbol: "triangle-down", color: "blue", },
   crack:           { name: "Crack", symbol: "circle", color: "red", },
+  crack_count:     { name: "Crack", symbol: "circle", color: "red", },
   mdd1r:           { name: "Scrack", symbol: "circle", color: "red", },
   ctree_32_64:     { name: "CT64", symbol: "square", color: "brown", },
   ctree_32_1024:   { name: "CT1024", symbol: "triangle-up", color: "magenta", },
@@ -126,7 +128,7 @@ The updates are random point updates in the same 32 bit integer domain.<br>
   base: 'sort',
   data: group(filter([
     { attr: 'update_workload',   values: ['NOUP'] },
-    { attr: 'algorithm',         values: ['sort', 'crack', 'comb', 'ctree_32_64', 'ctree_32_4096'] },
+    { attr: 'algorithm',         values: ['sort', 'crack', 'ctree_32_64', 'ctree_32_1024'] },
   ]), 'algorithm'),
 }</div>
 
@@ -180,7 +182,7 @@ The updates are random point updates in the same 32 bit integer domain.<br>
 
 <div class="chart" style="display: inline-block">{
   xAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'log', domain: [0.5, 2e9], format: ticksPow10, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9 ], margin: 40 },
-  yAxis: { label: 'LFHV: Ratio to CTree', attr: 'total_time', scale: 'log', domain: [0.3, 10], format: 'pow10', ticks: [0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 2, 3, 4, 5, 10], margin: 30 },
+  yAxis: { label: 'LFHV: Ratio to CTree', attr: 'total_time', scale: 'log', domain: [0.3, 10], format: 'pow10', ticks: [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 2, 3, 4, 5, 10], margin: 30 },
   base: 'ctree_32_64',
   legend: {
     'comb':           { x: 240, y: 40 },
@@ -207,8 +209,7 @@ but worse in the long run because of the high cost in updating large Bucket with
 </ul>
 </p>
 
-<h2>SkyServer Streaming Insert</h2>
-
+<h2>Streaming Insert Interleaved with Random Count Queries</h2>
 <div class="chart">{
 width: 255,
 xAxis: { label: 'Query Sequence', attr: 'Q', scale: 'log', domain: [0.5, 2e3], format: null, ticks: [1, 10, 1e2, 1e3], margin: 40 },
@@ -225,14 +226,23 @@ data: group(filter([
 ]), 'algorithm'),
 }</div>
 
-<p>The SkyServer dataset has 580M tuples.<br>
+<p>Insert 100K random tuples before each random COUNT(*) query with 0.1% selectivity.<br>
+After 1000 inserts, the total number of tuples is 100M.<br>
+Each count query requires the algo to iterate for each pieces to acquire it's size (including COMB).
 <ul>
-<li>We gradually insert 100K tuples every query, thus after ~5.8K queries, all the dataset is inserted.<br>
-Then, we continue executing the queries until 10K queries (all queries are from the SkyServer query log).
-<li>COMB completed the whole 10K queries interleaving with inserts in 43 seconds.
-<li>Stochastic Cracking (Scrack) is not resilient in this case, completing the 10K queries in 4000 seconds.
-<li>Plain Crack is not used because it is not robust (see the Stochastic Cracking paper).
-<li>With huge insert rate, even for <b>small number of queries</b>, stochastic cracking is performing very poor.
+<li>Crack needs to shuffle in the pending insert for each query in range [a, b).
+<li>If there is not enough room to shuffle in, then some elements is swapped with the pending insert (see MRI algorithm).
+<li>This causes "trashing" effect where tuples constantly go back and forth to and from the array and the pending insert structure (AVL tree).
+<li>COMB lazy insert appends or chain inserts to the correct bucket, no trashing.
+<li>The result is that Crack gets worse rapidly as the size of the pending insert grows, and
+<li>COMB stays resilient. It completes all 1000 inserts interleaved with a random count query in ~8 seconds while Crack in 445 seconds.
+</ul>
+</p>
+
+
+<h2>Fusion Effectiveness on Different Bucket Sizes</h2>
+<p>TODO
+<ul>
 </ul>
 </p>
 
