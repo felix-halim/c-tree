@@ -181,8 +181,8 @@ batch_ctree)  ./run.sh noup ctree_32_32 | tee -a $out
 
               ;;
 
-fhnet)        scp index.html felixhalim@felix-halim.net:~/public_html/research/ctree
-              scp results.csv felixhalim@felix-halim.net:~/public_html/research/ctree/results.csv
+fhnet)        scp experiments.html felixhalim@felix-halim.net:~/public_html/research/ctree/
+              scp data.js felixhalim@felix-halim.net:~/public_html/research/ctree/
               ;;
 
 clean)        rm -fr bin/*;;

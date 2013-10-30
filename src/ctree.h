@@ -134,6 +134,14 @@ class Bucket {
     nLeaves--;
   }
 
+  void bulk_insert(T *arr, int sz) {
+    assert(is_valid());
+    assert(!is_full());
+    memcpy(D, arr, sizeof(T) * sz);
+    N = sz;
+    P = 1;
+  }
+
   int copy_data_to(T *to) {
     assert(is_valid());
     for (int i = 0; i < N; i++) {
@@ -968,9 +976,8 @@ class CTree {
       int idx = new_leaf_bucket(0);
       assert(is_leaf(idx));
       Bucket<T> *b = LEAF_BUCKET(idx);
-      for (int j = 0; j < LEAF_BSIZE; j++) {
-        b->append(arr[i++]);
-      }
+      b->bulk_insert(arr + i, LEAF_BSIZE);
+      i += LEAF_BSIZE;
       // fprintf(stderr, "chain %d, %d\n", i, b->size());
       add_chain(root, idx);
     }
