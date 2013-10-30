@@ -260,9 +260,7 @@ class Comb {
     void insert(T const &v){ assert(N < BLOCK_SIZE); D[N++] = v; }
     void bulk_insert(T const *v, int length){
       assert(N==0);
-      for (int j = 0; j < length; j++) {
-        D[j] = v[j];
-      }
+      memcpy(D, v, sizeof(T) * length);
       N = length;
     }
     void mark_hi(T const &P, CMP &cmp, int *hi, int &nhi){
