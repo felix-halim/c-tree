@@ -4,7 +4,7 @@
 #include "test.h"
 
 // Comb<int, std::less<int>, true, 3200, 125, 50> c;
-Comb<int> c;
+Comb<int> c(100000000);
 
 void init(int *arr, int N) {
   c.load(arr, N);

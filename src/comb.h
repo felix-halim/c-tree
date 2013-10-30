@@ -767,11 +767,12 @@ public:
     }
   };
 
-  Comb(){
-    int nB = 1;
+  Comb(int cap) {
+    int nB = 2 * cap / BLOCK_SIZE;
     allocate(nB);
     set_num_of_buckets(nB);
     clear();
+    // fprintf(stderr, "ALLOCATED nB = %d\n", nB);
   }
   
   void allocate(int nB) {
@@ -808,6 +809,7 @@ public:
     for (int i=nB+3; i<nB2+3; i++) F[i] = i-3;
 
     set_num_of_buckets(nB2);
+    fprintf(stderr, "DOUBLING, nB = %d\n", nB2);
   }
 
   ~Comb(){
