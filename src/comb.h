@@ -363,9 +363,8 @@ class Comb {
           return R;
         }
       }
-      // int pos = L;
-      // while (pos < R && cmp(D[pos], v)) pos++;
-      // return pos;
+      // for (int pos = L; pos < R; pos++) if (!cmp(D[pos], v)) return pos;
+      // return R;
       return std::lower_bound(D+L, D+R, v, cmp) - D;    // find the element v using binary search
     }
 
