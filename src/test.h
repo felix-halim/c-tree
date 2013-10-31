@@ -102,7 +102,8 @@ void init(int *arr, int N);   // Initializes the initial values of N integers.
 void insert(int value);       // Inserts the value.
 int lower_bound(int value);   // Query for lower bound, returns 0 if not found.
 int select(int a, int b);     // Select values from [a, b), without fetching the values.
-int count(int a, int b);      // Count values in range [a, b) .
+int count(int a, int b);      // Count values in range [a, b).
+int sum(int a, int b);        // Sum values in range [a, b).
 void erase(int value);        // Deletes the value. The value guaranteed to exists.
 void results(Statistics &s);  // Optionally fill in statistics.
 
@@ -155,6 +156,12 @@ int main(int argc, char *argv[]) {
     query_w.set_max(update.max_element() + 1);
   }
 
+  if (W == 2) {
+    int j = query_w.get_max() / 100 / MAXQ;
+    fprintf(stderr, "j = %d\n", j);
+    query_w.set_seq_jump(max(1, j));
+  }
+
   fprintf(stderr, "N = %d\n", s.N);
 
   s.insert_time = time_it([&] { init(update.get_arr(), s.N); });
@@ -183,7 +190,11 @@ int main(int argc, char *argv[]) {
         #ifdef COUNT_QUERY
           s.checksum = s.checksum * 13 + count(a, b);
         #else
-          s.checksum = s.checksum * 13 + lower_bound(a);
+          #ifdef SUM_QUERY
+            s.checksum = s.checksum * 13 + sum(a, b);
+          #else
+            s.checksum = s.checksum * 13 + lower_bound(a);
+          #endif
         #endif
 
         switch (U) {
@@ -282,7 +293,11 @@ int main(int argc, char *argv[]) {
     #ifdef COUNT_QUERY
       s.note = "count " + s.note;
     #else
-      s.note = "view " + s.note;
+      #ifdef SUM_QUERY
+        s.note = "sum " + s.note;
+      #else
+        s.note = "select " + s.note;
+      #endif
     #endif
     s.verified = verify(U, s);
 

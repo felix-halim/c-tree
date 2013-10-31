@@ -55,6 +55,15 @@ int select(int a, int b) {
   return ret1 + ret2;
 }
 
+int sum(int a, int b) {
+  // auto it1 = c.lower_bound(a);
+  // auto it2 = c.lower_bound(b);
+  int ret = 0;
+  // for (int val; it1 != it2 && it1.next(val); ret += val);
+  // fprintf(stderr, "%d (%d)\n", ret, value);
+  return ret;
+}
+
 void results(Statistics &s) {
   // assert(c.check());
   #ifdef EAGER

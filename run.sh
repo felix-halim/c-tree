@@ -12,6 +12,9 @@ compile)      make -s -C src "../bin/$2" || exit;
 
 algo)         ./run.sh compile $2
               bin/$2 $N $Q 0.1 1 $3;;
+
+seq)          ./run.sh compile $2
+              bin/$2 $N $Q 0.1 2 $3;;
               # valgrind --leak-check=yes bin/$2 $N $Q 0.001 1 $3;;
 
 split)        make -s -C src "../bin/split" || exit;
@@ -53,19 +56,20 @@ batch_append)
               ./run.sh append crack_count 0.9 | tee -a $out
               ;;
 
-batch_noup)   ./run.sh algo comb 0 | tee -a $out
-              ./run.sh algo sort 0 | tee -a $out
-              ./run.sh algo crack 0 | tee -a $out
-              ./run.sh algo ctree_eager 0 | tee -a $out
-              ./run.sh algo ctree_32_64 0 | tee -a $out
-              ./run.sh algo ctree_32_1024 0 | tee -a $out
-              ./run.sh algo art 0 | tee -a $out
-              ./run.sh algo art_best 0 | tee -a $out
-              ./run.sh algo art_best_eager 0 | tee -a $out
-              # ./run.sh algo art_crack 0 | tee -a $out
-              # ./run.sh algo ctree_exp_leafsize 0 | tee -a $out
-              ./run.sh algo btree_google 0 | tee -a $out
-              ./run.sh algo btree_stx 0 | tee -a $out
+batch_noup)   ./run.sh seq comb 0 | tee -a $out
+              ./run.sh seq sort 0 | tee -a $out
+              ./run.sh seq crack 0 | tee -a $out
+              ./run.sh seq ctree_eager 0 | tee -a $out
+              ./run.sh seq ctree_32_64 0 | tee -a $out
+              ./run.sh seq ctree_32_1024 0 | tee -a $out
+              ./run.sh seq ctree_32_4096 0 | tee -a $out
+              ./run.sh seq art 0 | tee -a $out
+              ./run.sh seq art_best 0 | tee -a $out
+              ./run.sh seq art_best_eager 0 | tee -a $out
+              # ./run.sh seq art_crack 0 | tee -a $out
+              ./run.sh seq ctree_exp_leafsize 0 | tee -a $out
+              ./run.sh seq btree_google 0 | tee -a $out
+              ./run.sh seq btree_stx 0 | tee -a $out
               ;;
 
 batch_sky)    ./run.sh append comb 0 | tee -a $out
@@ -183,6 +187,8 @@ batch_ctree)  ./run.sh noup ctree_32_32 | tee -a $out
 
 fhnet)        scp experiments.html felixhalim@felix-halim.net:~/public_html/research/ctree/
               scp data.js felixhalim@felix-halim.net:~/public_html/research/ctree/
+              scp demo.html felixhalim@felix-halim.net:~/public_html/research/ctree/
+              scp linechart.js felixhalim@felix-halim.net:~/public_html/research/ctree/
               ;;
 
 clean)        rm -fr bin/*;;

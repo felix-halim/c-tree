@@ -1,3 +1,8 @@
+function renderLinecharts() {
+  var charts = document.getElementsByClassName('chart');
+  Array.prototype.forEach.call(charts, linechart);
+}
+
 function linechart(div) {
   eval('var opts = ' + div.innerText);
   div.innerHTML = '';
@@ -188,3 +193,73 @@ function isPowerOfTen(d) {
 function isOneOrTen(d) {
   return (d == 1 || d == 10);
 }
+
+
+
+
+data = d3.csv.parse(data);
+
+data.forEach(function (d) {
+  d.Q = parseInt(d.Q);
+  d.insert_time = parseFloat(d.insert_time);
+  d.query_time = parseFloat(d.query_time) + 1e-9;
+  d.update_time = parseFloat(d.update_time) + 1e-9;
+  d.total_time = d.insert_time + d.query_time + d.update_time;
+});
+
+var algo_name = {
+  comb:            { name: "COMB", symbol: "diamond", color: "orange" },
+  comb_count:      { name: "COMB", symbol: "diamond", color:"orange" },
+  art:             { name: "ART", symbol: "square", color: "lime", },
+  art_best:        { name: "ARTC", symbol: "cross", color: "red", },
+  art_best_eager:  { name: "ARTB", symbol: "triangle-up", color: "green", },
+  sort:            { name: "Sort", symbol: "triangle-down", color: "blue", },
+  crack:           { name: "Crack", symbol: "circle", color: "red", },
+  crack_count:     { name: "Crack", symbol: "circle", color: "red", },
+  mdd1r:           { name: "Scrack", symbol: "circle", color: "red", },
+  ctree_32_64:     { name: "CT64", symbol: "square", color: "brown", },
+  ctree_32_1024:   { name: "CT1024", symbol: "triangle-up", color: "magenta", },
+  ctree_32_4096:   { name: "CT4096", symbol: "diamond", color: "blue", },
+  ctree_eager:     { name: "BTE", symbol: "triangle-up", color: "magenta", },
+  btree_google:    { name: "BT", symbol: "square", color: "black", },
+};
+
+function filter(filters) {
+  var ret = data;
+  filters.forEach(function (filter) {
+    ret = ret.filter(function (d) {
+      return filter.values.indexOf(d[filter.attr]) != -1;
+    });
+  });
+  return ret;
+}
+
+function group(arr, by) {
+  var keys = {}, groups = [];
+  arr.forEach(function (d) {
+    if (!keys[d[by]]) keys[d[by]] = [];
+    keys[d[by]].push(d);
+  });
+  return keys;
+  // for (var i in keys) if (keys.hasOwnProperty(i)) {
+  //   var a = keys[i];
+  //   keys[i] = [];
+  //   groups.push({ group: i, label: a.label, x: a.x, y: a.y });
+  // }
+}
+
+function expTime(t) {
+  function f(x) {
+    var v = d3.format(".2f")(x) + "";
+    while (v.length > 0 && v[v.length - 1] == '0') v = v.substring(0, v.length - 1);
+    if (v.length > 0 && v[v.length - 1] == '.') v = v.substring(0, v.length - 1);
+    console.log(v);
+    return v;
+  }
+  if (t >= 3600) return f(t / 3600) + 'h';
+  if (t >= 60) return f(t / 60) + 'm';
+  if (t >= 1) return f(t) + 's';
+  if (t >= 1e-3) return f(t*1e3) + 'ms';
+  if (t >= 1e-6) return f(t*1e6) + 'µs';
+  return "?";
+};

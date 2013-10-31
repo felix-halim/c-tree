@@ -14,6 +14,7 @@ class Workload {
   int S;    // The selectivity (unused for some workloads).
   int I;    // The I'th query (internal use only).
   int a, b; // The last query range [a,b].
+  int seq_jump;
   double selectivity;
 
   mt19937 gen;
@@ -59,7 +60,7 @@ class Workload {
   // a will be incremented by 10 every subsequent query.
   // The range may overlap with the next queries.
   bool seq_over_w() {
-    a = 10 + I * 20;
+    a = 10 + I * seq_jump;
     if (a + 5 > N) return false;
     if (S == 0) {
       b = a + nextInt(N - a) + 1;
@@ -257,7 +258,7 @@ class Workload {
 
 public : 
 
-  Workload(int w, double selectivity_): N(0), W(w), S(0), I(0), a(0), b(0), selectivity(selectivity_), gen(140384) {
+  Workload(int w, double selectivity_): N(0), W(w), S(0), I(0), a(0), b(0), seq_jump(20), selectivity(selectivity_), gen(140384) {
     if (W < 0 || W >= 17) {
       fprintf(stderr,"Workload number %d is not found!\n", W);
       exit(1);
@@ -267,6 +268,14 @@ public :
   void set_max(int mx) {
     N = mx;
     S = mx * selectivity;
+  }
+
+  int get_max() {
+    return N;
+  }
+
+  void set_seq_jump(int seq_jump_) {
+    seq_jump = seq_jump_;
   }
 
   bool query(int &na, int &nb) {

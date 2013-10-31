@@ -24,8 +24,8 @@ int lower_bound(int value) {
 }
 
 int select(int a, int b) {
-  auto it1 = lower_bound(arr, arr + N, value);
-  auto it2 = lower_bound(arr, arr + N, value);
+  auto it1 = lower_bound(arr, arr + N, a);
+  auto it2 = lower_bound(arr, arr + N, b);
   return it2 - it1;
 }
 
