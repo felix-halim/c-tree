@@ -8,9 +8,9 @@ function linechart(div) {
   div.innerHTML = '';
 
   opts.width = opts.width || 400;
-  opts.height = opts.height || 200;
+  opts.height = opts.height || 210;
   opts.fontSize = opts.fontSize || 14;
-  opts.margin = opts.margin || { top: 20, right: 40, bottom: 30, left: 60 };
+  opts.margin = opts.margin || { top: 20, right: 40, bottom: 45, left: 60 };
 
   function noFormat() { return ""; };
   noFormat.replace = noFormat;
@@ -100,11 +100,11 @@ function linechart(div) {
       attr["alignment-baseline"] = 'middle';
       legendG.append("text").attr(attr).text(algo_name[key].name);
       legendG.append("path").attr({
-        "d": "M" + (attr.x - 25) + " " + attr.y + " L" + (attr.x - 5) + " " + attr.y,
+        "d": "M" + (attr.x - 20) + " " + attr.y + " L" + (attr.x - 1) + " " + attr.y,
         "stroke": color(key),
       });
       legendG.append("path").attr({
-        transform: "translate(" + (attr.x - 15) + ", " + attr.y + ")",
+        transform: "translate(" + (attr.x - 10) + ", " + attr.y + ")",
         fill: color(key),
         d: symbol(key),
       });
@@ -210,9 +210,9 @@ data.forEach(function (d) {
 var algo_name = {
   comb:            { name: "COMB", symbol: "diamond", color: "orange" },
   comb_count:      { name: "COMB", symbol: "diamond", color:"orange" },
-  art:             { name: "ART", symbol: "square", color: "lime", },
+  art:             { name: "ART", symbol: "triangle-up", color: "lime", },
   art_best:        { name: "ARTC", symbol: "cross", color: "red", },
-  art_best_eager:  { name: "ARTB", symbol: "triangle-up", color: "green", },
+  art_best_eager:  { name: "ARTB", symbol: "cross", color: "green", },
   sort:            { name: "Sort", symbol: "triangle-down", color: "blue", },
   crack:           { name: "Crack", symbol: "circle", color: "red", },
   crack_count:     { name: "Crack", symbol: "circle", color: "red", },
@@ -221,7 +221,7 @@ var algo_name = {
   ctree_32_1024:   { name: "CT1024", symbol: "triangle-up", color: "magenta", },
   ctree_32_4096:   { name: "CT4096", symbol: "diamond", color: "blue", },
   ctree_eager:     { name: "BTE", symbol: "triangle-up", color: "magenta", },
-  btree_google:    { name: "BT", symbol: "square", color: "black", },
+  btree_google:    { name: "BTree", symbol: "square", color: "black", },
 };
 
 function filter(filters) {
@@ -263,3 +263,135 @@ function expTime(t) {
   if (t >= 1e-6) return f(t*1e6) + 'µs';
   return "?";
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+function barchart(id, xcap, ylabel, data, update_w, Q, algo_name) {
+  var algos = {};
+  for (var i in algo_name) if (algo_name.hasOwnProperty(i))
+    algos[i] = [];
+
+  data.forEach(function (d) {
+    if (algos[d.algorithm] && d.Q == Q && d.update_workload == update_w && d.query_workload == 'Random') {
+      d.Q = parseInt(d.Q);
+      d.insert_time = parseFloat(d.insert_time);
+      d.query_time = parseFloat(d.query_time) + 1e-9;
+      d.update_time = parseFloat(d.update_time) + 1e-9;
+      d.total_time = d.insert_time + d.query_time;
+      if (update_w == 'LFHV') d.total_time += d.update_time;
+      algos[d.algorithm].push(d);
+    }
+  });
+
+  console.log(algos);
+
+  var svg = d3.select(id);
+  if (!svg[0][0]) return;
+  var margin = { top: 20, right: 0, bottom: 60, left: 60 };
+  if (!ylabel) margin.left = 35;
+  var width = svg.attr('width') - (margin.left + margin.right);
+  var height = svg.attr('height') - (margin.top + margin.bottom);
+
+  var x = d3.scale.ordinal().rangeRoundBands([0, width], .1);
+  var y = d3.scale.linear().rangeRound([height, 0]);
+
+  var color = d3.scale.ordinal().range(["#000", "#888", "#bbb"]);
+  var xAxis = d3.svg.axis().scale(x).orient("bottom");
+  var yAxis = d3.svg.axis().scale(y).orient("left").tickFormat(d3.format("1s")).ticks(5);
+
+  svg = svg.append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+  color.domain(['insert', 'update', 'query']);
+
+  var arr = d3.keys(algos).map(function(name) {
+    var r = algos[name][0];
+    var values = [
+      { name:'insert', y0: 0, y1: r.insert_time },
+      { name:'query', y0: r.insert_time, y1: r.total_time },
+    ];
+    if (update_w == 'LFHV') {
+      values[1] = { name:'update', y0: r.insert_time, y1: r.insert_time + r.update_time };
+      values[2] = { name:'query', y0: r.insert_time + r.update_time, y1: r.total_time };
+    }
+    console.log(name + ' ' + JSON.stringify(values));
+
+    return {
+      name: name,
+      values: values
+    };
+  });
+
+  x.domain(arr.map(function(d) { return algo_name[d.name]; }));
+  y.domain([0, d3.max(arr, function(d) { return d.values[d.values.length - 1].y1; })]);
+
+  var xx = svg.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + height + ")")
+      .call(xAxis);
+  xx.selectAll("text").attr({
+    "font-size": 12,
+    "transform": "rotate(-25) translate(-7,0)",
+    "text-anchor": "end"
+  });
+  xx.append("text")
+    .attr("transform", "translate(" + width/2 + ",0)")
+    .attr("y", 45)
+    // .attr("dy", ".71em")
+    .style("text-anchor", "middle")
+    .text(xcap);
+
+  var yy = svg.append("g")
+      .attr("class", "y axis")
+      .call(yAxis);
+  if (ylabel) yy.append("text")
+      .attr("transform", "rotate(-90) translate(-" + height/2 + ",0)")
+      .attr("y", -45)
+      // .attr("dy", ".71em")
+      .style("text-anchor", "middle")
+      .text(ylabel);
+
+  var state = svg.selectAll(".state")
+      .data(arr)
+    .enter().append("g")
+      .attr("class", "g")
+      .attr("transform", function(d) { return "translate(" + x(d.name) + ",0)"; });
+
+  state.selectAll("rect")
+      .data(function(d) { return d.values; })
+    .enter().append("rect")
+      .attr("width", x.rangeBand())
+      .attr("y", function(d) { return y(d.y1); })
+      .attr("height", function(d) { return y(d.y0) - y(d.y1); })
+      .style("fill", function(d) { return color(d.name); });
+
+  // var legend = svg.selectAll(".legend")
+  //     .data(['insert', 'query'])
+  //   .enter().append("g")
+  //     .attr("class", "legend")
+  //     .attr("transform", function(d, i) { return "translate(0," + i * 20 + ")"; });
+
+  // legend.append("rect")
+  //     .attr("x", width - 18)
+  //     .attr("width", 18)
+  //     .attr("height", 18)
+  //     .style("fill", color);
+
+  // legend.append("text")
+  //     .attr("x", width - 24)
+  //     .attr("y", 9)
+  //     .attr("dy", ".35em")
+  //     .style("text-anchor", "end")
+  //     .text(function(d) { return d; });
+}

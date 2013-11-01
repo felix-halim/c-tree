@@ -38,7 +38,16 @@ $(ODIR)/split: split.cc update.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DBSIZE=4096 -Wall -o $@ $<
 
 $(ODIR)/comb: comb.cc comb.h test.h update.h query.h checksum.h
-	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DCOMB6400 -Wall -o $@ $<
+
+$(ODIR)/comb800: comb.cc comb.h test.h update.h query.h checksum.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DCOMB800 -Wall -o $@ $<
+
+$(ODIR)/comb1600: comb.cc comb.h test.h update.h query.h checksum.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DCOMB1600 -Wall -o $@ $<
+
+$(ODIR)/comb3200: comb.cc comb.h test.h update.h query.h checksum.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DCOMB3200 -Wall -o $@ $<
 
 $(ODIR)/comb_count: comb.cc comb.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -DCOUNT_QUERY -o $@ $<
@@ -183,6 +192,13 @@ $(ODIR)/ctree_256_1024: ctree.cc ctree.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=256 -DLEAF_BSIZE=1024 -Wall -o $@ $<
 $(ODIR)/ctree_256_4096: ctree.cc ctree.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=256 -DLEAF_BSIZE=4096 -Wall -o $@ $<
+
+
+$(ODIR)/ctree2: ctree2.cc ctree2.h test.h update.h query.h checksum.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=32 -Wall -o $@ $<
+
+$(ODIR)/ctree3: ctree3.cc ctree3.h test.h update.h query.h checksum.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=32 -Wall -o $@ $<
 
 
 depend:

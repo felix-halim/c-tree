@@ -3,8 +3,15 @@
 #include "comb.h"
 #include "test.h"
 
-// Comb<int, std::less<int>, true, 3200, 125, 50> c;
-Comb<int> c(100000000);
+#if defined(COMB800)
+  Comb<int, std::less<int>, false, 800, 30, 12> c(100000000);
+#elif defined(COMB1600)
+  Comb<int, std::less<int>, false, 1600, 62, 25> c(100000000);
+#elif defined(COMB3200)
+  Comb<int, std::less<int>, false, 3200, 125, 50> c(100000000);
+#elif defined(COMB6400)
+  Comb<int> c(100000000);
+#endif
 
 void init(int *arr, int N) {
   c.load(arr, N);
