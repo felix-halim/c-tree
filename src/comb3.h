@@ -411,8 +411,8 @@ template <
   typename T,
   typename CMP  = std::less<T>,
   int MAX_BSIZE = 8192,
-  int CRACK_AT  = 32,
-  int DECRACK_AT  = 10>
+  int CRACK_AT  = 64,
+  int DECRACK_AT  = 30>
 
 class Comb {
   static_assert(DECRACK_AT * 2 < CRACK_AT, "insufficient gap for crack decrack");
