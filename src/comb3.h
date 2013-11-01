@@ -39,12 +39,12 @@ template <typename T,
   int DECRACK_AT  = 10>
 
 class Bucket {
-  static const unsigned short MAX_CRACK = 32;
+  static const unsigned short MAX_CRACK = 64;
 
   int N;                // the number of data elements
   int I;                // last indexed position
   unsigned char nC;     // the number of cracker indices
-  unsigned int S;       // sorted bits
+  unsigned long long S;       // sorted bits
   int C[MAX_CRACK-1];   // the cracker indices
   T V[MAX_CRACK-1];     // the cracker value
   T *D;                 // the data elements
@@ -72,11 +72,11 @@ class Bucket {
     S &= (1ULL << i) - 1;          // destroy sorted bit std::vector from i onwards
   }
 
-  void insert_bit_at(unsigned int &S, int at) {
+  void insert_bit_at(unsigned long long &S, int at) {
     S = ((S<<1) & ~((((1ULL<<at)-1)<<1)|1)) | (S & ((1ULL<<at)-1));
   }
 
-  void remove_bit_at(unsigned int &S, int at) {
+  void remove_bit_at(unsigned long long &S, int at) {
     S = ((S & ~((((1ULL<<at)-1)<<1)|1)) >> 1) | (S & ((1ULL<<at)-1));
   }
 
@@ -89,7 +89,7 @@ class Bucket {
     C[at] = M;
     V[at] = D[M];
     nC++;
-    // assert(nC < MAX_CRACK);
+    assert(nC < MAX_CRACK);
     assert(at == 0 || C[at - 1] < C[at]);
     assert(at + 1 == nC || C[at] < C[at + 1]);
     insert_bit_at(S, at);
@@ -172,7 +172,7 @@ class Bucket {
     R = i==nC? N : C[i];            // the right crack boundary
     while (R-L > CRACK_AT){            // narrow down the piece using DDR
       int M = rough_middle_partition(D+L+(i?1:0), D+R, cmp, rng) - D;
-      add_cracker_index(i,M);
+      add_cracker_index(i, M);
 //        fprintf(stderr,"CRACKING %d %d, [%d %d]\n",M,D[M],L,R);
       if (cmp(v,D[M])) R=M; else L=M, i++;  // adjust the cracker index i
     }
@@ -181,32 +181,15 @@ class Bucket {
     return i;
   }
 
-  int get_piece_by_index(int idx, int &L, int &R, CMP &cmp, Random &rng) {
-    assert(idx>=0 && idx<N);        // index must fall within the bucket's size
-    flush_pending_inserts(cmp);
-    int i = 0;
-    while (i<nC && idx >= C[i]) i++;    // find the cracker indices that covers the idx
-    L = i==0? 0 : C[i-1];          // the left crack
-    R = i==nC? N : C[i];          // the right crack
-    while (R-L > CRACK_AT){          // narrow down the piece using DDR
-      int M = rough_middle_partition(D+L+(i?1:0), D+R, cmp, rng) - D;
-      add_cracker_index(i,M);
-      if (idx < M) R=M; else L=M, i++;  // adjust the cracker index
-    }
-    assert(i>=0 && i<=nC);
-//      assert(check(D[0],false,D[0],false, cmp));
-    return i;
-  }
-
 public:
-  Bucket(int c): N(0), D(new T[c]), cap(c), next_b(NULL) {
-    clear_indexes();
-  }
+  Bucket(int c): N(0), D(new T[c]), cap(c), next_b(NULL) { clear_indexes(); }
+  ~Bucket() { delete[] D; }
 
   int size() const { return N; }
   int slack() const { return cap - N; }
   int is_full() const { return N == cap; }
   int capacity() const { return cap; }
+  int n_cracks() const { return nC; }
   bool empty() { return N == 0; }
   Bucket* next() const { return next_b; }
   void set_next(Bucket *b){ next_b = b; }
@@ -215,17 +198,85 @@ public:
   T data(int i) const { assert(i >= 0 && i < N); return D[i]; }
   T* getp(int i) { assert(i>=0 && i<N); return &D[i]; }
   void insert(T const &v){ assert(N < cap); D[N++] = v; }
+
+  pair<T, Bucket*> split(CMP &cmp) {
+    flush_pending_inserts(cmp);
+
+    assert(cap % 2 == 0);
+    Bucket *b = new Bucket(cap / 2);
+    assert(nC > 1);
+    assert(nC < 50);
+
+    int mid = N / 2, i = 0;
+
+    if (C[0] > mid) {
+      nth_element(D + 1, D + mid, D + C[0]);
+      // fprintf(stderr, "add cracker front %d\n", mid);
+      add_cracker_index(0, mid);
+      // debug("asdf", 0, 0);
+      // assert(check(0, 0, 0, 0, cmp));
+    }
+
+    while (i + 1 < nC && C[i + 1] <= mid) i++;
+
+    assert(C[i] <= mid);
+
+    if (N - C[i] > b->cap) {
+      int R = ((i + 1) == nC) ? N : C[i + 1];
+      // fprintf(stderr, "add cracker at %d, %d %d %d, %d\n", i + 1, C[i], mid, R, N);
+      assert(C[i] < mid && mid < R);
+      nth_element(D + C[i] + 1, D + mid, D + R);
+      add_cracker_index(++i, mid);
+      // debug("asdf", 0, 0);
+      // assert(check(0, 0, 0, 0, cmp));
+    }
+
+    T *DD = new T[cap / 2];
+
+    int n_move = N - C[i];
+    assert(n_move <= b->cap);
+    b->I = b->N = n_move;
+    for (int j = 0; j < n_move; j++) b->D[j] = D[C[i] + j];
+    for (int j = i + 1; j < nC; j++) {
+      b->C[b->nC] = C[j] - C[i];
+      b->V[b->nC] = V[j];
+      b->piece_set_sorted(b->nC, piece_is_sorted(j));
+      b->nC++;
+    }
+    b->piece_set_sorted(b->nC, piece_is_sorted(nC));
+
+
+    pair<T, Bucket*> ret = make_pair(V[i], b);
+    assert(C[i] <= cap / 2);
+    memcpy(DD, D, sizeof(T) * C[i]);
+    nC = i;
+    N = I = C[i];
+
+    delete[] D;
+    D = DD;
+
+      // debug("asdf", 0, 0);
+      // b->debug("asdf", 0, 0);
+
+    // assert(check(0, 0, 0, 0, cmp));
+    // assert(b->check(0, 0, 0, 0, cmp));
+
+    return ret;
+  }
+
   int bulk_insert(T const *v, int length){
     assert(N == 0);
     memcpy(D, v, sizeof(T) * length);
     return N = length;
   }
+
   void mark_hi(T const &P, CMP &cmp, int *hi, int &nhi){
     for (int i=0; i<N; i++){
       hi[nhi] = i;
       nhi += !cmp(D[i], P);
     }
   }
+
   void mark_lo(T const &P, CMP &cmp, int *lo, int &nlo){
     for (int i=0; i<N; i++){
       lo[nlo] = i;
@@ -252,7 +303,7 @@ public:
     for (int k=0; k<nC; k++)
       fprintf(stderr,"C[%d/%d] = %d, %d (sorted = %d)\n",
         k,nC,C[k],(int)D[C[k]],piece_is_sorted(k));
-    fprintf(stderr,"%s : i=%d/N=%d, j=%d/nC=%d, D[i,i+1] = %d, %d; I=%d, N=%d, next=%d\n",
+    fprintf(stderr,"%s : i=%d/N=%d, j=%d/nC=%d, D[i,i+1] = %d, %d; I=%d, N=%d, next=%p\n",
       msg, i,N, j,nC, (int)D[i],(int)D[i+1], I,N,next_b);
     return false;
   }
@@ -266,6 +317,12 @@ public:
     if (useHi) for (int i=0; i<N; i++) if (!cmp(D[i],hi)){
       fprintf(stderr,"D[%d] = %d, hi = %d\n",i,D[i],hi);
       return debug("useHi failed", i,0);
+    }
+    for (int i = 0; i < nC; i++) {
+      if (!eq(V[i], D[C[i]], cmp)) {
+        fprintf(stderr, "not equal %d, %d != %d\n", i, V[i], D[C[i]]);
+        return false;
+      }
     }
     for (int i=0,j=0; i<I; i++){                    // check cracker indices
       if (j<nC && C[j]==i) assert(eq(V[j],D[i],cmp)), lo = D[i], j++;
@@ -704,7 +761,43 @@ public:
   iterator lower_bound(T const &v, bool sort_piece = true) {
     root_iterator it = break_chain(find_root(v), v);
     bucket_type *b = it->second.first;
-    int i, L, R, idx = b->crack(v, i, L, R, sort_piece, cmp, rng);
+    int i, LL, RR, idx = b->crack(v, i, LL, RR, sort_piece, cmp, rng);
+
+    // To avoid having too many cracker indexes in a bucket.
+    if (b->n_cracks() > 16) {
+      // fprintf(stderr, "SPLIT\n");
+      pair<T, bucket_type*> nb = b->split(cmp);
+
+      if (it->first >= nb.first) {
+        // Must be the leftmost root entry.
+        R.erase(it);
+        set_root(b->data(0), make_pair(b, b));
+        it = find_root(b->data(0));
+        assert(it->first == b->data(0));
+      }
+
+      // fprintf(stderr, "SET ROOT = %d\n", nb.first);
+      set_root(nb.first, make_pair(nb.second, nb.second));
+      if (v >= nb.first) {
+        it++;
+        // fprintf(stderr, "ADVANCE = %d %d\n", it->first, nb.first);
+        assert(it->first == nb.first);
+        b = nb.second;
+        idx = b->crack(v, i, LL, RR, sort_piece, cmp, rng);
+      }
+    }
+
+    if (idx == b->size()) {
+      it++;
+      if (it != R.end()) {
+        it = break_chain(it, v);
+        b = it->second.first;
+        assert(b->size() > 0);
+        idx = b->crack(v, i, LL, RR, sort_piece, cmp, rng);
+        assert(idx == 0);
+        // B[Pb[ridx]].nth(0,cmp,rng);          // just to crack it
+      }
+    }
     return iterator(this, it, b, idx);
   }
 
@@ -819,6 +912,23 @@ public:
     int i,L,R,idx = B[Pb[ridx]].crack(v,i,L,R,true,cmp,rng);
     if (ridx == 0) return idx;
     return bit_sum(ridx - 1) + idx;
+  }
+
+  int get_piece_by_index(int idx, int &L, int &R, CMP &cmp, Random &rng) {
+    assert(idx>=0 && idx<N);        // index must fall within the bucket's size
+    flush_pending_inserts(cmp);
+    int i = 0;
+    while (i<nC && idx >= C[i]) i++;    // find the cracker indices that covers the idx
+    L = i==0? 0 : C[i-1];          // the left crack
+    R = i==nC? N : C[i];          // the right crack
+    while (R-L > CRACK_AT){          // narrow down the piece using DDR
+      int M = rough_middle_partition(D+L+(i?1:0), D+R, cmp, rng) - D;
+      add_cracker_index(i,M);
+      if (idx < M) R=M; else L=M, i++;  // adjust the cracker index
+    }
+    assert(i>=0 && i<=nC);
+//      assert(check(D[0],false,D[0],false, cmp));
+    return i;
   }
 
 */
