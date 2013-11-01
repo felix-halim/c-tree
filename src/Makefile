@@ -40,6 +40,9 @@ $(ODIR)/split: split.cc update.h
 $(ODIR)/comb: comb.cc comb.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DCOMB6400 -Wall -o $@ $<
 
+$(ODIR)/comb3: comb3.cc comb3.h test.h update.h query.h checksum.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DCOMB6400 -Wall -o $@ $<
+
 $(ODIR)/comb800: comb.cc comb.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DCOMB800 -Wall -o $@ $<
 

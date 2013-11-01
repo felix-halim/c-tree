@@ -187,14 +187,14 @@ int main(int argc, char *argv[]) {
           if (!ok){ s.Q = i; MAXQ = -1; break; }
         // }
 
-        #ifdef COUNT_QUERY
+        #if defined(COUNT_QUERY)
           s.checksum = s.checksum * 13 + count(a, b);
+        #elif defined(SUM_QUERY)
+          s.checksum = s.checksum * 13 + sum(a, b);
+        #elif defined(SELECT_QUERY)
+          s.checksum = s.checksum * 13 + select(a, b);
         #else
-          #ifdef SUM_QUERY
-            s.checksum = s.checksum * 13 + sum(a, b);
-          #else
-            s.checksum = s.checksum * 13 + lower_bound(a);
-          #endif
+          s.checksum = s.checksum * 13 + lower_bound(a);
         #endif
 
         switch (U) {
@@ -290,14 +290,14 @@ int main(int argc, char *argv[]) {
     s.update_time += update_time;
     s.note = "";
     results(s);
-    #ifdef COUNT_QUERY
+    #if defined(COUNT_QUERY)
       s.note = "count " + s.note;
+    #elif defined(SUM_QUERY)
+      s.note = "sum " + s.note;
+    #elif defined(SELECT_QUERY)
+      s.note = "select " + s.note;
     #else
-      #ifdef SUM_QUERY
-        s.note = "sum " + s.note;
-      #else
-        s.note = "select " + s.note;
-      #endif
+      s.note = "view " + s.note;
     #endif
     s.verified = verify(U, s);
 

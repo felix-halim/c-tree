@@ -209,6 +209,9 @@ data.forEach(function (d) {
 
 var algo_name = {
   comb:            { name: "COMB", symbol: "diamond", color: "orange" },
+  comb800:         { name: "COMB800", symbol: "diamond", color: "red" },
+  comb1600:        { name: "COMB1600", symbol: "diamond", color: "blue" },
+  comb3200:        { name: "COMB3200", symbol: "diamond", color: "green" },
   comb_count:      { name: "COMB", symbol: "diamond", color:"orange" },
   art:             { name: "ART", symbol: "triangle-up", color: "lime", },
   art_best:        { name: "ARTC", symbol: "cross", color: "red", },

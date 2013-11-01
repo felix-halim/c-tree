@@ -15,7 +15,7 @@
 }
 </style>
 <script src="d3.v3.min.js"></script>
-<script src="data.js?3"></script>
+<script src="data.js?4"></script>
 <script src="linechart.js?4"></script>
 </head>
 
@@ -41,33 +41,34 @@ The setup is: insert 10^8 random integers and perform 10^9 point queries.
     'art' : { x: 250, y: 60 },
     'art_best_eager' : { x: 250, y: 80 },
     'btree_google' : { x: 250, y: 100 },
-    'crack' : { x: 70, y: 150 },
+    'mdd1r' : { x: 70, y: 150 },
     'comb' : { x: 30, y: 90 },
   },
   data: group(filter([
     { attr: 'update_workload',   values: ['NOUP'] },
     { attr: 'query_workload',   values: ['Random'] },
     { attr: 'Q',   values: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9 ] },
-    { attr: 'algorithm',         values: ['sort', 'comb', 'crack', 'art_best_eager', 'art', 'btree_google'] },
+    { attr: 'algorithm',         values: ['sort', 'comb', 'mdd1r', 'art_best_eager', 'art', 'btree_google'] },
   ]), 'algorithm'),
 }</div>
 
 <div class="chart" style="float:left; display: inline-block">{
   width: 450, height: 225,
   yAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'log', domain: [0.5, 2e9], format: ticksPow10, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9], margin: 40 },
-  xAxis: { label: 'Timeline (seconds)', attr: 'total_time', scale: 'log', domain: [0.4, 300], format: 'd', ticks: [0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20, 30, 40, 50, 60, 70, 100, 200, 300], margin: 40 },
+  xAxis: { label: 'Timeline (seconds)', attr: 'total_time', scale: 'log', domain: [0.4, 400], format: 'd', ticks: [0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20, 30, 40, 50, 60, 70, 100, 200, 300, 400], margin: 40 },
   legend: {
-    'sort' : { x: 190, y: 95 },
-    'art' : { x: 195, y: 135 },
-    'art_best_eager' : { x: 120, y: 140 },
-    'btree_google' : { x: 290, y: 80 },
-    'comb' : { x: 40, y: 70 },
+    'sort' : { x: 185, y: 95 },
+    'art' : { x: 185, y: 135 },
+    'art_best_eager' : { x: 110, y: 140 },
+    'btree_google' : { x: 275, y: 80 },
+    'mdd1r' : { x: 90, y: 70 },
+    'comb' : { x: 30, y: 30 },
   },
   data: group(filter([
     { attr: 'update_workload',   values: ['NOUP'] },
     { attr: 'query_workload',   values: ['SeqOver'] },
     { attr: 'Q',   values: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9 ] },
-    { attr: 'algorithm',         values: ['sort', 'comb', 'crack', 'art_best_eager', 'art', 'btree_google'] },
+    { attr: 'algorithm',         values: ['sort', 'comb', 'mdd1r', 'art_best_eager', 'art', 'btree_google'] },
   ]), 'algorithm'),
 }</div>
 
@@ -108,14 +109,14 @@ Cracking BTree (BTC) has similar performance with Cracking ART and thus omitted 
   yAxis: { label: 'NOUP: Ratio to Sort', attr: 'total_time', scale: 'log', domain: [0.05, 10], format: 'pow10', ticks: [0.05, 0.06, 0.07, 0.08, 0.09, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], margin: 40 },
   legend: {
     'sort' : { x: 50, y: 50 },
-    'crack' : { x: 250, y: 20 },
+    'mdd1r' : { x: 250, y: 20 },
     'comb' : { x: 130, y: 120 },
   },
   base: 'sort',
   data: group(filter([
     { attr: 'update_workload',   values: ['NOUP'] },
     { attr: 'query_workload',    values: ['Random'] },
-    { attr: 'algorithm',         values: ['sort', 'comb', 'crack'] },
+    { attr: 'algorithm',         values: ['sort', 'comb', 'mdd1r'] },
   ]), 'algorithm'),
 }</div>
 
@@ -124,15 +125,15 @@ Cracking BTree (BTC) has similar performance with Cracking ART and thus omitted 
   yAxis: { label: 'NOUP: Ratio to Sort', attr: 'total_time', scale: 'log', domain: [0.05, 10], format: 'pow10', ticks: [0.05, 0.06, 0.07, 0.08, 0.09, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], margin: 40 },
   legend: {
     'sort' : { x: 50, y: 50 },
-    'crack' : { x: 250, y: 20 },
-    'ctree_32_64' : { x: 30, y: 90 },
+    'mdd1r' : { x: 250, y: 20 },
+    'ctree_32_64' : { x: 30, y: 85 },
     'ctree_32_1024' : { x: 120, y: 110 },
   },
   base: 'sort',
   data: group(filter([
     { attr: 'update_workload',   values: ['NOUP'] },
     { attr: 'query_workload',    values: ['Random'] },
-    { attr: 'algorithm',         values: ['sort', 'crack', 'ctree_32_64', 'ctree_32_4096'] },
+    { attr: 'algorithm',         values: ['sort', 'mdd1r', 'ctree_32_64', 'ctree_32_4096'] },
   ]), 'algorithm'),
 }</div>
 
@@ -143,7 +144,7 @@ Cracking BTree (BTC) has similar performance with Cracking ART and thus omitted 
     'sort' : { x: 50, y: 50 },
     'art_best' : { x: 70, y: 125 },
     'art_best_eager' : { x: 250, y: 100 },
-    'ctree_32_64' : { x: 30, y: 90 },
+    'ctree_32_64' : { x: 30, y: 85 },
   },
   base: 'sort',
   data: group(filter([
@@ -158,17 +159,17 @@ Cracking BTree (BTC) has similar performance with Cracking ART and thus omitted 
   xAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'log', domain: [0.5, 2e9], format: ticksPow10, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9], margin: 40 },
   yAxis: { label: 'NOUP: Ratio to COMB', attr: 'total_time', scale: 'log', domain: [0.7, 5], format: 'pow10', ticks: [0.7, 0.8, 0.9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], margin: 40 },
   legend: {
-    'crack' : { x: 265, y: 60 },
+    'mdd1r' : { x: 260, y: 50 },
     'ctree_32_64' : { x: 50, y: 40 },
     'ctree_32_1024' : { x: 120, y: 110 },
     'ctree_32_4096' : { x: 250, y: 105 },
-    'comb' : { x: 50, y: 140 },
+    'comb' : { x: 55, y: 135 },
   },
   base: 'comb',
   data: group(filter([
     { attr: 'update_workload',   values: ['NOUP'] },
     { attr: 'query_workload',    values: ['Random'] },
-    { attr: 'algorithm',         values: ['comb', 'crack', 'ctree_32_64', 'ctree_32_1024', 'ctree_32_4096'] },
+    { attr: 'algorithm',         values: ['comb', 'mdd1r', 'ctree_32_64', 'ctree_32_1024', 'ctree_32_4096'] },
   ]), 'algorithm'),
 }</div>
 
@@ -235,6 +236,24 @@ ARTC is 48x, 8x, 2x faster than ART on 1, 1K, 1M queries respectively and compar
   ]), 'algorithm'),
 }</div>
 
+<div class="chart" style="display: inline-block">{
+  xAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'log', domain: [0.5, 2e9], format: ticksPow10, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9 ], margin: 40 },
+  yAxis: { label: 'LFHV: Ratio to CTree', attr: 'total_time', scale: 'log', domain: [0.3, 10], format: 'pow10', ticks: [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], margin: 30 },
+  base: 'ctree_32_64',
+  legend: {
+    'comb':           { x: 95, y: 20 },
+    'comb3200':       { x: 95, y: 40 },
+    'comb1600':       { x: 95, y: 60 },
+    'comb800':        { x: 95, y: 80 },
+    'ctree_32_64':    { x: 30, y: 80 },
+  },
+  data: group(filter([
+    { attr: 'update_workload',   values: ['LFHV'] },
+    { attr: 'query_workload',    values: ['Random'] },
+    { attr: 'algorithm',         values: ['comb', 'ctree_32_64', 'comb800', 'comb1600', 'comb3200'] },
+  ]), 'algorithm'),
+}</div>
+
 
 <p>Cumulative runtime compared to CTree under LFHV updates.
 <ul>
@@ -245,6 +264,7 @@ ARTC is 48x, 8x, 2x faster than ART on 1, 1K, 1M queries respectively and compar
 <li>CTree with 1024 bucket size (CT1024) has better Fusion thus has similar performance to COMB for the first 10^5 queries<br>
 but worse in the long run because of the high cost in updating large Bucket without (mini cracker) indexes.
 <li>CTree can be modified to be "adaptive" in terms of bucket size (need more research).
+<li>COMB800 can match CTree performance on updates due to smaller bucket size and less shuffling data in/out of buckets.
 </ul>
 </p>
 
@@ -265,7 +285,7 @@ This can be mitigated by doing eager insert after 100M queries.
 <div class="chart">{
 width: 255,
 xAxis: { label: 'Query Sequence', attr: 'Q', scale: 'log', domain: [0.5, 2e3], format: null, ticks: [1, 10, 1e2, 1e3], margin: 40 },
-yAxis: { label: 'Cumulative Runtime', attr: 'total_time', scale: 'log', domain: [0.01, 500], format: 'pow10', ticks: [0.01, 100, 200, 300, 400, 500], margin: 40 },
+yAxis: { label: 'Cumulative Runtime', attr: 'total_time', scale: 'logx', domain: [-50, 500], format: 'pow10', ticks: [0, 100, 200, 300, 400, 500], margin: 40 },
 legend: {
 'crack_count' : { x: 50, y: 30 },
 'comb_count' : { x: 50, y: 50 },
@@ -288,6 +308,7 @@ Each count query requires the algo to iterate for each pieces to acquire it's si
 <li>COMB lazy insert appends or chain inserts to the correct bucket, no trashing.
 <li>The result is that Crack gets worse rapidly as the size of the pending insert grows, and
 <li>COMB stays resilient. It completes all 1000 inserts interleaved with a random count query in ~8 seconds while Crack in 445 seconds.
+<li><b>Replacing AVL to ART</b> in Crack will not help Crack to become resilient in this case.
 </ul>
 </p>
 
@@ -397,23 +418,23 @@ barchart("#fig41", '(e) 1B Queries', null, data, 'NOUP', '1000000000', {
 });
 
 barchart("#fig5", '(a) 1 Query', 'Total Time (s)', data, 'LFHV', '1', {
-  art: 'ART', art_best_eager: 'ARTB', art_best: 'ARTC', btree_google: 'BT', ctree_eager: 'CTE', ctree_32_64: 'CT', crack: 'CRK', comb: 'COMB',
+  art: 'ART', art_best_eager: 'ARTB', art_best: 'ARTC', btree_google: 'BT', ctree_eager: 'CTE', ctree_32_64: 'CT', crack: 'CRK', comb800: 'COMB',
 });
 
 barchart("#fig6", '(b) 1K Queries', null, data, 'LFHV', '1000', {
-  art: 'ART', art_best_eager: 'ARTB', art_best: 'ARTC', btree_google: 'BT', ctree_eager: 'CTE', ctree_32_64: 'CT', crack: 'CRK', comb: 'COMB',
+  art: 'ART', art_best_eager: 'ARTB', art_best: 'ARTC', btree_google: 'BT', ctree_eager: 'CTE', ctree_32_64: 'CT', crack: 'CRK', comb800: 'COMB',
 });
 
 barchart("#fig7", '(c) 1M Queries', null, data, 'LFHV', '1000000', {
-  art: 'ART', art_best_eager: 'ARTB', art_best: 'ARTC', btree_google: 'BT', ctree_eager: 'CTE', ctree_32_64: 'CT', crack: 'CRK', comb: 'COMB',
+  art: 'ART', art_best_eager: 'ARTB', art_best: 'ARTC', btree_google: 'BT', ctree_eager: 'CTE', ctree_32_64: 'CT', crack: 'CRK', comb800: 'COMB',
 });
 
 barchart("#fig8a", '(d) 100M Queries', null, data, 'LFHV', '100000000', {
-  art: 'ART', art_best_eager: 'ARTB', art_best: 'ARTC', btree_google: 'BT', ctree_eager: 'CTE', ctree_32_64: 'CT', crack: 'CRK', comb: 'COMB',
+  art: 'ART', art_best_eager: 'ARTB', art_best: 'ARTC', btree_google: 'BT', ctree_eager: 'CTE', ctree_32_64: 'CT', crack: 'CRK', comb800: 'COMB',
 });
 
 barchart("#fig8b", '(e) 1B Queries', null, data, 'LFHV', '1000000000', {
-  art: 'ART', art_best_eager: 'ARTB', art_best: 'ARTC', btree_google: 'BT', ctree_eager: 'CTE', ctree_32_64: 'CT', crack: 'CRK', comb: 'COMB',
+  art: 'ART', art_best_eager: 'ARTB', art_best: 'ARTC', btree_google: 'BT', ctree_eager: 'CTE', ctree_32_64: 'CT', crack: 'CRK', comb800: 'COMB',
 });
 </script>
 </body>
