@@ -172,6 +172,7 @@ class Bucket {
     R = i==nC? N : C[i];            // the right crack boundary
     while (R-L > CRACK_AT){            // narrow down the piece using DDR
       int M = rough_middle_partition(D+L+(i?1:0), D+R, cmp, rng) - D;
+      assert(nC + 5 < MAX_CRACK);
       add_cracker_index(i, M);
 //        fprintf(stderr,"CRACKING %d %d, [%d %d]\n",M,D[M],L,R);
       if (cmp(v,D[M])) R=M; else L=M, i++;  // adjust the cracker index i
@@ -197,7 +198,7 @@ public:
   T randomValue(Random &rng) const { return D[rng.nextInt(N)]; }
   T data(int i) const { assert(i >= 0 && i < N); return D[i]; }
   T* getp(int i) { assert(i>=0 && i<N); return &D[i]; }
-  void insert(T const &v){ assert(N < cap); D[N++] = v; }
+  void insert(T const &v) { assert(N < cap); D[N++] = v; }
 
   pair<T, Bucket*> split(CMP &cmp) {
     flush_pending_inserts(cmp);
@@ -245,7 +246,6 @@ public:
     }
     b->piece_set_sorted(b->nC, piece_is_sorted(nC));
 
-
     pair<T, Bucket*> ret = make_pair(V[i], b);
     assert(C[i] <= cap / 2);
     memcpy(DD, D, sizeof(T) * C[i]);
@@ -255,8 +255,8 @@ public:
     delete[] D;
     D = DD;
 
-      // debug("asdf", 0, 0);
-      // b->debug("asdf", 0, 0);
+    // debug("asdf", 0, 0);
+    // b->debug("asdf", 0, 0);
 
     // assert(check(0, 0, 0, 0, cmp));
     // assert(b->check(0, 0, 0, 0, cmp));
