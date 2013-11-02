@@ -211,7 +211,7 @@ public:
     int mid = N / 2, i = 0;
 
     if (C[0] > mid) {
-      nth_element(D + 1, D + mid, D + C[0]);
+      nth_element(D, D + mid, D + C[0]);
       // fprintf(stderr, "add cracker front %d\n", mid);
       add_cracker_index(0, mid);
       // debug("asdf", 0, 0);
@@ -576,7 +576,7 @@ class Comb {
     return p;
   }
 
-  int size(bucket_chain const c) {
+  int size(bucket_chain c) {
     bucket_type *b = c.first;
     int ret = 0;
     while (b) {
@@ -586,7 +586,7 @@ class Comb {
     return ret;
   }
 
-  int slack(bucket_chain const c) {
+  int slack(bucket_chain c) {
     bucket_type *b = c.first;
     int ret = 0;
     while (b) {
@@ -728,7 +728,7 @@ public:
 
   int size() {
     int ret = 0;
-    for (auto it : R) ret += size(it->second);
+    for (auto it : R) ret += size(it.second);
     return ret;
   }
 
@@ -765,27 +765,28 @@ public:
 
     // To avoid having too many cracker indexes in a bucket.
     if (b->n_cracks() > 16) {
-      // fprintf(stderr, "SPLIT\n");
       pair<T, bucket_type*> nb = b->split(cmp);
 
       if (it->first >= nb.first) {
         // Must be the leftmost root entry.
+        // fprintf(stderr, "REPLACE LEFTMOST ERASE %d\n", it->first);
         R.erase(it);
         set_root(b->data(0), make_pair(b, b));
         it = find_root(b->data(0));
         assert(it->first == b->data(0));
+        // fprintf(stderr, "REPLACE LEFTMOST ADD %d\n", it->first);
       }
 
-      // fprintf(stderr, "SET ROOT = %d\n", nb.first);
       set_root(nb.first, make_pair(nb.second, nb.second));
       if (v >= nb.first) {
         it++;
         // fprintf(stderr, "ADVANCE = %d %d\n", it->first, nb.first);
         assert(it->first == nb.first);
         b = nb.second;
-        idx = b->crack(v, i, LL, RR, sort_piece, cmp, rng);
       }
+      idx = b->crack(v, i, LL, RR, sort_piece, cmp, rng);
     }
+
 
     if (idx == b->size()) {
       it++;
@@ -794,10 +795,12 @@ public:
         b = it->second.first;
         assert(b->size() > 0);
         idx = b->crack(v, i, LL, RR, sort_piece, cmp, rng);
+        // fprintf(stderr, "idx = %d, v = %d\n", idx, v);
         assert(idx == 0);
         // B[Pb[ridx]].nth(0,cmp,rng);          // just to crack it
       }
     }
+    // if (ith > 1e9) assert(check());
     return iterator(this, it, b, idx);
   }
 
@@ -831,25 +834,47 @@ public:
   }
 
   void erase(iterator it1, iterator it2){ throw RangeError(); }
-};
 
-/*
-  bool check(){
-    for (int i=0,cnt=0; i<root_size(); i++){
+  bool check() {
+    int i = 0;
+    for (auto it = R.begin(); it != R.end(); i++) {
+      bucket_type *b = it->second.first;
+      T lower = it->first;
+      it++;
       T upper = (T){0};
-      if (i+1<root_size()) upper = R[i+1];
-      for (int idx = Pb[i]; idx!=-1; idx=B[idx].next()){
-        if (!B[idx].check(R[i],true,upper,i+1<root_size(), cmp)){
+      if (it != R.end()) upper = it->first;
+
+      for (; b; b = b->next()) {
+        if (!b->check(lower, i > 0, upper, it != R.end(), cmp)) {
 //          for (int j=0; j<root_size(); j++)
 //            fprintf(stderr,"root[%d] = %d\n",j,R[j]);
-          fprintf(stderr,"Fail ridx = %d/%d, %d/%d\n",
-            i,root_size(),idx,num_of_buckets());
+          fprintf(stderr,"Fail ridx = %d / %lu\n", i, R.size());
           return false;
         }
       }
     }
     return true;
   }
+
+  int exists(T const &v, bool print=false) {
+    int cnt = 0, i = 0;
+    for (auto it = R.begin(); it != R.end(); i++, it++) {
+      bucket_type *b = it->second.first;
+      for (; b; b = b->next()) {
+        int at = b->index_of(v, cmp);
+        if (at != -1){
+          if (print) fprintf(stderr,"v=%d, Exists at ridx = %d/%lu, at=%d/%d, next=%p\n",
+            v, i,R.size(), at,b->size(),b->next());
+          b->debug("ignore",0,0);
+          cnt++;
+        }
+      }
+    }
+    return cnt;
+  }
+};
+
+/*
 
   void eager_insert(T const &v, bool use_pos = true){
     int ridx = find_ridx(v);
@@ -863,21 +888,6 @@ public:
       cnt++;
     }
     B[Pe[ridx]].insert(v);
-  }
-
-  int exists(T const &v, bool print=false){
-    int cnt = 0;
-    for (int i=0; i<root_size(); i++)
-      for (int idx = Pb[i]; idx!=-1; idx=B[idx].next()){
-        int at = B[idx].index_of(v,cmp);
-        if (at != -1){
-          if (print) fprintf(stderr,"v=%d, Exists at ridx = %d/%d, idx=%d/%d, at=%d/%d, next=%d\n",
-            v, i,root_size(), idx,num_of_buckets(), at,B[idx].size(),B[idx].next());
-          B[idx].debug("ignore",0,0);
-          cnt++;
-        }
-      }
-    return cnt;
   }
 
   bool nth(int idx, T &res){
