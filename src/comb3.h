@@ -173,7 +173,6 @@ class Bucket {
     R = i==nC? N : C[i];            // the right crack boundary
     while (R-L > CRACK_AT){            // narrow down the piece using DDR
       int M = rough_middle_partition(D+L+(i?1:0), D+R, cmp, rng) - D;
-      assert(nC + 5 < MAX_CRACK);
       add_cracker_index(i, M);
 //        fprintf(stderr,"CRACKING %d %d, [%d %d]\n",M,D[M],L,R);
       if (cmp(v,D[M])) R=M; else L=M, i++;  // adjust the cracker index i
@@ -211,7 +210,7 @@ public:
 
     Bucket *b = new Bucket(cap);
     assert(nC > 1);
-    assert(nC < 50);
+    assert(nC < 60);
 
     int mid = N / 2, i = 0;
 
@@ -810,7 +809,7 @@ public:
 
   bool split_bucket(root_iterator it, bucket_type *b) {
     // To avoid having too many cracker indexes in a bucket.
-    if (b->n_cracks() > 50) {
+    if (b->n_cracks() > 40) {
       // assert(check());
       pair<T, bucket_type*> nb = b->split(cmp);
 
