@@ -28,17 +28,15 @@ class Random {
   int nextInt(int N) { return dis(gen) % N; } // Poor I know.
 };
 
+#define CRACK_AT (cap >> 5)
+#define DECRACK_AT (cap >> 6)
 
 template <typename T, typename CMP  = std::less<T> >
 static bool eq(T const &a, T const &b, CMP const &cmp){ return !cmp(a,b) && !cmp(b,a); }
 
 // Dynamically resize COMB bucket sizes.
 // If number of cracks > 32, it splits to two smaller buckets.
-template <typename T,
-  typename CMP  = std::less<T>,
-  int CRACK_AT  = 32,
-  int DECRACK_AT  = 10>
-
+template <typename T, typename CMP  = std::less<T>>
 class Bucket {
   static const unsigned short MAX_CRACK = 64;
 
@@ -50,7 +48,7 @@ class Bucket {
   T V[MAX_CRACK-1];     // the cracker value
   T *D;                 // the data elements
   int cap;              // the maximum number of elements in D.
-  Bucket<T, CMP, CRACK_AT, DECRACK_AT>* next_b;         // buckets can be chained like a linked list of buckets
+  Bucket* next_b;       // buckets can be chained like a linked list of buckets
                         // the value of next is -1 if there is no next chain
                         // otherwise the index of the bucket [0, num_of_buckets)
 
@@ -411,18 +409,11 @@ public:
 };
 
 
-template <
-  typename T,
-  typename CMP  = std::less<T>,
-  int MAX_BSIZE = 8192,
-  int CRACK_AT  = 64,
-  int DECRACK_AT  = 30>
-
+template <typename T, typename CMP  = std::less<T>, int MAX_BSIZE = 8192>
 class Comb {
-  static_assert(DECRACK_AT * 2 < CRACK_AT, "insufficient gap for crack decrack");
   class RangeError {};    // an exception class
 
-  typedef Bucket<T, CMP, CRACK_AT, DECRACK_AT> bucket_type;    // A COMB bucket.
+  typedef Bucket<T, CMP> bucket_type;    // A COMB bucket.
   typedef pair<bucket_type*, bucket_type*> bucket_chain;       // Pointer to first and last bucket in the chain.
   // typedef btree::btree_map<T, bucket_chain> root_map;
   typedef pair<T, bucket_chain> root_entry;
@@ -609,7 +600,7 @@ class Comb {
 public:
   class iterator {
    public:
-    typedef Comb<T, CMP, MAX_BSIZE, CRACK_AT, DECRACK_AT> crack_type;
+    typedef Comb<T, CMP, MAX_BSIZE> crack_type;
     crack_type *crack;
     root_iterator root_iter;
     bucket_type *bucket;
