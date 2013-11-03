@@ -810,7 +810,7 @@ public:
 
   bool split_bucket(root_iterator it, bucket_type *b) {
     // To avoid having too many cracker indexes in a bucket.
-    if (b->n_cracks() > 16) {
+    if (b->n_cracks() > 32) {
       // assert(check());
       pair<T, bucket_type*> nb = b->split(cmp);
 
