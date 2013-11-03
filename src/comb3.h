@@ -200,68 +200,91 @@ public:
     // if (v == 1846371397) fprintf(stderr, "ins D[%d] = %d, to bucket = %p, cap = %d\n", N, v, this, cap);
     assert(N < cap); D[N++] = v; }
 
-  pair<T, Bucket*> split(CMP &cmp) {
+  vector<pair<T, Bucket*>> split(CMP &cmp) {
+    assert(cap >= 512);
     flush_pending_inserts(cmp);
 
-    assert(cap % 2 == 0);
-    cap /= 2;
+    int nsplits = 16;
+    assert(cap % nsplits == 0);
+    cap /= nsplits;
 
-    Bucket *b = new Bucket(cap);
     assert(nC > 1);
-    assert(nC < 60);
+    assert(nC < 64 - nsplits);
+    assert(N > cap);
 
-    int mid = N / 2, i = 0;
-
-    if (C[0] > mid) {
-      nth_element(D, D + mid, D + C[0]);
-      // fprintf(stderr, "add cracker front %d\n", mid);
-      add_cracker_index(0, mid);
+    if (C[0] > cap) {
+      assert(!piece_is_sorted(0));
+      nth_element(D, D + cap, D + C[0]);
+      // fprintf(stderr, "add cracker front %d\n", cap);
+      add_cracker_index(0, cap);
       // debug("asdf", 0, 0);
       // assert(check(0, 0, 0, 0, cmp));
     }
 
-    while (i + 1 < nC && C[i + 1] <= mid) i++;
+    int newC = 0;
+    T *DD = nullptr;
+    vector<pair<T, Bucket*>> ret;
+    for (int next_pos = cap, i = 0; next_pos <= N; next_pos += cap) {
+      while (i + 1 < nC && C[i + 1] <= next_pos) i++;
+      assert(C[i] <= next_pos);
 
-    assert(C[i] <= mid);
+      if (C[i] < next_pos) {
+        assert(i + 1 == nC || C[i + 1] > next_pos);
+        int R = ((i + 1) == nC) ? N : C[i + 1];
+        if (next_pos < R) {
+          piece_set_sorted(i, false);
+          // assert(!piece_is_sorted(i));
+          nth_element(D + C[i] + 1, D + next_pos, D + R);
+          add_cracker_index(++i, next_pos);
+        }
+      }
 
-    if (N - C[i] > b->cap) {
-      int R = ((i + 1) == nC) ? N : C[i + 1];
-      // fprintf(stderr, "add cracker at %d, %d %d %d, %d\n", i + 1, C[i], mid, R, N);
-      assert(C[i] < mid && mid < R);
-      nth_element(D + C[i] + 1, D + mid, D + R);
-      add_cracker_index(++i, mid);
-      // debug("asdf", 0, 0);
-      // assert(check(0, 0, 0, 0, cmp));
+      if (DD == nullptr) {
+        DD = new T[cap];
+        memcpy(DD, D, sizeof(T) * cap);
+        newC = i;
+      } else {
+        int pos = next_pos - cap;
+        int n_move = min(cap, N - pos);
+        // fprintf(stderr, "n_move = %d, cap = %d, D[%d] = %d\n", n_move, cap, pos, D[pos]);
+        assert(0 <= n_move && n_move <= cap);
+
+        Bucket *b = new Bucket(cap);
+        b->I = b->N = n_move;
+        for (int j = 0; j < n_move; j++) b->D[j] = D[pos + j];
+
+        assert(i < nC);
+        int j = i + 1;
+        for (; j < nC && C[j] < next_pos; j++) {
+          b->C[b->nC] = C[j] - pos;
+          b->V[b->nC] = V[j];
+          b->piece_set_sorted(b->nC, piece_is_sorted(j));
+          b->nC++;
+        }
+        // b->piece_set_sorted(b->nC, piece_is_sorted(j));
+        // assert(b->check(0, 0, 0, 0, cmp));
+
+        if (b->N < b->cap / 2) {
+          // Chain it
+          ret.back().second->set_next(b);
+        } else {
+          ret.push_back(make_pair(D[pos], b));
+        }
+      }
     }
-
-    T *DD = new T[cap];
-
-    int n_move = N - C[i];
-    assert(n_move <= b->cap);
-    b->I = b->N = n_move;
-    for (int j = 0; j < n_move; j++) b->D[j] = D[C[i] + j];
-    for (int j = i + 1; j < nC; j++) {
-      b->C[b->nC] = C[j] - C[i];
-      b->V[b->nC] = V[j];
-      b->piece_set_sorted(b->nC, piece_is_sorted(j));
-      b->nC++;
-    }
-    b->piece_set_sorted(b->nC, piece_is_sorted(nC));
-
-    pair<T, Bucket*> ret = make_pair(V[i], b);
-    assert(C[i] <= cap);
-    memcpy(DD, D, sizeof(T) * C[i]);
-    nC = i;
-    N = I = C[i];
 
     delete[] D;
     D = DD;
-
+    nC = newC;
+    N = I = cap;
+    // if (!piece_is_sorted(0)) {
+    //   std::sort(D, D + cap, cmp);
+    //   piece_set_sorted(0, true);
+    // }
     // debug("asdf", 0, 0);
     // b->debug("asdf", 0, 0);
 
     // assert(check(0, 0, 0, 0, cmp));
-    // assert(b->check(0, 0, 0, 0, cmp));
 
     return ret;
   }
@@ -552,6 +575,7 @@ class Comb {
       root_entry right_entry = cs.second;
 
       if (cmp(cs.first.first, left_key)) {
+        // fprintf(stderr, "%d %d\n", cs.first.first, left_key);
         assert(is_begin); // Can only happen for the leftmost bucket.
         left_key = cs.first.first;
       }
@@ -773,8 +797,8 @@ public:
   }
 
   bool erase(T const &v) {
-    // fprintf(stderr, "erase %d\n", v);
-    // assert(check());
+    // 
+    // if (v == 1489490129) { fprintf(stderr, "erase %d\n", v); assert(check()); }
     root_iterator it = find_root(v);
     const bucket_chain &c = it->second;
     if (c.first->empty() && c.first == c.second) return false;
@@ -800,11 +824,13 @@ public:
 
   bool split_bucket(root_iterator it, bucket_type *b) {
     // To avoid having too many cracker indexes in a bucket.
-    if (b->n_cracks() > 40) {
+    if (b->n_cracks() > 40 && b->capacity() == MAX_BSIZE) {
       // assert(check());
-      pair<T, bucket_type*> nb = b->split(cmp);
+      // fprintf(stderr, ".");
+      vector<pair<T, bucket_type*>> nb = b->split(cmp);
+      // assert(check());
 
-      if (it->first >= nb.first) {
+      if (it->first >= nb[0].first) {
         // Must be the leftmost root entry.
         // fprintf(stderr, "REPLACE LEFTMOST ERASE %d\n", it->first);
         R.erase(it);
@@ -813,8 +839,16 @@ public:
         // assert(it->first == b->data(0));
         // fprintf(stderr, "REPLACE LEFTMOST ADD %d\n", it->first);
       }
+      // assert(check());
 
-      set_root(nb.first, make_pair(nb.second, nb.second));
+      for (auto it : nb) {
+        // fprintf(stderr, "SET ROOT %d\n", it.first);
+        // it.second->debug("he", 0, 0);
+        bucket_chain c(it.second, it.second);
+        while (c.second->next()) c.second = c.second->next();
+        set_root(it.first, c);
+        // assert(check());
+      }
       // assert(check());
       return true;
     }
@@ -823,15 +857,15 @@ public:
 
   /* TODO: lazy lower_bound */
   iterator lower_bound(T const &v, bool sort_piece = true) {
-    // fprintf(stderr, "lower_bound = %d\n", v);
-    // assert(check());
+    static int nth = 0; nth++;
+    // if (nth % 300 == 0) { fprintf(stderr, "lower_bound = %d\n", v); assert(check()); }
     root_iterator it = break_chain(find_root(v), v);
     // assert(check());
     bucket_type *b = it->second.first;
     int i, LL, RR, idx = b->crack(v, i, LL, RR, sort_piece, cmp, rng);
     // assert(check());
 
-    if (split_bucket(it, b)) {
+    if (0 && split_bucket(it, b)) {
       it++;
       if (v >= it->first) {
         b = it->second.first;
@@ -925,8 +959,8 @@ public:
       for (; b; b = b->next()) {
         int at = b->index_of(v, cmp);
         if (at != -1){
-          if (print) fprintf(stderr,"v=%d, Exists at ridx = %d/%lu, at=%d/%d, next=%p\n",
-            v, i,R.size(), at,b->size(),b->next());
+          if (print) fprintf(stderr,"v=%d, Exists at ridx = %d/%lu, key = %d, at=%d/%d, next=%p\n",
+            v, i,R.size(), it->first, at,b->size(),b->next());
           b->debug("ignore",0,0);
           cnt++;
         }
