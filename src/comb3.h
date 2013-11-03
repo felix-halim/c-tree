@@ -224,7 +224,7 @@ public:
     int newC = 0;
     T *DD = nullptr;
     vector<pair<T, Bucket*>> ret;
-    for (int next_pos = cap, i = 0; next_pos <= N; next_pos += cap) {
+    for (int next_pos = cap, i = 0; ; next_pos += cap) {
       while (i + 1 < nC && C[i + 1] <= next_pos) i++;
       assert(C[i] <= next_pos);
 
@@ -271,6 +271,7 @@ public:
           ret.push_back(make_pair(D[pos], b));
         }
       }
+      if (next_pos >= N) break;
     }
 
     delete[] D;
@@ -826,7 +827,8 @@ public:
     // To avoid having too many cracker indexes in a bucket.
     if (b->n_cracks() > 40 && b->capacity() == MAX_BSIZE) {
       // assert(check());
-      fprintf(stderr, ".%lu", R.size());
+      // fprintf(stderr, ".%lu", R.size());
+
       vector<pair<T, bucket_type*>> nb = b->split(cmp);
       // assert(check());
 
@@ -857,8 +859,7 @@ public:
 
   /* TODO: lazy lower_bound */
   iterator lower_bound(T const &v, bool sort_piece = true) {
-    static int nth = 0; nth++;
-    // if (nth % 300 == 0) { fprintf(stderr, "lower_bound = %d\n", v); assert(check()); }
+    // static int nth = 0; nth++;
     root_iterator it = break_chain(find_root(v), v);
     // assert(check());
     bucket_type *b = it->second.first;
