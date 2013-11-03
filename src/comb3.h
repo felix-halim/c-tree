@@ -16,6 +16,7 @@ using namespace std;
 
 #include "google/btree_set.h"
 #include "google/btree_map.h"
+#include "stx/btree_map"
 
 class Random {
   mt19937 gen;
@@ -433,15 +434,17 @@ public:
 };
 
 
-template <typename T, typename CMP  = std::less<T>, int MAX_BSIZE = 4096>
+template <typename T, typename CMP  = std::less<T>, int MAX_BSIZE = 8192>
 class Comb {
   class RangeError {};    // an exception class
 
   typedef Bucket<T, CMP> bucket_type;    // A COMB bucket.
   typedef pair<bucket_type*, bucket_type*> bucket_chain;       // Pointer to first and last bucket in the chain.
-  // typedef btree::btree_map<T, bucket_chain> root_map;
   typedef pair<T, bucket_chain> root_entry;
-  typedef std::map<T, bucket_chain> root_map;
+  // typedef std::map<T, bucket_chain> root_map;
+  // typedef btree::btree_map<T, bucket_chain> root_map;
+  typedef stx::btree_map<T, bucket_chain> root_map;
+
   typedef typename root_map::const_iterator root_iterator;
 
   CMP cmp;     // The comparator functor.
@@ -569,7 +572,7 @@ class Comb {
       bool is_begin = it == R.begin();
       T left_key = it->first;
       bucket_chain left_chain = it->second;
-      R.erase(it);
+      R.erase(it->first);
 
       pair<root_entry, root_entry> cs = split_chain(left_chain);  // randomly split the chain into two
 
@@ -591,8 +594,8 @@ class Comb {
 
       if (!(cmp(v, right_entry.first))) {
         // fprintf(stderr, "READJUST\n");
-        // it = find_root(v);
-        it++; // readjust root idx
+        it = find_root(v);
+        // it++; // readjust root idx
         assert(it->first == right_entry.first);
         assert(it->second.first == right_entry.second.first);
         assert(it->second.second == right_entry.second.second);
@@ -714,7 +717,7 @@ public:
     bucket_chain c = it->second;
     assert(c.first == c.second);
     assert(c.second->empty());
-    R.erase(it);
+    R.erase(it->first);
 
     int i = 0, CAP = c.second->capacity();
     while (i + CAP <= n) {
@@ -777,7 +780,7 @@ public:
     if (c1 != c2) {
       // fprintf(stderr, "DELELELE, %p %p, c2 next = %p\n", c2.first, c2.second, c2.first->next());
       root_entry t = *it;
-      R.erase(it);
+      R.erase(it->first);
       // fprintf(stderr, "INS KEY = %d, %p %p, c2 next = %p\n", t.first, c2.first, c2.second, c2.first->next());
       R[t.first] = c2;
     }
@@ -811,7 +814,7 @@ public:
     // TODO: merge with the left bucket if too small.
 
     if (b->empty()) {
-      R.erase(it);
+      R.erase(it->first);
       delete b;
     } else {
       split_bucket(it, b);
@@ -835,7 +838,7 @@ public:
       if (it->first >= nb[0].first) {
         // Must be the leftmost root entry.
         // fprintf(stderr, "REPLACE LEFTMOST ERASE %d\n", it->first);
-        R.erase(it);
+        R.erase(it->first);
         set_root(b->data(0), make_pair(b, b));
         it = find_root(b->data(0));
         // assert(it->first == b->data(0));
