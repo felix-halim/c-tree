@@ -15,6 +15,7 @@ using namespace std;
 #include <sys/mman.h>
 
 #include "google/btree_set.h"
+#include "google/btree_map.h"
 
 class Random {
   mt19937 gen;
@@ -198,13 +199,17 @@ public:
   T randomValue(Random &rng) const { return D[rng.nextInt(N)]; }
   T data(int i) const { assert(i >= 0 && i < N); return D[i]; }
   T* getp(int i) { assert(i>=0 && i<N); return &D[i]; }
-  void insert(T const &v) { assert(N < cap); D[N++] = v; }
+  void insert(T const &v) {
+    // if (v == 1846371397) fprintf(stderr, "ins D[%d] = %d, to bucket = %p, cap = %d\n", N, v, this, cap);
+    assert(N < cap); D[N++] = v; }
 
   pair<T, Bucket*> split(CMP &cmp) {
     flush_pending_inserts(cmp);
 
     assert(cap % 2 == 0);
-    Bucket *b = new Bucket(cap / 2);
+    cap /= 2;
+
+    Bucket *b = new Bucket(cap);
     assert(nC > 1);
     assert(nC < 50);
 
@@ -232,7 +237,7 @@ public:
       // assert(check(0, 0, 0, 0, cmp));
     }
 
-    T *DD = new T[cap / 2];
+    T *DD = new T[cap];
 
     int n_move = N - C[i];
     assert(n_move <= b->cap);
@@ -247,7 +252,7 @@ public:
     b->piece_set_sorted(b->nC, piece_is_sorted(nC));
 
     pair<T, Bucket*> ret = make_pair(V[i], b);
-    assert(C[i] <= cap / 2);
+    assert(C[i] <= cap);
     memcpy(DD, D, sizeof(T) * C[i]);
     nC = i;
     N = I = C[i];
@@ -311,11 +316,11 @@ public:
   // call this function to check the consistency of this Bucket structure
   bool check(T lo, bool useLo, T hi, bool useHi, CMP &cmp) const {
     if (useLo) for (int i=0; i<N; i++) if (cmp(D[i],lo)){
-      fprintf(stderr,"D[%d] = %d, lo = %d\n",i,D[i],lo);
+      fprintf(stderr,"D[%d] = %d, lo = %d, bucket = %p\n",i, D[i], lo, this);
       return debug("useLo failed", i,0);
     }
     if (useHi) for (int i=0; i<N; i++) if (!cmp(D[i],hi)){
-      fprintf(stderr,"D[%d] = %d, hi = %d\n",i,D[i],hi);
+      fprintf(stderr,"D[%d] = %d, hi = %d, bucket = %p\n",i, D[i], hi, this);
       return debug("useHi failed", i,0);
     }
     for (int i = 0; i < nC; i++) {
@@ -420,7 +425,8 @@ class Comb {
 
   typedef Bucket<T, CMP, CRACK_AT, DECRACK_AT> bucket_type;    // A COMB bucket.
   typedef pair<bucket_type*, bucket_type*> bucket_chain;       // Pointer to first and last bucket in the chain.
-  // typedef btree::btree_multiset<root_entry> root_map;
+  // typedef btree::btree_map<T, bucket_chain> root_map;
+  typedef pair<T, bucket_chain> root_entry;
   typedef std::map<T, bucket_chain> root_map;
   typedef typename root_map::const_iterator root_iterator;
 
@@ -453,7 +459,7 @@ class Comb {
     c.second->set_next(NULL);
   }
 
-  T get_random_pivot(bucket_chain &c){  // pick the pivot near the median
+  T get_random_pivot(bucket_chain c) {  // pick the pivot near the median
     T rtmp[11]; int ntmp = 0, ni = 0;
     for (bucket_type *b = c.first; b; b = b->next(), ni++){
       b->clear_indexes();
@@ -471,16 +477,12 @@ class Comb {
   }
 
   // fusion
-  pair<T, bucket_chain> split_chain(bucket_chain c1) {
+  pair<root_entry, root_entry> split_chain(bucket_chain c1) {
     const T &p = get_random_pivot(c1);        // split based on random pivot
 
     bucket_type *b = c1.first;
-    c1.first = c1.second = NULL;
-    pair<T, bucket_chain> ret = make_pair(p, c1);
-    bucket_chain &c2 = ret.second;
-
-    bucket_type *Lb = NULL;
-    bucket_type *Rb = NULL;
+    bucket_chain c2 = c1 = make_pair(nullptr, nullptr);
+    bucket_type *Lb = NULL, *Rb = NULL;
     int hi[MAX_BSIZE], lo[MAX_BSIZE];
     int nhi = 0, nlo = 0;
 
@@ -534,46 +536,55 @@ class Comb {
     assert(!c2.second->next());
 //    assert(check());
 
-    return ret;
+    assert(valid_chain(c1));
+    assert(valid_chain(c2));
+    root_entry left_entry = make_pair(c1.first->data(0), c1);
+    root_entry right_entry = make_pair(p, c2);
+    return make_pair(left_entry, right_entry);
+  }
+
+  bool valid_chain(bucket_chain c) {
+    return c.first && c.second && ((c.first->next() && c.first != c.second) || (!c.first->next() && c.first == c.second));
   }
 
   root_iterator break_chain(root_iterator it, T const &v) {
+    // assert(check());
     while (it->second.first->next()) {
-//      fprintf(stderr,"break ridx=%d, %d\n",ridx,size(ridx));
-      pair<T, bucket_chain> right_chain = split_chain(it->second);  // randomly split the chain into two
+      // fprintf(stderr, "break_chain %lu\n", R.size());
 
-      if (cmp(right_chain.first, it->first)) {
-        assert(it == R.begin()); // This can only happen for the left most entry in the root array.
-        bucket_chain left_chain = it->second;
-        T r = left_chain.first->data(0);
-        assert(r <= right_chain.first);
-        R.erase(it->first);
-        set_root(r, left_chain);
-        it = find_root(r);
-        assert(it->first == r);
+      bool is_begin = it == R.begin();
+      T left_key = it->first;
+      bucket_chain left_chain = it->second;
+      R.erase(it);
+
+      pair<root_entry, root_entry> cs = split_chain(left_chain);  // randomly split the chain into two
+
+      root_entry right_entry = cs.second;
+
+      if (cmp(cs.first.first, left_key)) {
+        assert(is_begin); // Can only happen for the leftmost bucket.
+        left_key = cs.first.first;
       }
 
-      set_root(right_chain.first, right_chain.second);
+      assert(cmp(left_key, right_entry.first));
 
-      if (!(cmp(v, right_chain.first))) {
+      set_root(left_key, cs.first.second);
+      it = find_root(left_key);
+      assert(it->first == left_key);
+
+      set_root(right_entry.first, right_entry.second);
+
+      if (!(cmp(v, right_entry.first))) {
+        // fprintf(stderr, "READJUST\n");
+        // it = find_root(v);
         it++; // readjust root idx
-        assert(it->first == right_chain.first);
-        assert(it->second.first == right_chain.second.first);
-        assert(it->second.second == right_chain.second.second);
+        assert(it->first == right_entry.first);
+        assert(it->second.first == right_entry.second.first);
+        assert(it->second.second == right_entry.second.second);
       }
     }
+    // assert(check());
     return it;
-  }
-
-  bucket_chain insert(T const &v, bucket_chain p) {
-    if (p.second->is_full()) {
-      int new_cap = p.second->capacity() * (p.first == p.second ? 1 : 2);
-      bucket_type *nb = new bucket_type(new_cap);
-      p.second->set_next(nb);
-      p.second = nb;
-    }
-    p.second->insert(v);
-    return p;
   }
 
   int size(bucket_chain c) {
@@ -717,13 +728,46 @@ public:
     return R.end();
   }
 
+  bucket_chain insert(T const &v, bucket_chain p) {
+    // fprintf(stderr, "iins %d, size/cap = %d / %d\n", v, p.second->size(), p.second->capacity());
+    if (p.second->is_full()) {
+      // fprintf(stderr, "isfull %p %p, %p %p\n", p.first, p.second, p.first->next(), p.second->next());
+      // assert(check());
+      int new_cap = min(MAX_BSIZE, p.second->capacity() * (p.first == p.second ? 1 : 2));
+      bucket_type *nb = new bucket_type(new_cap);
+      p.second->set_next(nb);
+      p.second = nb;
+      // fprintf(stderr, "isfull2 %p %p, %p %p\n", p.first, p.second, p.first->next(), p.second->next());
+    }
+    // assert(check());
+    // fprintf(stderr, "inserted to bucket = %p\n", p.second);
+    p.second->insert(v);
+    // assert(check());
+    return p;
+  }
+
   void insert(T const &v) {
+    // assert(check());
     root_iterator it = find_root(v);
+    // fprintf(stderr, "insert %d, root = %d\n", v, it->first);
+
+    // if (v == 1846371397) {
+    //   fprintf(stderr, "has next = %p, FL = %p %p\n", it->second.first->next(), it->second.first, it->second.second);
+    //   it->second.first->debug("a", 0,0);
+    //   it->second.second->debug("b", 0,0);
+    // }
+
     bucket_chain c1 = it->second;
     bucket_chain c2 = insert(v, c1);
     if (c1 != c2) {
+      // fprintf(stderr, "DELELELE, %p %p, c2 next = %p\n", c2.first, c2.second, c2.first->next());
+      root_entry t = *it;
       R.erase(it);
+      // fprintf(stderr, "INS KEY = %d, %p %p, c2 next = %p\n", t.first, c2.first, c2.second, c2.first->next());
+      R[t.first] = c2;
     }
+    // assert(check());
+    // fprintf(stderr, "insert2 %d, root = %d\n", v, it->first);
   }
 
   int size() {
@@ -739,6 +783,8 @@ public:
   }
 
   bool erase(T const &v) {
+    // fprintf(stderr, "erase %d\n", v);
+    // assert(check());
     root_iterator it = find_root(v);
     const bucket_chain &c = it->second;
     if (c.first->empty() && c.first == c.second) return false;
@@ -752,19 +798,20 @@ public:
     if (b->empty()) {
       R.erase(it);
       delete b;
+    } else {
+      split_bucket(it, b);
     }
+
+    // assert(check());
+    // fprintf(stderr, "erase2 %d\n", v);
 
     return ret;
   }
 
-  /* TODO: lazy lower_bound */
-  iterator lower_bound(T const &v, bool sort_piece = true) {
-    root_iterator it = break_chain(find_root(v), v);
-    bucket_type *b = it->second.first;
-    int i, LL, RR, idx = b->crack(v, i, LL, RR, sort_piece, cmp, rng);
-
+  bool split_bucket(root_iterator it, bucket_type *b) {
     // To avoid having too many cracker indexes in a bucket.
     if (b->n_cracks() > 16) {
+      // assert(check());
       pair<T, bucket_type*> nb = b->split(cmp);
 
       if (it->first >= nb.first) {
@@ -773,22 +820,41 @@ public:
         R.erase(it);
         set_root(b->data(0), make_pair(b, b));
         it = find_root(b->data(0));
-        assert(it->first == b->data(0));
+        // assert(it->first == b->data(0));
         // fprintf(stderr, "REPLACE LEFTMOST ADD %d\n", it->first);
       }
 
       set_root(nb.first, make_pair(nb.second, nb.second));
-      if (v >= nb.first) {
-        it++;
-        // fprintf(stderr, "ADVANCE = %d %d\n", it->first, nb.first);
-        assert(it->first == nb.first);
-        b = nb.second;
+      // assert(check());
+      return true;
+    }
+    return false;
+  }
+
+  /* TODO: lazy lower_bound */
+  iterator lower_bound(T const &v, bool sort_piece = true) {
+    // fprintf(stderr, "lower_bound = %d\n", v);
+    // assert(check());
+    root_iterator it = break_chain(find_root(v), v);
+    // assert(check());
+    bucket_type *b = it->second.first;
+    int i, LL, RR, idx = b->crack(v, i, LL, RR, sort_piece, cmp, rng);
+    // assert(check());
+
+    if (split_bucket(it, b)) {
+      it++;
+      if (v >= it->first) {
+        b = it->second.first;
+      } else {
+        it--;
       }
       idx = b->crack(v, i, LL, RR, sort_piece, cmp, rng);
     }
 
+    // assert(check());
 
     if (idx == b->size()) {
+      // assert(check());
       it++;
       if (it != R.end()) {
         it = break_chain(it, v);
@@ -800,7 +866,9 @@ public:
         // B[Pb[ridx]].nth(0,cmp,rng);          // just to crack it
       }
     }
+    // assert(check());
     // if (ith > 1e9) assert(check());
+    // fprintf(stderr, "lower_bound2 = %d\n", v);
     return iterator(this, it, b, idx);
   }
 
@@ -839,6 +907,10 @@ public:
     int i = 0;
     for (auto it = R.begin(); it != R.end(); i++) {
       bucket_type *b = it->second.first;
+      if (!b->next() && it->second.first != it->second.second) {
+        fprintf(stderr, "Head mismatch %p %p, %p\n", it->second.first, it->second.second, it->second.first->next());
+        return false;
+      }
       T lower = it->first;
       it++;
       T upper = (T){0};

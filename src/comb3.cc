@@ -7,6 +7,10 @@ Comb<int> c;
 
 void init(int *arr, int N) {
   c.load(arr, N);
+  // for (int i = 0; i < N; i++) {
+  //   insert(arr[i]);
+  //   if (i % 1000) lower_bound(arr[i]);
+  // }
 }
 
 void insert(int value) {
