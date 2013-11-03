@@ -442,19 +442,36 @@ class Comb {
   typedef pair<bucket_type*, bucket_type*> bucket_chain;       // Pointer to first and last bucket in the chain.
   typedef pair<T, bucket_chain> root_entry;
   // typedef std::map<T, bucket_chain> root_map;
+  typedef std::vector<T> root_map;
   // typedef btree::btree_map<T, bucket_chain> root_map;
-  typedef stx::btree_map<T, bucket_chain> root_map;
+  // typedef stx::btree_map<T, bucket_chain> root_map;
 
   typedef typename root_map::const_iterator root_iterator;
+  typedef typename vector<bucket_chain>::iterator rootv_iterator;
 
   CMP cmp;     // The comparator functor.
   Random rng;  // The random number generator.
   root_map R;  // The root array, using Google's BTree.
 
+  vector<bucket_chain> Rc;
   void set_root(T key, bucket_chain value) {
-    assert(!R.count(key));
-    R[key] = value;
+    int nth = std::lower_bound(R.begin(), R.end(), key, cmp) - R.begin();
+    R.insert(R.begin() + nth, key);
+    Rc.insert(Rc.begin() + nth, value);
   }
+
+  void erase_root(T key) {
+    int nth = std::lower_bound(R.begin(), R.end(), key, cmp) - R.begin();
+    assert(nth < R.size());
+    assert(R[nth] == key);
+    R.erase(R.begin() + nth);
+    Rc.erase(Rc.begin() + nth);
+  }
+
+  // void set_root(T key, bucket_chain value) {
+  //   assert(!R.count(key));
+  //   R[key] = value;
+  // }
 
   // add a Bucket (bidx) to the root chain 'ridx'
   void _add(bucket_chain &c, bucket_type *b) {
@@ -566,37 +583,33 @@ class Comb {
 
   root_iterator break_chain(root_iterator it, T const &v) {
     // assert(check());
-    while (it->second.first->next()) {
-      // fprintf(stderr, "break_chain %lu\n", R.size());
+    while (root_value(it).first->next()) {
 
-      bool is_begin = it == R.begin();
-      T left_key = it->first;
-      bucket_chain left_chain = it->second;
-      R.erase(it->first);
+      T left_key = *it;
+      bucket_chain left_chain = root_value(it);
+      erase_root(*it);
 
       pair<root_entry, root_entry> cs = split_chain(left_chain);  // randomly split the chain into two
 
       root_entry right_entry = cs.second;
 
       if (cmp(cs.first.first, left_key)) {
-        // fprintf(stderr, "%d %d\n", cs.first.first, left_key);
-        assert(is_begin); // Can only happen for the leftmost bucket.
         left_key = cs.first.first;
       }
 
       assert(cmp(left_key, right_entry.first));
 
       set_root(left_key, cs.first.second);
-      it = find_root(left_key);
-      assert(it->first == left_key);
-
       set_root(right_entry.first, right_entry.second);
+
+      it = find_root(left_key);
+      assert(*it == left_key);
 
       if (!(cmp(v, right_entry.first))) {
         // fprintf(stderr, "READJUST\n");
         it = find_root(v);
         // it++; // readjust root idx
-        assert(it->first == right_entry.first);
+        assert(*it == right_entry.first);
         assert(it->second.first == right_entry.second.first);
         assert(it->second.second == right_entry.second.second);
       }
@@ -680,7 +693,7 @@ public:
       }
       root_iter++;                                   // Seek the next root
       if (root_iter != crack->root_end()) {
-        bucket = root_iter->second.first;
+        bucket = crack->root_value(root_iter).first;
         idx = 0;
         return true;
       }
@@ -714,10 +727,10 @@ public:
   void load(T const *arr, int n) {
     assert(!R.empty());
     root_iterator it = R.begin();
-    bucket_chain c = it->second;
+    bucket_chain c = Rc[0];
     assert(c.first == c.second);
     assert(c.second->empty());
-    R.erase(it->first);
+    erase_root(R[0]);
 
     int i = 0, CAP = c.second->capacity();
     while (i + CAP <= n) {
@@ -733,10 +746,10 @@ public:
   }
 
   root_iterator find_root(T const &v) const {
-    root_iterator it = R.lower_bound(v);
+    root_iterator it = std::lower_bound(R.begin(), R.end(), v, cmp);
     if (it == R.end()) {
       if (it != R.begin()) it--;
-    } else if (v < it->first) {
+    } else if (v < *it) {
       if (it != R.begin()) it--;
     }
     return it;
@@ -764,10 +777,14 @@ public:
     return p;
   }
 
+  bucket_chain& root_value(root_iterator it) {
+    return Rc[it - R.begin()];
+  }
+
   void insert(T const &v) {
     // assert(check());
     root_iterator it = find_root(v);
-    // fprintf(stderr, "insert %d, root = %d\n", v, it->first);
+    // fprintf(stderr, "insert %d, root = %d\n", v, *it);
 
     // if (v == 1846371397) {
     //   fprintf(stderr, "has next = %p, FL = %p %p\n", it->second.first->next(), it->second.first, it->second.second);
@@ -775,28 +792,26 @@ public:
     //   it->second.second->debug("b", 0,0);
     // }
 
-    bucket_chain c1 = it->second;
+    bucket_chain c1 = root_value(it);
     bucket_chain c2 = insert(v, c1);
     if (c1 != c2) {
       // fprintf(stderr, "DELELELE, %p %p, c2 next = %p\n", c2.first, c2.second, c2.first->next());
-      root_entry t = *it;
-      R.erase(it->first);
+      root_value(it) = c2;
       // fprintf(stderr, "INS KEY = %d, %p %p, c2 next = %p\n", t.first, c2.first, c2.second, c2.first->next());
-      R[t.first] = c2;
     }
     // assert(check());
-    // fprintf(stderr, "insert2 %d, root = %d\n", v, it->first);
+    // fprintf(stderr, "insert2 %d, root = %d\n", v, *it);
   }
 
   int size() {
     int ret = 0;
-    for (auto it : R) ret += size(it.second);
+    for (auto it : R) ret += root_value(it);
     return ret;
   }
 
   int slack() {
     int ret = 0;
-    for (auto it : R) ret += slack(it.second);
+    // for (auto it : R) ret += slack(it.second);
     return ret;
   }
 
@@ -804,17 +819,17 @@ public:
     // 
     // if (v == 1489490129) { fprintf(stderr, "erase %d\n", v); assert(check()); }
     root_iterator it = find_root(v);
-    const bucket_chain &c = it->second;
+    const bucket_chain &c = root_value(it);
     if (c.first->empty() && c.first == c.second) return false;
 
     it = break_chain(it, v);
-    bucket_type *b = it->second.first;
+    bucket_type *b = root_value(it).first;
     bool ret = b->erase(v, cmp, rng);
 
     // TODO: merge with the left bucket if too small.
 
     if (b->empty()) {
-      R.erase(it->first);
+      erase_root(*it);
       delete b;
     } else {
       split_bucket(it, b);
@@ -835,14 +850,14 @@ public:
       vector<pair<T, bucket_type*>> nb = b->split(cmp);
       // assert(check());
 
-      if (it->first >= nb[0].first) {
+      if (*it >= nb[0].first) {
         // Must be the leftmost root entry.
-        // fprintf(stderr, "REPLACE LEFTMOST ERASE %d\n", it->first);
-        R.erase(it->first);
+        // fprintf(stderr, "REPLACE LEFTMOST ERASE %d\n", *it);
+        erase_root(*it);
         set_root(b->data(0), make_pair(b, b));
         it = find_root(b->data(0));
-        // assert(it->first == b->data(0));
-        // fprintf(stderr, "REPLACE LEFTMOST ADD %d\n", it->first);
+        // assert(*it == b->data(0));
+        // fprintf(stderr, "REPLACE LEFTMOST ADD %d\n", *it);
       }
       // assert(check());
 
@@ -863,22 +878,13 @@ public:
   /* TODO: lazy lower_bound */
   iterator lower_bound(T const &v, bool sort_piece = true) {
     // static int nth = 0; nth++;
+    // fprintf(stderr, "lower_bound %d\n", v);
     root_iterator it = break_chain(find_root(v), v);
+    // fprintf(stderr, "lower_bound2 %d\n", v);
     // assert(check());
-    bucket_type *b = it->second.first;
+    bucket_type *b = root_value(it).first;
+    // fprintf(stderr, "lower_bound3 %d\n", v);
     int i, LL, RR, idx = b->crack(v, i, LL, RR, sort_piece, cmp, rng);
-    // assert(check());
-
-    if (0 && split_bucket(it, b)) {
-      it++;
-      if (v >= it->first) {
-        b = it->second.first;
-      } else {
-        it--;
-      }
-      idx = b->crack(v, i, LL, RR, sort_piece, cmp, rng);
-    }
-
     // assert(check());
 
     if (idx == b->size()) {
@@ -886,7 +892,7 @@ public:
       it++;
       if (it != R.end()) {
         it = break_chain(it, v);
-        b = it->second.first;
+        b = root_value(it).first;
         assert(b->size() > 0);
         idx = b->crack(v, i, LL, RR, sort_piece, cmp, rng);
         // fprintf(stderr, "idx = %d, v = %d\n", idx, v);
@@ -924,7 +930,7 @@ public:
     }
     int ret = it1.bucket->size() - it1.idx;
     for (it1.root_iter++; it1.root_iter != it2.root_iter; it1.root_iter++) {
-      ret += size(it1.root_iter->second);
+      ret += size(root_value(it1.root_iter));
     }
     return ret + it2.idx;
   }
@@ -939,10 +945,10 @@ public:
         fprintf(stderr, "Head mismatch %p %p, %p\n", it->second.first, it->second.second, it->second.first->next());
         return false;
       }
-      T lower = it->first;
+      T lower = *it;
       it++;
       T upper = (T){0};
-      if (it != R.end()) upper = it->first;
+      if (it != R.end()) upper = *it;
 
       for (; b; b = b->next()) {
         if (!b->check(lower, i > 0, upper, it != R.end(), cmp)) {
@@ -964,7 +970,7 @@ public:
         int at = b->index_of(v, cmp);
         if (at != -1){
           if (print) fprintf(stderr,"v=%d, Exists at ridx = %d/%lu, key = %d, at=%d/%d, next=%p\n",
-            v, i,R.size(), it->first, at,b->size(),b->next());
+            v, i,R.size(), *it, at,b->size(),b->next());
           b->debug("ignore",0,0);
           cnt++;
         }
