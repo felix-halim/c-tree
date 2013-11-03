@@ -432,7 +432,7 @@ public:
 };
 
 
-template <typename T, typename CMP  = std::less<T>, int MAX_BSIZE = 8192>
+template <typename T, typename CMP  = std::less<T>, int MAX_BSIZE = 4096>
 class Comb {
   class RangeError {};    // an exception class
 
@@ -826,7 +826,7 @@ public:
     // To avoid having too many cracker indexes in a bucket.
     if (b->n_cracks() > 40 && b->capacity() == MAX_BSIZE) {
       // assert(check());
-      // fprintf(stderr, ".");
+      fprintf(stderr, ".%lu", R.size());
       vector<pair<T, bucket_type*>> nb = b->split(cmp);
       // assert(check());
 
