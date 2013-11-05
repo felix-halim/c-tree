@@ -8,15 +8,10 @@
 #include <vector>
 #include <algorithm>
 #include <string>
-#include <map>
 
 using namespace std;
 
 #include <sys/mman.h>
-
-#include "google/btree_set.h"
-#include "google/btree_map.h"
-#include "stx/btree_map"
 
 class Random {
   mt19937 gen;
@@ -35,21 +30,129 @@ class Random {
 template <typename T, typename CMP  = std::less<T> >
 static bool eq(T const &a, T const &b, CMP const &cmp){ return !cmp(a,b) && !cmp(b,a); }
 
+
+#ifndef INTERNAL_BSIZE
+  #define INTERNAL_BSIZE 32
+#endif
+
+
+template <typename T>
+class Bucket {
+ protected:
+  Bucket *par;  // Pointer to the parent bucket (must be an InternalBucket)
+  int N;        // Number of data elements in this bucket pointed by D.
+
+ public:
+
+  virtual ~Bucket(){}
+  virtual int capacity() const { return 0;}
+  virtual Bucket* child(int i) const { return nullptr; }
+  virtual T data(int i) const { return T(); }
+  virtual int lower_pos(T value) const { return 0; }
+
+  int size() const { return N; };
+  int slack() const { return capacity() - size(); }
+  bool empty() { return size() == 0; }
+  bool is_full() const { return slack() == 0; }
+
+  Bucket* parent() const { return par; }
+  void set_parent(Bucket *p) { par = p; }
+};
+
+
+template <typename T>
+class InternalBucket : public Bucket<T> {
+  T D[INTERNAL_BSIZE];            // Data values.
+  Bucket<T>* C[INTERNAL_BSIZE + 1];  // Pointer to children (can be internals or leaves).
+
+ public:
+
+  InternalBucket(Bucket<T> *parent, Bucket<T> *left_child) {
+    set_parent(parent);
+    this->N = 0;
+    C[0] = left_child;
+  }
+
+  void set_data(int i, T value) { assert(i >= 0 && i < this->N); D[i] = value; };
+
+  virtual int capacity() const { return INTERNAL_BSIZE; }
+  virtual Bucket<T>* child(int i) const { assert(i >= 0 && i <= this->N); return C[i]; }
+  virtual T data(int i) const { assert(i >= 0 && i < this->N); return D[i]; }
+  virtual T promote_last() { return D[--this->N]; }
+
+  virtual int lower_pos(T value) const {
+    int pos = 0;
+    while (pos < this->N && D[pos] < value) pos++;
+    return pos;
+  }
+
+  void insert(T value, Bucket<T> *nb, int left) {
+    assert(!Bucket<T>::is_full());
+    // fprintf(stderr, "ii %d\n", b);
+    int i = this->N - 1;
+    while (i >= 0 && D[i] > value) {
+      D[i + 1] = D[i];
+      C[i + 2] = C[i + 1];
+      i--;
+    }
+    D[i + 1] = value;
+    if (left == -1) {
+      C[i + 2] = C[i + 1];
+      C[i + 1] = nb;
+    } else {
+      C[i + 2] = nb;
+    }
+    this->N++;
+  }
+
+  void erase(int pos, int stride) {
+    this->N--;
+    while (pos < this->N) {
+      D[pos] = D[pos + 1];
+      C[pos + stride] = C[pos + stride + 1];
+      pos++;
+    }
+    if (!stride) C[pos] = C[pos + 1];
+  }
+
+  Bucket<T>* mid_child() { return C[this->N / 2]; }
+
+  void move_half_to(InternalBucket *that) {
+    int H = this->N / 2;
+    for (int i = H, j = 0; i < this->N; i++) {
+      that->D[j++] = D[i];
+      that->C[j] = C[i + 1];
+    }
+    that->N = this->N - H;
+    this->N = H;
+  }
+
+  void debug_data() {
+    fprintf(stderr, "N = %d  [ ", this->N);
+    for (int i = 0; i < this->N; i++) fprintf(stderr, "%d ", D[i]);
+    fprintf(stderr, "]");
+  }
+
+  bool equal(int pos, T value) {
+    return pos >= 0 && pos < this->N && D[pos] == value;
+  }
+};
+
+
 // Dynamically resize COMB bucket sizes.
 // If number of cracks > 32, it splits to two smaller buckets.
 template <typename T, typename CMP  = std::less<T>>
-class Bucket {
+class LeafBucket : public Bucket<T> {
   static const unsigned short MAX_CRACK = 64;
 
-  int N;                // the number of data elements
   int I;                // last indexed position
   unsigned char nC;     // the number of cracker indices
-  unsigned long long S;       // sorted bits
+  unsigned long long S; // sorted bits
   int C[MAX_CRACK-1];   // the cracker indices
   T V[MAX_CRACK-1];     // the cracker value
   T *D;                 // the data elements
   int cap;              // the maximum number of elements in D.
-  Bucket* next_b;       // buckets can be chained like a linked list of buckets
+  LeafBucket* next_b;   // buckets can be chained like a linked list of buckets
                         // the value of next is -1 if there is no next chain
                         // otherwise the index of the bucket [0, num_of_buckets)
 
@@ -107,13 +210,13 @@ class Bucket {
   }
 
   void flush_pending_inserts(CMP &cmp) {
-    assert(I <= N);                     // Indexed index should be less than the number of elements
-    if (!nC){ I = N; S = 0; return; }   // no index yet, all the elements are considered "inserted"
+    assert(I <= this->N);                     // Indexed index should be less than the number of elements
+    if (!nC){ I = this->N; S = 0; return; }   // no index yet, all the elements are considered "inserted"
     assert(next_b == NULL);               // Indexes only makes sense when there is no chain
 
     // IMPROVE: bulk insert? (Currently using Merge Completely)
     int minC = nC;
-    for (int j = I; I < N; j= ++I) {        // insert all pending elements (from I to N)
+    for (int j = I; I < this->N; j= ++I) {        // insert all pending elements (from I to N)
       int i = nC - 1;
       T tmp = D[j];            // store the pending tuple
       for (; i>=0 && cmp(tmp,V[i]); i--){  // insert by shuffling through the cracker indices C
@@ -169,7 +272,7 @@ class Bucket {
     int i = 0;
     while (i<nC && !cmp(v, V[i])) i++;      // find the cracker indices that covers v
     L = i==0? 0 : C[i-1];            // the left crack boundary
-    R = i==nC? N : C[i];            // the right crack boundary
+    R = i==nC? this->N : C[i];            // the right crack boundary
     while (R-L > CRACK_AT){            // narrow down the piece using DDR
       int M = rough_middle_partition(D+L+(i?1:0), D+R, cmp, rng) - D;
       add_cracker_index(i, M);
@@ -182,26 +285,22 @@ class Bucket {
   }
 
 public:
-  Bucket(int c): N(0), D(new T[c]), cap(c), next_b(NULL) { clear_indexes(); }
-  ~Bucket() { delete[] D; }
+  LeafBucket(int c): D(new T[c]), cap(c), next_b(NULL) { this->N = 0; clear_indexes(); }
+  ~LeafBucket() { delete[] D; }
 
-  int size() const { return N; }
-  int slack() const { return cap - N; }
-  int is_full() const { return N == cap; }
-  int capacity() const { return cap; }
+  virtual int capacity() const { return cap; }
   int n_cracks() const { return nC; }
-  bool empty() { return N == 0; }
-  Bucket* next() const { return next_b; }
-  void set_next(Bucket *b){ next_b = b; }
+  LeafBucket* next() const { return next_b; }
+  void set_next(LeafBucket *b){ next_b = b; }
   void clear_indexes(){ S = nC = I = 0; }
-  T randomValue(Random &rng) const { return D[rng.nextInt(N)]; }
-  T data(int i) const { assert(i >= 0 && i < N); return D[i]; }
-  T* getp(int i) { assert(i>=0 && i<N); return &D[i]; }
+  T randomValue(Random &rng) const { return D[rng.nextInt(this->N)]; }
+  virtual T data(int i) const { assert(i >= 0 && i < this->N); return D[i]; }
+  T* getp(int i) { assert(i >= 0 && i < this->N); return &D[i]; }
   void insert(T const &v) {
     // if (v == 1846371397) fprintf(stderr, "ins D[%d] = %d, to bucket = %p, cap = %d\n", N, v, this, cap);
-    assert(N < cap); D[N++] = v; }
+    assert(this->N < cap); D[this->N++] = v; }
 
-  vector<pair<T, Bucket*>> split(CMP &cmp) {
+  vector<pair<T, LeafBucket*>> split(CMP &cmp) {
     assert(cap >= 512);
     flush_pending_inserts(cmp);
 
@@ -211,7 +310,7 @@ public:
 
     assert(nC > 1);
     assert(nC < 64 - nsplits);
-    assert(N > cap);
+    assert(this->N > cap);
 
     if (C[0] > cap) {
       assert(!piece_is_sorted(0));
@@ -224,14 +323,14 @@ public:
 
     int newC = 0;
     T *DD = nullptr;
-    vector<pair<T, Bucket*>> ret;
+    vector<pair<T, LeafBucket*>> ret;
     for (int next_pos = cap, i = 0; ; next_pos += cap) {
       while (i + 1 < nC && C[i + 1] <= next_pos) i++;
       assert(C[i] <= next_pos);
 
       if (C[i] < next_pos) {
         assert(i + 1 == nC || C[i + 1] > next_pos);
-        int R = ((i + 1) == nC) ? N : C[i + 1];
+        int R = ((i + 1) == nC) ? this->N : C[i + 1];
         if (next_pos < R) {
           piece_set_sorted(i, false);
           // assert(!piece_is_sorted(i));
@@ -246,11 +345,11 @@ public:
         newC = i;
       } else {
         int pos = next_pos - cap;
-        int n_move = min(cap, N - pos);
+        int n_move = min(cap, this->N - pos);
         // fprintf(stderr, "n_move = %d, cap = %d, D[%d] = %d\n", n_move, cap, pos, D[pos]);
         assert(0 <= n_move && n_move <= cap);
 
-        Bucket *b = new Bucket(cap);
+        LeafBucket *b = new LeafBucket(cap);
         b->I = b->N = n_move;
         for (int j = 0; j < n_move; j++) b->D[j] = D[pos + j];
 
@@ -272,13 +371,13 @@ public:
           ret.push_back(make_pair(D[pos], b));
         }
       }
-      if (next_pos >= N) break;
+      if (next_pos >= this->N) break;
     }
 
     delete[] D;
     D = DD;
     nC = newC;
-    N = I = cap;
+    this->N = I = cap;
     // if (!piece_is_sorted(0)) {
     //   std::sort(D, D + cap, cmp);
     //   piece_set_sorted(0, true);
@@ -292,20 +391,20 @@ public:
   }
 
   int bulk_insert(T const *v, int length){
-    assert(N == 0);
+    assert(this->N == 0);
     memcpy(D, v, sizeof(T) * length);
-    return N = length;
+    return this->N = length;
   }
 
   void mark_hi(T const &P, CMP &cmp, int *hi, int &nhi){
-    for (int i=0; i<N; i++){
+    for (int i=0; i < this->N; i++){
       hi[nhi] = i;
       nhi += !cmp(D[i], P);
     }
   }
 
   void mark_lo(T const &P, CMP &cmp, int *lo, int &nlo){
-    for (int i=0; i<N; i++){
+    for (int i=0; i < this->N; i++){
       lo[nlo] = i;
       nlo += cmp(D[i], P);
     }
@@ -314,11 +413,11 @@ public:
   // partition this bucket based on value v, destroying all cracker indices
   int partition(T const &v, CMP &cmp){
     clear_indexes();
-    assert(N > 0 && N <= cap);
-    return partition(D, D + N, v, cmp) - D;
+    assert(this->N > 0 && this->N <= cap);
+    return partition(D, D + this->N, v, cmp) - D;
   }
 
-  void fusion(Bucket *that, int *hi, int *lo, int &nhi, int &nlo){
+  void fusion(LeafBucket *that, int *hi, int *lo, int &nhi, int &nlo){
     int m = std::min(nhi, nlo); assert(m > 0);
     int *hip = hi + nhi - 1, *lop = lo + nlo - 1;
     T *Lp = D, *Rp = that->D;
@@ -331,17 +430,17 @@ public:
       fprintf(stderr,"C[%d/%d] = %d, %d (sorted = %d)\n",
         k,nC,C[k],(int)D[C[k]],piece_is_sorted(k));
     fprintf(stderr,"%s : i=%d/N=%d, j=%d/nC=%d, D[i,i+1] = %d, %d; I=%d, N=%d, next=%p\n",
-      msg, i,N, j,nC, (int)D[i],(int)D[i+1], I,N,next_b);
+      msg, i,this->N, j,nC, (int)D[i],(int)D[i+1], I,this->N,next_b);
     return false;
   }
 
-  // call this function to check the consistency of this Bucket structure
+  // call this function to check the consistency of this LeafBucket structure
   bool check(T lo, bool useLo, T hi, bool useHi, CMP &cmp) const {
-    if (useLo) for (int i=0; i<N; i++) if (cmp(D[i],lo)){
+    if (useLo) for (int i=0; i < this->N; i++) if (cmp(D[i],lo)){
       fprintf(stderr,"D[%d] = %d, lo = %d, bucket = %p\n",i, D[i], lo, this);
       return debug("useLo failed", i,0);
     }
-    if (useHi) for (int i=0; i<N; i++) if (!cmp(D[i],hi)){
+    if (useHi) for (int i=0; i < this->N; i++) if (!cmp(D[i],hi)){
       fprintf(stderr,"D[%d] = %d, hi = %d, bucket = %p\n",i, D[i], hi, this);
       return debug("useHi failed", i,0);
     }
@@ -363,25 +462,25 @@ public:
   }
 
   int index_of(T const &v, CMP &cmp) const {
-    for (int i=0; i<N; i++) if (eq(D[i],v,cmp)) return i;
+    for (int i=0; i < this->N; i++) if (eq(D[i],v,cmp)) return i;
     return -1;
   }
 
   // move this bucket data in range [fromIdx, end) and append
-  // it to the specified Bucket "to", destroying all cracker indices
-  void moveToFromIdx(Bucket *to, int fromIdx){
+  // it to the specified LeafBucket "to", destroying all cracker indices
+  void moveToFromIdx(LeafBucket *to, int fromIdx){
     clear_indexes(); to->clear_indexes();    // destroy both buckets' cracker indices
-    assert(N > fromIdx);            // make sure there is something to move
-    assert(to->N + N-fromIdx <= cap);    // make sure the receiver has enough space
-    memmove(to->D + to->N, D+fromIdx, (N-fromIdx) * sizeof(T));
-    to->N += N-fromIdx;
-    N = fromIdx;
+    assert(this->N > fromIdx);            // make sure there is something to move
+    assert(to->N + this->N - fromIdx <= cap);    // make sure the receiver has enough space
+    memmove(to->D + to->N, D+fromIdx, (this->N - fromIdx) * sizeof(T));
+    to->N += this->N - fromIdx;
+    this->N = fromIdx;
   }
 
   int crack(T const &v, int &i, int &L, int &R, bool sort_piece, CMP &cmp, Random &rng){
     assert(!next());            // it doesn't make sense crack a chained bucket!
     i = get_piece_by_value(v,L,R,cmp,rng);    // find the piece [L,R) containing v
-    assert(L>=0 && L<=R && R<=N);        // range check
+    assert(L>=0 && L<=R && R <= this->N);        // range check
     if (!piece_is_sorted(i)){
       if (sort_piece){            // sort the piece if requested
         std::sort(D+L,D+R,cmp);
@@ -425,7 +524,7 @@ public:
       D[R-1] = D[R];
       at = R;
     }
-    D[at] = D[--N];    // the deleted element has been shuffled out from the bucket
+    D[at] = D[--this->N];    // the deleted element has been shuffled out from the bucket
     I--;        // adjust the pending index
 
 //      assert(check(D[0],false,D[0],false,cmp));
@@ -438,7 +537,7 @@ template <typename T, typename CMP  = std::less<T>, int MAX_BSIZE = 8192>
 class Comb {
   class RangeError {};    // an exception class
 
-  typedef Bucket<T, CMP> bucket_type;    // A COMB bucket.
+  typedef LeafBucket<T, CMP> bucket_type;    // A COMB bucket.
   typedef pair<bucket_type*, bucket_type*> bucket_chain;       // Pointer to first and last bucket in the chain.
   typedef pair<T, bucket_chain> root_entry;
   // typedef std::map<T, bucket_chain> root_map;
@@ -473,7 +572,7 @@ class Comb {
   //   R[key] = value;
   // }
 
-  // add a Bucket (bidx) to the root chain 'ridx'
+  // add a LeafBucket (bidx) to the root chain 'ridx'
   void _add(bucket_chain &c, bucket_type *b) {
     if (!c.first){                   // the root chain is empty.
       c.first = c.second = b;        // add the new bucket directly.
@@ -610,8 +709,8 @@ class Comb {
         it = find_root(v);
         // it++; // readjust root idx
         assert(*it == right_entry.first);
-        assert(it->second.first == right_entry.second.first);
-        assert(it->second.second == right_entry.second.second);
+        assert(root_value(it).first == right_entry.second.first);
+        assert(root_value(it).second == right_entry.second.second);
       }
     }
     // assert(check());
