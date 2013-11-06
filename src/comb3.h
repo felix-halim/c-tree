@@ -48,7 +48,6 @@ class Bucket {
   virtual Bucket* child(int i) const = 0;
   virtual T& data(int i) = 0;
   virtual const T* data_pointer(int i) const = 0;
-  virtual int lower_pos(T value, CMP &cmp, Random &rng) = 0;
   virtual bool is_full() const = 0;
   virtual bool is_leaf() const = 0;
   virtual Bucket* next() const = 0;
@@ -88,7 +87,7 @@ class InternalBucket : public Bucket<T, CMP> {
   virtual bool is_leaf() const { return false; }
   virtual Bucket<T, CMP>* next() const { return nullptr; }
 
-  virtual int lower_pos(T value, CMP &cmp, Random &rng) {
+  int lower_pos(T value, CMP &cmp) {
     int pos = 0;
     while (pos < this->N && cmp(D[pos], value)) pos++;
     return pos;
@@ -528,7 +527,7 @@ public:
     this->N = fromIdx;
   }
 
-  virtual int lower_pos(T value, CMP &cmp, Random &rng) {
+  int lower_pos(T value, CMP &cmp, Random &rng) {
     int i, L, R;
     return crack(value, i, L, R, true, cmp, rng);
   }
@@ -744,7 +743,8 @@ public:
         ((leaf_bucket_t*) b)->insert(value);
         break;
       }
-      b = b->child(b->lower_pos(value, cmp, rng));
+      int pos = ((InternalBucket<T, CMP>*) b)->lower_pos(value, cmp);
+      b = b->child(pos);
     }
   }
 
@@ -764,7 +764,7 @@ public:
         b = b->parent();
         assert(b);
       } else {
-        int pos = b->lower_pos(value, cmp, rng);
+        int pos = ((InternalBucket<T, CMP>*) b)->lower_pos(value, cmp);
         if (include_internal && pos < b->size() && eq(b->data(pos), value, cmp)) {
           // fprintf(stderr, "find_bucket4 %p\n", b);
           return make_pair(b, pos); // Found in the internal bucket.
@@ -1037,7 +1037,7 @@ public:
       return iterator(this, p.first, p.second);
     }
 
-    int pos = p.first->lower_pos(value, cmp, rng);
+    int pos = ((leaf_bucket_t*) p.first)->lower_pos(value, cmp, rng);
     if (pos < p.first->size()) {
       // fprintf(stderr, "lower_bound3 %d, %d\n", value, p.first->data(pos));
       // p.first->debug();
@@ -1047,7 +1047,7 @@ public:
     InternalBucket<T, CMP> *ib = (InternalBucket<T, CMP>*) p.first->parent();
     while (ib) {
       // fprintf(stderr, "lower_bound4 %d\n", value);
-      pos = ib->lower_pos(value, cmp, rng);
+      pos = ib->lower_pos(value, cmp);
       if (pos < ib->size()) {
         return iterator(this, ib, pos);
       }
