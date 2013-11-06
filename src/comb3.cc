@@ -30,7 +30,7 @@ void erase(int value) {
 
 int lower_bound(int value) {
   auto it = c.lower_bound(value);
-  int ret = (it == c.end()) ? 0 : *it;
+  int ret = it.bucket ? *it : 0;
   // fprintf(stdout, "%d (%d)\n", ret, value);
   return ret;
 }
