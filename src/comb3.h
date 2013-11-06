@@ -48,18 +48,17 @@ class Bucket {
   virtual T data(int i) const = 0;
   virtual T* data_pointer(int i) const = 0;
   virtual int lower_pos(T value) const = 0;
+  virtual bool is_full() const = 0;
 
   int size() const { return N; };
-  int slack() const { return capacity() - size(); }
-  bool empty() { return size() == 0; }
-  bool is_full() const { return slack() == 0; }
-
+  bool empty() const { return !N; }
   Bucket* parent() const { return par; }
+
   void set_parent(Bucket *p) { par = p; }
 };
 
 
-template <typename T>
+template <typename T, typename CMP>
 class InternalBucket : public Bucket<T> {
   T D[INTERNAL_BSIZE];            // Data values.
   Bucket<T>* C[INTERNAL_BSIZE + 1];  // Pointer to children (can be internals or leaves).
@@ -79,6 +78,7 @@ class InternalBucket : public Bucket<T> {
   virtual T data(int i) const { assert(i >= 0 && i < this->N); return D[i]; }
   virtual T* data_pointer(int i) const { assert(i >= 0 && i < this->N); return &D[i]; }
   virtual T promote_last() { return D[--this->N]; }
+  virtual bool is_full() const { return this->N == INTERNAL_BSIZE; }
 
   virtual int lower_pos(T value) const {
     int pos = 0;
@@ -86,11 +86,11 @@ class InternalBucket : public Bucket<T> {
     return pos;
   }
 
-  void insert(T value, Bucket<T> *nb, int left) {
+  void insert(T value, Bucket<T> *nb, int left, CMP &cmp) {
     assert(!Bucket<T>::is_full());
     // fprintf(stderr, "ii %d\n", b);
     int i = this->N - 1;
-    while (i >= 0 && D[i] > value) {
+    while (i >= 0 && cmp(value, D[i])) {
       D[i + 1] = D[i];
       C[i + 2] = C[i + 1];
       i--;
@@ -293,7 +293,7 @@ public:
   T randomValue(Random &rng) const { return D[rng.nextInt(this->N)]; }
   virtual T data(int i) const { assert(i >= 0 && i < this->N); return D[i]; }
   virtual T* data_pointer(int i) const { assert(i >= 0 && i < this->N); return &D[i]; }
-  T* getp(int i) { assert(i >= 0 && i < this->N); return &D[i]; }
+  virtual bool is_full() const { return this->N == cap; }
 
   void insert(T const &v) {
     // if (v == 1846371397) fprintf(stderr, "ins D[%d] = %d, to bucket = %p, cap = %d\n", N, v, this, cap);
@@ -675,7 +675,7 @@ public:
           idx = 0;
         } else {
           while (true) {
-            InternalBucket *parent = (InternalBucket*) bucket->parent();
+            InternalBucket<T, CMP> *parent = (InternalBucket<T, CMP>*) bucket->parent();
             if (!parent) { bucket = nullptr; idx = 0; break; }
             idx = parent->child_pos(bucket);
             bucket = parent;
@@ -720,9 +720,7 @@ public:
     }
 
     bool operator==(const self_type &that) {
-      assert(crack == that.crack);
-      if (has_next() != that.has_next()) return false;
-      return bucket == that.bucket && idx == that.idx;
+      return crack == that.crack && bucket == that.bucket && idx == that.idx;
     }
 
     bool operator!=(const self_type &that) {
@@ -741,10 +739,26 @@ public:
 
   Comb() {
     root = new leaf_bucket_t(MAX_BSIZE);
-    set_root(0, make_pair(leaf, leaf));
   }
   
   void load(T const *arr, int n) {
+    // fprintf(stderr, "batch %d\n", n);
+    int i = 0;
+    while (i + MAX_BSIZE <= n) {
+      leaf_bucket_t *b = new leaf_bucket_t(MAX_BSIZE);
+      b->bulk_insert(arr + i, MAX_BSIZE);
+      i += MAX_BSIZE;
+      // fprintf(stderr, "chain %d, %d\n", i, b->size());
+      add_chain(root, idx);
+    }
+    // fprintf(stderr, "done %d %d\n", i, n);
+    while (i < n) {
+      insert(arr[i++]);
+    }
+    // fprintf(stderr, "inserted %d elements\n", size());
+
+
+
     assert(!R.empty());
     bucket_chain c = Rc[0];
     assert(c.first == c.second);
@@ -792,32 +806,34 @@ public:
     }
   }
 
-  bool erase(T const &v) {
-    // 
-    // if (v == 1489490129) { fprintf(stderr, "erase %d\n", v); assert(check()); }
-    root_iterator it = find_root(v);
-    const bucket_chain &c = root_value(it);
-    if (c.first->empty() && c.first == c.second) return false;
-
-    it = break_chain(it, v);
-    leaf_bucket_t *b = root_value(it).first;
-    bool ret = b->erase(v, cmp, rng);
-
-    // TODO: merge with the left bucket if too small.
-
-    if (b->empty()) {
-      erase_root(*it);
-      delete b;
-    } else {
-      split_bucket(it, b);
+  // Returns <bucket, pos> if found in internal node, otherwise returns <bucket, splitted> for leaf node.
+  pair<Bucket<T>*, int> find_bucket(T value, bool include_internal) {
+    Bucket<T> *b = root;
+    int splitted = 0;
+    // fprintf(stderr, "find_bucket %d\n", b);
+    while (true) {
+      if (b->is_leaf()) {
+        // fprintf(stderr, "find_bucket2 %d\n", b);
+        if (!split_chain((leaf_bucket_t*) b)) {
+          return make_pair(b, splitted);
+        }
+        // fprintf(stderr, "find_bucket3 %d\n", b);
+        splitted = 1;
+        b = b->parent();
+        assert(b);
+      } else {
+        int pos = b->lower_pos(value);
+        if (include_internal && eq(b->data(pos), value)) {
+          // fprintf(stderr, "find_bucket2 %d\n", b);
+          return make_pair(b, pos); // Found in the internal bucket.
+        }
+        b = b->child(pos);    // Search the child.
+      }
     }
-
-    // assert(check());
-    // fprintf(stderr, "erase2 %d\n", v);
-
-    return ret;
+    // fprintf(stderr, "find_bucket3 %d\n", b);
   }
 
+/*
   bool split_bucket(root_iterator it, leaf_bucket_t *b) {
     // To avoid having too many cracker indexes in a bucket.
     if (b->n_cracks() > 40 && b->capacity() == MAX_BSIZE) {
@@ -850,6 +866,65 @@ public:
       return true;
     }
     return false;
+  }
+*/
+
+  bool erase(T const &v) {
+    // assert(check());
+    // fprintf(stderr, "ERASE %d\n", value);
+    // debug();
+
+    pair<Bucket<T>*, int> p = find_bucket(value, true);
+    if (p.first->is_leaf()) {
+      // fprintf(stderr, "ERASE1 %d\n", value);
+      // TODO: split_bucket(it, b);
+      return p.first->erase(value);
+    }
+
+    // Found in an internal node, delete the largest node <= value.
+    pair<Bucket<T>*, int> upper = find_bucket(value, false);
+
+    // It is possible that finding upper invalidated p's references.
+    if (upper.second) p = find_bucket(value, true); // Refresh.
+
+    // fprintf(stderr, "ERASE2 %d\n", value);
+
+    // upper.first is the leaf bucket containing the value.
+    // upper.second signify whether a leaf_split happened when finding the bucket.
+    Bucket<T> *b = upper.first;
+    T next_largest = 0;
+    assert(b->is_leaf());
+    if (b->size()) {
+      // fprintf(stderr, "ERASE3 %d\n", value);
+      next_largest = b->remove_largest();
+    } else {
+      // Bucket b is empty, search ancestors.
+      while (true) {
+        // fprintf(stderr, "ERASE4 %d\n", b);
+        assert(b != p.first);
+        InternalBucket *parent = b->parent();
+        assert(parent);
+        delete b;
+        if (parent->size()) {
+          if (parent == p.first) {
+            // Found in the same internal node as p.first, just delete it.
+            ((InternalBucket*) p.first)->erase(p.second, 0);
+            // fprintf(stderr, "yay\n");
+            return true;
+          }
+          next_largest = parent->promote_last();
+          break;
+        }
+        b = parent;
+      }
+    }
+    // fprintf(stderr, "ii res = %d, largest = %d\n", res.first, res.second);
+    assert(p.first->data(p.second) == value);
+    assert(next_largest <= value);
+    p.first->set_data(p.second, next_largest);
+    // assert(check());
+    // fprintf(stderr, "ERASE5 %d\n", value);
+    return true;
   }
 
   bool split_chain(leaf_bucket_t *leafb) {
@@ -897,33 +972,6 @@ public:
     // debug();
     // assert(check());
     return true;
-  }
-
-  // Returns <bucket, pos> if found in internal node, otherwise returns <bucket, splitted> for leaf node.
-  pair<Bucket<T>*, int> find_bucket(T value, bool include_internal) {
-    Bucket<T> *b = root;
-    int splitted = 0;
-    // fprintf(stderr, "find_bucket %d\n", b);
-    while (true) {
-      if (b->is_leaf()) {
-        // fprintf(stderr, "find_bucket2 %d\n", b);
-        if (!split_chain((leaf_bucket_t*) b)) {
-          return make_pair(b, splitted);
-        }
-        // fprintf(stderr, "find_bucket3 %d\n", b);
-        splitted = 1;
-        b = b->parent();
-        assert(b);
-      } else {
-        int pos = b->lower_pos(value);
-        if (include_internal && eq(b->data(pos), value)) {
-          // fprintf(stderr, "find_bucket2 %d\n", b);
-          return make_pair(b, pos); // Found in the internal bucket.
-        }
-        b = b->child(pos);    // Search the child.
-      }
-    }
-    // fprintf(stderr, "find_bucket3 %d\n", b);
   }
 
   iterator end() {
