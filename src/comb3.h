@@ -317,6 +317,7 @@ public:
 
   void add_chain(LeafBucket *next) {
     if (next_b) {
+      assert(tail_b);
       tail_b->next_b = next;
     } else {
       next_b = next;
@@ -800,10 +801,10 @@ public:
     pair<Bucket<T, CMP>*, int> p = find_bucket(value, true);
     if (p.first->is_leaf()) {
       // fprintf(stderr, "ERASE1 %d\n", value);
-      fprintf(stderr, "a");
+      // fprintf(stderr, "a");
       bool ret = ((leaf_bucket_t*) p.first)->erase(value, cmp, rng);
-      fprintf(stderr, "b");
-      split_bucket((leaf_bucket_t*) p.first);
+      // fprintf(stderr, "b");
+      // split_bucket((leaf_bucket_t*) p.first);
       return ret;
     }
 
