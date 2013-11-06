@@ -11,7 +11,8 @@ compile)      make -s -C src "../bin/$2" || exit;
               make -s -C src "../$N" || exit;;
 
 algo)         ./run.sh compile $2 || exit;
-              bin/$2 $N $Q 0.1 1 $3;;
+              #bin/$2 $N $Q 0.1 1 $3;;
+              valgrind --leak-check=yes bin/$2 $N $Q 0.1 1 $3;;
 
 seq)          ./run.sh compile $2 || exit;
               bin/$2 $N $Q 0.1 2 $3;;
