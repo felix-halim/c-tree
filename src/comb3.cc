@@ -7,6 +7,7 @@ Comb<int> c;
 
 void init(int *arr, int N) {
   c.load(arr, N);
+  fprintf(stderr, "size = %d\n", c.size());
   // for (int i = 0; i < N; i++) {
   //   insert(arr[i]);
   //   if (i % 1000) lower_bound(arr[i]);
@@ -28,16 +29,17 @@ void erase(int value) {
 }
 
 int lower_bound(int value) {
-  int val = 0;
-  int ret = c.lower_bound(value).next(val) ? val : 0;
+  auto it = c.lower_bound(value);
+  int ret = (it == c.end()) ? 0 : *it;
   // fprintf(stdout, "%d (%d)\n", ret, value);
   return ret;
 }
 
 int select(int a, int b) {
-  int aa, bb;
-  int ret1 = c.lower_bound(a).next(aa) ? aa : 0;
-  int ret2 = c.lower_bound(b).next(bb) ? bb : 0;
+  auto it1 = c.lower_bound(a);
+  auto it2 = c.lower_bound(b);
+  int ret1 = (it1 == c.end()) ? 0 : *it1;
+  int ret2 = (it2 == c.end()) ? 0 : *it2;
   // fprintf(stderr, "%d (%d)\n", ret, value);
   return ret1 + ret2;
 }
