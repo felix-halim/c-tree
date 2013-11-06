@@ -1,6 +1,6 @@
 mkdir bin 2> /dev/null
-N=data/10000000.data
-Q=100000000
+N=data/100000000.data
+Q=1000000000
 out=results.js
 
 case $1 in
@@ -11,8 +11,8 @@ compile)      make -s -C src "../bin/$2" || exit;
               make -s -C src "../$N" || exit;;
 
 algo)         ./run.sh compile $2 || exit;
-              #bin/$2 $N $Q 0.1 1 $3;;
-              valgrind --leak-check=yes bin/$2 $N $Q 0.1 1 $3;;
+              bin/$2 $N $Q 0.1 1 $3;;
+              # valgrind --leak-check=yes bin/$2 $N $Q 0.1 1 $3;;
 
 seq)          ./run.sh compile $2 || exit;
               bin/$2 $N $Q 0.1 2 $3;;

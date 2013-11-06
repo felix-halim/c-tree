@@ -52,6 +52,7 @@ class Bucket {
   virtual bool is_full() const = 0;
   virtual bool is_leaf() const = 0;
   virtual Bucket* next() const = 0;
+  virtual void debug() const = 0;
 
   int size() const { return N; };
   int slack() const { return capacity() - N; }
@@ -91,6 +92,12 @@ class InternalBucket : public Bucket<T, CMP> {
     int pos = 0;
     while (pos < this->N && cmp(D[pos], value)) pos++;
     return pos;
+  }
+
+  virtual void debug() const {
+    fprintf(stderr, "N = %d  [ ", this->N);
+    for (int i = 0; i < this->N; i++) fprintf(stderr, "%d ", D[i]);
+    fprintf(stderr, "]\n");
   }
 
   void insert(T value, Bucket<T, CMP> *nb, int left, CMP &cmp) {
@@ -134,12 +141,6 @@ class InternalBucket : public Bucket<T, CMP> {
     ib->N = this->N - H;
     this->N = H;
     return ib;
-  }
-
-  void debug_data() {
-    fprintf(stderr, "N = %d  [ ", this->N);
-    for (int i = 0; i < this->N; i++) fprintf(stderr, "%d ", D[i]);
-    fprintf(stderr, "]");
   }
 };
 
@@ -464,12 +465,22 @@ public:
     while (m--) std::swap(Lp[*(hip--)], Rp[*(lop--)]);
   }
 
-  bool debug(const char *msg, int i, int j) const {
+  virtual void debug() const {
+    debug("debug", 0, 0, true);
+  }
+
+  bool debug(const char *msg, int i, int j, bool verbose) const {
     for (int k=0; k<nC; k++)
       fprintf(stderr,"C[%d/%d] = %d, %d (sorted = %d)\n",
         k,nC,C[k],(int)D[C[k]],piece_is_sorted(k));
     fprintf(stderr,"%s : i=%d/N=%d, j=%d/nC=%d, D[i,i+1] = %d, %d; I=%d, N=%d, next=%p\n",
       msg, i,this->N, j,nC, (int)D[i],(int)D[i+1], I,this->N,next_b);
+    if (verbose) {
+      for (int k = 0; k < this->N; k++) {
+        fprintf(stderr, "%d ", D[k]);
+      }
+      fprintf(stderr, "\n");
+    }
     return false;
   }
 
@@ -518,7 +529,7 @@ public:
 
   virtual int lower_pos(T value, CMP &cmp, Random &rng) {
     int i, L, R;
-    return crack(value, i, L, R, false, cmp, rng);
+    return crack(value, i, L, R, true, cmp, rng);
   }
 
   int crack(T const &v, int &i, int &L, int &R, bool sort_piece, CMP &cmp, Random &rng){
@@ -860,29 +871,22 @@ public:
   // add a LeafBucket (bidx) to the root chain 'ridx'
   bool add_to_chain(leaf_bucket_t *&chain, leaf_bucket_t *b) {
     if (!chain) { // the root chain is empty.
-      fprintf(stderr, "add_to_chain1\n");
       chain = b;  // b is the head of the chain.
       chain->set_next(nullptr);
       chain->set_tail(nullptr);
     } else {
       assert(!chain->tail() || !chain->tail()->next());
-      fprintf(stderr, "add_to_chain2 %p %d %d\n", chain, chain->is_leaf(), chain->slack());
       if (chain->slack()) {
-        fprintf(stderr, "add_to_chain3\n");
         b->moveToFromIdx(chain, b->size() - std::min(b->size(), chain->slack()));
       } else if (chain->tail()) {
         if (chain->tail()->slack()) {
-          fprintf(stderr, "add_to_chain4\n");
           b->moveToFromIdx((leaf_bucket_t*) chain->tail(), b->size() - std::min(b->size(), chain->tail()->slack()));
         }
       }
       if (b->size()) {
-        fprintf(stderr, "add_to_chain5\n");
         chain->add_chain(b);
       } else {
-        fprintf(stderr, "add_to_chain6 %p, %p %p\n", b, chain->next(), chain->tail());
         delete b;
-        fprintf(stderr, "add_to_chain7\n");
         return true;
       }
     }
@@ -894,7 +898,6 @@ public:
 
     // Reservoir sampling.
     for (leaf_bucket_t *b = head; b; b = (leaf_bucket_t*) b->next(), ni++) {
-      fprintf(stderr, "b = %p\n", b);
       b->clear_indexes();
       if (nArr < 11) {
         arr[nArr++] = b->randomValue(rng);
@@ -913,7 +916,7 @@ public:
   pair<T, Bucket<T, CMP>*> stochastic_split_chain(leaf_bucket_t *b, CMP &cmp, Random &rng) {
     const T &p = get_random_pivot(b, cmp, rng);
 
-    fprintf(stderr, "stochastic_split_chain %p\n", b);
+    // fprintf(stderr, "stochastic_split_chain %p\n", b);
     leaf_bucket_t *left_chain = nullptr;
     leaf_bucket_t *right_chain = nullptr;
     leaf_bucket_t *Lb = nullptr, *Rb = nullptr;
@@ -924,8 +927,8 @@ public:
       if (nhi && nlo) {
         assert(Lb && Rb);
         Lb->fusion(Rb, hi, lo, nhi, nlo);
-        if (!nhi) { if (add_to_chain(left_chain, Lb)) fprintf(stderr, "deleted 1\n");; Lb = nullptr; }
-        if (!nlo) { if (add_to_chain(right_chain, Rb)) fprintf(stderr, "deleted 2\n");; Rb = nullptr; }
+        if (!nhi) { add_to_chain(left_chain, Lb); Lb = nullptr; }
+        if (!nlo) { add_to_chain(right_chain, Rb); Rb = nullptr; }
       } else if (!Lb) {
         if (!b) break;
         Lb = b;
@@ -933,7 +936,7 @@ public:
       } else if (!nhi) {
         assert(Lb);
         Lb->mark_hi(p, cmp, hi, nhi);
-        if (!nhi) { if (add_to_chain(left_chain, Lb)) fprintf(stderr, "deleted 3\n");; Lb = nullptr; }
+        if (!nhi) { add_to_chain(left_chain, Lb); Lb = nullptr; }
       } else if (!Rb) {
         if (!b) break;
         Rb = b;
@@ -941,41 +944,31 @@ public:
       } else if (!nlo) {
         assert(Rb);
         Rb->mark_lo(p, cmp, lo, nlo);
-        if (!nlo) { if (add_to_chain(right_chain, Rb)) fprintf(stderr, "deleted 4\n");; Rb = nullptr; }
+        if (!nlo) { add_to_chain(right_chain, Rb); Rb = nullptr; }
       } else {
         assert(0);
       }
     }
 
-    fprintf(stderr, "stochastic_split_chain2 %p\n", this);
     if (Rb) { assert(!Lb); Lb = Rb; }
     if (Lb) {
       if (Lb->size()) {
-        fprintf(stderr, "stochastic_split_chain a %p\n", Lb);
         int i = Lb->partition(p, cmp);
         if (i == 0) {
-          fprintf(stderr, "stochastic_split_chain b %p\n", Lb);
-          if (add_to_chain(right_chain, Lb)) fprintf(stderr, "deleted 5\n");;
+          add_to_chain(right_chain, Lb);
         } else if (i == Lb->size()) {
-          fprintf(stderr, "stochastic_split_chain c %p\n", Lb);
-          if (add_to_chain(left_chain, Lb)) fprintf(stderr, "deleted 6\n");;
+          add_to_chain(left_chain, Lb);
         } else {
-          fprintf(stderr, "stochastic_split_chain d %p\n", Lb);
           Rb = new leaf_bucket_t(Lb->parent(), Lb->capacity());
-          fprintf(stderr, "stochastic_split_chain d1 %p\n", Rb);
           Lb->moveToFromIdx(Rb, i);
-          fprintf(stderr, "stochastic_split_chain d2 %p %p\n", left_chain, Lb);
-          if (add_to_chain(left_chain, Lb)) fprintf(stderr, "deleted 7\n");;
-          fprintf(stderr, "stochastic_split_chain d3 %p %p\n", right_chain, Rb);
-          if (add_to_chain(right_chain, Rb)) fprintf(stderr, "deleted 8\n");;
-          fprintf(stderr, "stochastic_split_chain e %p\n", Lb);
+          add_to_chain(left_chain, Lb);
+          add_to_chain(right_chain, Rb);
         }
       } else {
         delete Lb;
       }
     }
 
-    fprintf(stderr, "stochastic_split_chain3 %p\n", this);
 //    assert(check());
     return make_pair(p, right_chain);
   }
@@ -1041,7 +1034,7 @@ public:
   /* TODO: lazy lower_bound */
   iterator lower_bound(T const &value, bool sort_piece = true) {
     // static int nth = 0; nth++;
-    assert(check());
+    // assert(check());
     // TODO: optimize leaf slack
 
     // fprintf(stderr, "lower_bound %d\n", value);
@@ -1049,16 +1042,20 @@ public:
 
     if (!p.first->is_leaf()) {
       // Found in internal bucket.
+      // fprintf(stderr, "lower_bound2 %d\n", value);
       return iterator(this, p.first, p.second);
     }
 
     int pos = p.first->lower_pos(value, cmp, rng);
     if (pos < p.first->size()) {
+      // fprintf(stderr, "lower_bound3 %d, %d\n", value, p.first->data(pos));
+      // p.first->debug();
       return iterator(this, p.first, pos);
     }
 
     InternalBucket<T, CMP> *ib = (InternalBucket<T, CMP>*) p.first->parent();
     while (ib) {
+      // fprintf(stderr, "lower_bound4 %d\n", value);
       pos = ib->lower_pos(value, cmp, rng);
       if (pos < ib->size()) {
         return iterator(this, ib, pos);
