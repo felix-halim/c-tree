@@ -26,14 +26,12 @@ class Random {
 
 #define CRACK_AT (cap >> 5)
 #define DECRACK_AT (cap >> 6)
-
-template <typename T, typename CMP  = std::less<T> >
-static bool eq(T const &a, T const &b, CMP const &cmp){ return !cmp(a,b) && !cmp(b,a); }
-
-
 #ifndef INTERNAL_BSIZE
   #define INTERNAL_BSIZE 32
 #endif
+
+template <typename T, typename CMP  = std::less<T> >
+static bool eq(T const &a, T const &b, CMP const &cmp){ return !cmp(a,b) && !cmp(b,a); }
 
 
 template <typename T>
@@ -44,11 +42,12 @@ class Bucket {
 
  public:
 
-  virtual ~Bucket(){}
-  virtual int capacity() const { return 0;}
-  virtual Bucket* child(int i) const { return nullptr; }
-  virtual T data(int i) const { return T(); }
-  virtual int lower_pos(T value) const { return 0; }
+  virtual ~Bucket() = 0;
+  virtual int capacity() const = 0;
+  virtual Bucket* child(int i) const = 0;
+  virtual T data(int i) const = 0;
+  virtual T* data_pointer(int i) const = 0;
+  virtual int lower_pos(T value) const = 0;
 
   int size() const { return N; };
   int slack() const { return capacity() - size(); }
@@ -78,6 +77,7 @@ class InternalBucket : public Bucket<T> {
   virtual int capacity() const { return INTERNAL_BSIZE; }
   virtual Bucket<T>* child(int i) const { assert(i >= 0 && i <= this->N); return C[i]; }
   virtual T data(int i) const { assert(i >= 0 && i < this->N); return D[i]; }
+  virtual T* data_pointer(int i) const { assert(i >= 0 && i < this->N); return &D[i]; }
   virtual T promote_last() { return D[--this->N]; }
 
   virtual int lower_pos(T value) const {
@@ -132,16 +132,12 @@ class InternalBucket : public Bucket<T> {
     for (int i = 0; i < this->N; i++) fprintf(stderr, "%d ", D[i]);
     fprintf(stderr, "]");
   }
-
-  bool equal(int pos, T value) {
-    return pos >= 0 && pos < this->N && D[pos] == value;
-  }
 };
 
 
 // Dynamically resize COMB bucket sizes.
 // If number of cracks > 32, it splits to two smaller buckets.
-template <typename T, typename CMP  = std::less<T>>
+template <typename T, typename CMP, int MAX_BSIZE>
 class LeafBucket : public Bucket<T> {
   static const unsigned short MAX_CRACK = 64;
 
@@ -155,6 +151,7 @@ class LeafBucket : public Bucket<T> {
   LeafBucket* next_b;   // buckets can be chained like a linked list of buckets
                         // the value of next is -1 if there is no next chain
                         // otherwise the index of the bucket [0, num_of_buckets)
+  LeafBucket* tail_b;   // pointer to the last bucket in the chain.
 
   void piece_set_sorted(int i, bool sorted) {
     assert(i >= 0 && i < MAX_CRACK);
@@ -295,10 +292,28 @@ public:
   void clear_indexes(){ S = nC = I = 0; }
   T randomValue(Random &rng) const { return D[rng.nextInt(this->N)]; }
   virtual T data(int i) const { assert(i >= 0 && i < this->N); return D[i]; }
+  virtual T* data_pointer(int i) const { assert(i >= 0 && i < this->N); return &D[i]; }
   T* getp(int i) { assert(i >= 0 && i < this->N); return &D[i]; }
+
   void insert(T const &v) {
     // if (v == 1846371397) fprintf(stderr, "ins D[%d] = %d, to bucket = %p, cap = %d\n", N, v, this, cap);
-    assert(this->N < cap); D[this->N++] = v; }
+    if (this->N < cap) {
+      D[this->N++] = v;
+      return;
+    }
+    assert(!tail_b || !tail_b->next());
+    if (!tail_b || tail_b->N == cap) {
+      LeafBucket *next = new LeafBucket(tail_b ? MAX_BSIZE : cap);
+      if (next_b) {
+        tail_b->next_b = next;
+      } else {
+        next_b = next;
+      }
+      tail_b = next;
+    }
+    assert(tail_b && tail_b->N < tail_b->cap);
+    tail_b->D[tail_b->N++] = v;
+  }
 
   vector<pair<T, LeafBucket*>> split(CMP &cmp) {
     assert(cap >= 512);
@@ -425,6 +440,108 @@ public:
     while (m--) std::swap(Lp[*(hip--)], Rp[*(lop--)]);
   }
 
+  // add a LeafBucket (bidx) to the root chain 'ridx'
+  void add_to_chain(LeafBucket *&chain, LeafBucket *b) {
+    if (!chain) { // the root chain is empty.
+      chain = b;  // b is the head of the chain.
+    } else {
+      assert(!chain->next_b->next_b);
+      // assert(!B[Pe[ridx]].free());
+      if (chain->next_b->slack()) {
+        b->moveToFromIdx(chain->next_b, b->N - std::min(b->N, chain->next_b->slack()));
+      }
+      if (b->N) {
+        chain->next_b->next_b = b;
+        chain->next_b = b;
+      } else {
+        delete b;
+      }
+    }
+    chain->next_b->next_b = nullptr;
+  }
+
+  T get_random_pivot(CMP &cmp, Random &rng) {  // pick the pivot near the median
+    T arr[11]; int nArr = 0, ni = 0;
+
+    // Reservoir sampling.
+    for (LeafBucket *b = this; b; b = b->next(), ni++) {
+      b->clear_indexes();
+      if (nArr < 11) {
+        arr[nArr++] = b->randomValue(rng);
+      } else if (rng.nextInt(ni) < 11) {
+        arr[rng.nextInt(11)] = b->randomValue(rng);
+      }
+    }
+    while (nArr < 11) {
+      arr[nArr++] = randomValue(rng);
+    }
+    std::nth_element(arr, arr+5, arr+11, cmp);
+    return arr[5];      // the chosen pivot is here
+  }
+
+  // fusion
+  pair<T, Bucket<T>*> stochastic_split_chain(CMP &cmp, Random &rng) {
+    const T &p = get_random_pivot(rng);
+
+    LeafBucket *b = this;
+    LeafBucket *left_chain = nullptr;
+    LeafBucket *right_chain = nullptr;
+    LeafBucket *Lb = nullptr, *Rb = nullptr;
+    int hi[MAX_BSIZE], lo[MAX_BSIZE];
+    int nhi = 0, nlo = 0;
+
+    while (true) {
+      if (nhi && nlo) {
+        assert(Lb && Rb);
+        Lb->fusion(Rb, hi, lo, nhi, nlo);
+        if (!nhi) { add_to_chain(left_chain, Lb); Lb = nullptr; }
+        if (!nlo) { add_to_chain(right_chain, Rb); Rb = nullptr; }
+      } else if (!Lb) {
+        if (!b) break;
+        Lb = b;
+        b = b->next_b;
+      } else if (!nhi) {
+        assert(Lb);
+        Lb->mark_hi(p, cmp, hi, nhi);
+        if (!nhi) { add_to_chain(left_chain, Lb); Lb = nullptr; }
+      } else if (!Rb) {
+        if (!b) break;
+        Rb = b;
+        b = b->next_b;
+      } else if (!nlo) {
+        assert(Rb);
+        Rb->mark_lo(p, cmp, lo, nlo);
+        if (!nlo) { add_to_chain(right_chain, Rb); Rb = nullptr; }
+      } else {
+        assert(0);
+      }
+    }
+
+    if (Rb) { assert(!Lb); Lb = Rb; }
+    if (Lb) {
+      if (Lb->N) {
+        int i = Lb->partition(p, cmp);
+        if (i == 0) {
+          add_to_chain(right_chain, Lb);
+        } else if (i == Lb->N) {
+          add_to_chain(left_chain, Lb);
+        } else {
+          Rb = new LeafBucket(Lb->capacity());
+          Lb->moveToFromIdx(Rb, i);
+          add_to_chain(left_chain, Lb);
+          add_to_chain(right_chain, Rb);
+        }
+      } else {
+        delete Lb;
+      }
+    }
+
+    assert(!left_chain.second->next_b);
+    assert(!right_chain.second->next_b);
+//    assert(check());
+    return make_pair(p, right_chain);
+  }
+
   bool debug(const char *msg, int i, int j) const {
     for (int k=0; k<nC; k++)
       fprintf(stderr,"C[%d/%d] = %d, %d (sorted = %d)\n",
@@ -535,217 +652,40 @@ public:
 
 template <typename T, typename CMP  = std::less<T>, int MAX_BSIZE = 8192>
 class Comb {
-  class RangeError {};    // an exception class
-
-  typedef LeafBucket<T, CMP> bucket_type;    // A COMB bucket.
-  typedef pair<bucket_type*, bucket_type*> bucket_chain;       // Pointer to first and last bucket in the chain.
-  typedef pair<T, bucket_chain> root_entry;
-  // typedef std::map<T, bucket_chain> root_map;
-  typedef std::vector<T> root_map;
-  // typedef btree::btree_map<T, bucket_chain> root_map;
-  // typedef stx::btree_map<T, bucket_chain> root_map;
-
-  typedef typename root_map::const_iterator root_iterator;
-  typedef typename vector<bucket_chain>::iterator rootv_iterator;
+  typedef LeafBucket<T, CMP, MAX_BSIZE> leaf_bucket_t;
 
   CMP cmp;     // The comparator functor.
   Random rng;  // The random number generator.
-  root_map R;  // The root array, using Google's BTree.
-
-  vector<bucket_chain> Rc;
-  void set_root(T key, bucket_chain value) {
-    int nth = std::lower_bound(R.begin(), R.end(), key, cmp) - R.begin();
-    R.insert(R.begin() + nth, key);
-    Rc.insert(Rc.begin() + nth, value);
-  }
-
-  void erase_root(T key) {
-    int nth = std::lower_bound(R.begin(), R.end(), key, cmp) - R.begin();
-    assert(nth < R.size());
-    assert(R[nth] == key);
-    R.erase(R.begin() + nth);
-    Rc.erase(Rc.begin() + nth);
-  }
-
-  // void set_root(T key, bucket_chain value) {
-  //   assert(!R.count(key));
-  //   R[key] = value;
-  // }
-
-  // add a LeafBucket (bidx) to the root chain 'ridx'
-  void _add(bucket_chain &c, bucket_type *b) {
-    if (!c.first){                   // the root chain is empty.
-      c.first = c.second = b;        // add the new bucket directly.
-    } else {
-      assert(!c.second->next());
-      // assert(!B[Pe[ridx]].free());
-      if (c.second->slack()) {
-        b->moveToFromIdx(c.second, b->size() - std::min(b->size(), c.second->slack()));
-      }
-      if (b->size()) {
-        c.second->set_next(b);
-        c.second = b;
-      } else {
-        delete b;
-      }
-    }
-    c.second->set_next(NULL);
-  }
-
-  T get_random_pivot(bucket_chain c) {  // pick the pivot near the median
-    T rtmp[11]; int ntmp = 0, ni = 0;
-    for (bucket_type *b = c.first; b; b = b->next(), ni++){
-      b->clear_indexes();
-      if (ntmp < 11){        // pick a random object from a stream!
-        rtmp[ntmp++] = b->randomValue(rng);
-      } else if (rng.nextInt(ni) < 11) {
-        rtmp[rng.nextInt(11)] = b->randomValue(rng);
-      }
-    }
-    while (ntmp < 11) {
-      rtmp[ntmp++] = c.first->randomValue(rng);
-    }
-    std::nth_element(rtmp, rtmp+5, rtmp+11, cmp);
-    return rtmp[5];      // the chosen pivot is here
-  }
-
-  // fusion
-  pair<root_entry, root_entry> split_chain(bucket_chain c1) {
-    const T &p = get_random_pivot(c1);        // split based on random pivot
-
-    bucket_type *b = c1.first;
-    bucket_chain c2 = c1 = make_pair(nullptr, nullptr);
-    bucket_type *Lb = NULL, *Rb = NULL;
-    int hi[MAX_BSIZE], lo[MAX_BSIZE];
-    int nhi = 0, nlo = 0;
-
-    while (true) {
-      if (nhi && nlo) {
-        assert(Lb && Rb);
-        Lb->fusion(Rb, hi, lo, nhi, nlo);
-        if (nhi == 0){ _add(c1, Lb); Lb = NULL; }
-        if (nlo == 0){ _add(c2, Rb); Rb = NULL; }
-      } else if (!Lb){
-        if (!b) break;
-        Lb = b;
-        b = b->next();
-      } else if (nhi == 0) {
-        assert(Lb);
-        Lb->mark_hi(p, cmp, hi, nhi);
-        if (nhi == 0){ _add(c1, Lb); Lb = NULL; }
-      } else if (!Rb){
-        if (!b) break;
-        Rb = b;
-        b = b->next();
-      } else if (nlo == 0) {
-        assert(Rb);
-        Rb->mark_lo(p, cmp, lo, nlo);
-        if (nlo == 0){ _add(c2, Rb); Rb = NULL; }
-      } else {
-        assert(0);
-      }
-    }
-
-    if (Rb) { assert(!Lb); Lb = Rb; }
-    if (Lb) {
-      if (Lb->size()) {
-        int i = Lb->partition(p, cmp);
-        if (i == 0){
-          _add(c2, Lb);
-        } else if (i == Lb->size()) {
-          _add(c1, Lb);
-        } else {
-          Rb = new bucket_type(Lb->capacity());
-          Lb->moveToFromIdx(Rb, i);
-          _add(c1, Lb);
-          _add(c2, Rb);
-        }
-      } else {
-        delete Lb;
-      }
-    }
-
-    assert(!c1.second->next());
-    assert(!c2.second->next());
-//    assert(check());
-
-    assert(valid_chain(c1));
-    assert(valid_chain(c2));
-    root_entry left_entry = make_pair(c1.first->data(0), c1);
-    root_entry right_entry = make_pair(p, c2);
-    return make_pair(left_entry, right_entry);
-  }
-
-  bool valid_chain(bucket_chain c) {
-    return c.first && c.second && ((c.first->next() && c.first != c.second) || (!c.first->next() && c.first == c.second));
-  }
-
-  root_iterator break_chain(root_iterator it, T const &v) {
-    // assert(check());
-    while (root_value(it).first->next()) {
-
-      T left_key = *it;
-      bucket_chain left_chain = root_value(it);
-      erase_root(*it);
-
-      pair<root_entry, root_entry> cs = split_chain(left_chain);  // randomly split the chain into two
-
-      root_entry right_entry = cs.second;
-
-      if (cmp(cs.first.first, left_key)) {
-        left_key = cs.first.first;
-      }
-
-      assert(cmp(left_key, right_entry.first));
-
-      set_root(left_key, cs.first.second);
-      set_root(right_entry.first, right_entry.second);
-
-      it = find_root(left_key);
-      assert(*it == left_key);
-
-      if (!(cmp(v, right_entry.first))) {
-        // fprintf(stderr, "READJUST\n");
-        it = find_root(v);
-        // it++; // readjust root idx
-        assert(*it == right_entry.first);
-        assert(root_value(it).first == right_entry.second.first);
-        assert(root_value(it).second == right_entry.second.second);
-      }
-    }
-    // assert(check());
-    return it;
-  }
-
-  int size(bucket_chain c) {
-    bucket_type *b = c.first;
-    int ret = 0;
-    while (b) {
-      ret += b->size();
-      b = b->next();
-    }
-    return ret;
-  }
-
-  int slack(bucket_chain c) {
-    bucket_type *b = c.first;
-    int ret = 0;
-    while (b) {
-      ret += b->slack();
-      b = b->next();
-    }
-    return ret;
-  }
+  Bucket<T> *root;
 
 public:
   class iterator {
-   public:
     typedef Comb<T, CMP, MAX_BSIZE> crack_type;
     crack_type *crack;
-    root_iterator root_iter;
-    bucket_type *bucket;
+    Bucket<T> *bucket;
     int idx;
 
+    void advance() {
+      assert(bucket);
+      assert(idx < bucket->size());
+      if (++idx == bucket->size()) {
+        if (bucket->next()) {
+          bucket = bucket->next();
+          assert(!bucket->empty());
+          idx = 0;
+        } else {
+          while (true) {
+            InternalBucket *parent = (InternalBucket*) bucket->parent();
+            if (!parent) { bucket = nullptr; idx = 0; break; }
+            idx = parent->child_pos(bucket);
+            bucket = parent;
+            if (idx < parent->size()) break;
+          }
+        }
+      }
+    }
+
+   public:
     // STL specific typedefs.
     typedef iterator self_type;
     typedef T value_type;
@@ -754,23 +694,40 @@ public:
     typedef int difference_type;
     typedef std::forward_iterator_tag iterator_category;
 
+    iterator(crack_type *ct, Bucket<T> *b, int i): crack(ct), bucket(b), idx(i) {}
 
-    iterator(crack_type *ct, root_iterator rit, bucket_type *b, int i): crack(ct), root_iter(rit), bucket(b), idx(i) {}
-    // self_type operator++() { self_type i = *this; ptr_++; return i; }
-    // self_type operator++(int junk) { ptr_++; return *this; }
-    // const reference operator*() { return *ptr_; }
-    // const pointer operator->() { return ptr_; }
-    // bool operator==(const self_type& rhs) { return ptr_ == rhs.ptr_; }
-    // bool operator!=(const self_type& rhs) { return ptr_ != rhs.ptr_; }
-
-    bool operator==(iterator &that) {
-      if (has_next() != that.has_next()) return false;
-      return root_iter == that.root_iter && bucket == that.bucket && idx == that.idx;
+    self_type operator++() {
+      self_type i = *this;
+      advance();
+      return i;
     }
 
-    bool operator!=(iterator &that) { return !(*this == that); }
+    self_type operator++(int junk) {
+      advance();
+      return *this;
+    }
 
-    bool erase() { return false; }
+    const reference operator*() {
+      assert(bucket);
+      assert(idx < bucket->size());
+      return bucket->data(idx);
+    }
+
+    const pointer operator->() {
+      assert(bucket);
+      assert(idx < bucket->size());
+      return bucket->data_pointer(idx);
+    }
+
+    bool operator==(const self_type &that) {
+      assert(crack == that.crack);
+      if (has_next() != that.has_next()) return false;
+      return bucket == that.bucket && idx == that.idx;
+    }
+
+    bool operator!=(const self_type &that) {
+      return !(*this == that);
+    }
 
     // bool debug() {
     //   fprintf(stderr,"iter: v=%d, ridx=%d/%d, bidx=%d/%d, idx=%d/%d\n",
@@ -780,52 +737,15 @@ public:
     //     idx, crack->bucket_size(bidx));
     //   return false;
     // }
-
-    bool has_next() {
-      if (root_iter == crack->root_end()) return false;
-      if (idx < bucket->size()) return true;  // The current bucket still have unread element.
-      if (bucket->next()) {                   // Seek the next bucket in the bucket chain.
-        bucket = bucket->next();
-        assert(!bucket->empty());
-        idx = 0;
-        return true;
-      }
-      root_iter++;                                   // Seek the next root
-      if (root_iter != crack->root_end()) {
-        bucket = crack->root_value(root_iter).first;
-        idx = 0;
-        return true;
-      }
-      return false; // no next element
-    }
-
-    bool next(T &res) {
-      if (!has_next()) return false;
-      res = bucket->data(idx++);
-      return true;
-    }
-
-    bool prev(T &res) {
-      // TODO fix this!
-      if (idx == 0) return false;
-      res = crack->data(--idx);
-      return true;
-    }
-
-    // T* next() {
-    //   if (!has_next()) return NULL;
-    //   return crack->get_bucket_element_ptr(bidx,idx++);
-    // }
   };
 
   Comb() {
-    bucket_type *leaf = new bucket_type(MAX_BSIZE);
+    root = new leaf_bucket_t(MAX_BSIZE);
     set_root(0, make_pair(leaf, leaf));
   }
   
   void load(T const *arr, int n) {
     assert(!R.empty());
-    root_iterator it = R.begin();
     bucket_chain c = Rc[0];
     assert(c.first == c.second);
     assert(c.second->empty());
@@ -834,7 +754,7 @@ public:
     int i = 0, CAP = c.second->capacity();
     while (i + CAP <= n) {
       i += c.second->bulk_insert(arr + i, CAP);
-      bucket_type *nb = new bucket_type(CAP);
+      leaf_bucket_t *nb = new leaf_bucket_t(CAP);
       c.second->set_next(nb);
       c.second = nb;
     }
@@ -844,74 +764,32 @@ public:
     set_root(c.first->data(0), c);
   }
 
-  root_iterator find_root(T const &v) const {
-    root_iterator it = std::lower_bound(R.begin(), R.end(), v, cmp);
-    if (it == R.end()) {
-      if (it != R.begin()) it--;
-    } else if (v < *it) {
-      if (it != R.begin()) it--;
+  int size(Bucket<T> *b = nullptr) {
+    if (!b) b = root;
+    int ret = 0;
+    if (b->is_leaf(b)) {
+      while (b) {
+        ret += b->size();
+        b = b->next();
+      }
+      return ret;
     }
-    return it;
-  }
-
-  root_iterator root_end() {
-    return R.end();
-  }
-
-  bucket_chain insert(T const &v, bucket_chain p) {
-    // fprintf(stderr, "iins %d, size/cap = %d / %d\n", v, p.second->size(), p.second->capacity());
-    if (p.second->is_full()) {
-      // fprintf(stderr, "isfull %p %p, %p %p\n", p.first, p.second, p.first->next(), p.second->next());
-      // assert(check());
-      int new_cap = min(MAX_BSIZE, p.second->capacity() * (p.first == p.second ? 1 : 2));
-      bucket_type *nb = new bucket_type(new_cap);
-      p.second->set_next(nb);
-      p.second = nb;
-      // fprintf(stderr, "isfull2 %p %p, %p %p\n", p.first, p.second, p.first->next(), p.second->next());
+    for (int i = 0; i <= b->size(); i++) {
+      ret += size(b->child(i));
     }
-    // assert(check());
-    // fprintf(stderr, "inserted to bucket = %p\n", p.second);
-    p.second->insert(v);
-    // assert(check());
-    return p;
-  }
-
-  bucket_chain& root_value(root_iterator it) {
-    return Rc[it - R.begin()];
+    return ret;
   }
 
   void insert(T const &v) {
-    // assert(check());
-    root_iterator it = find_root(v);
-    // fprintf(stderr, "insert %d, root = %d\n", v, *it);
-
-    // if (v == 1846371397) {
-    //   fprintf(stderr, "has next = %p, FL = %p %p\n", it->second.first->next(), it->second.first, it->second.second);
-    //   it->second.first->debug("a", 0,0);
-    //   it->second.second->debug("b", 0,0);
-    // }
-
-    bucket_chain c1 = root_value(it);
-    bucket_chain c2 = insert(v, c1);
-    if (c1 != c2) {
-      // fprintf(stderr, "DELELELE, %p %p, c2 next = %p\n", c2.first, c2.second, c2.first->next());
-      root_value(it) = c2;
-      // fprintf(stderr, "INS KEY = %d, %p %p, c2 next = %p\n", t.first, c2.first, c2.second, c2.first->next());
+    // fprintf(stderr, "ins %d\n", value);
+    assert(root);
+    for (Bucket *b = root; ; ) {
+      if (b->is_leaf()) {
+        b->insert(value);
+        break;
+      }
+      b = b->child(b->lower_pos(value));
     }
-    // assert(check());
-    // fprintf(stderr, "insert2 %d, root = %d\n", v, *it);
-  }
-
-  int size() {
-    int ret = 0;
-    for (auto it : R) ret += root_value(it);
-    return ret;
-  }
-
-  int slack() {
-    int ret = 0;
-    // for (auto it : R) ret += slack(it.second);
-    return ret;
   }
 
   bool erase(T const &v) {
@@ -922,7 +800,7 @@ public:
     if (c.first->empty() && c.first == c.second) return false;
 
     it = break_chain(it, v);
-    bucket_type *b = root_value(it).first;
+    leaf_bucket_t *b = root_value(it).first;
     bool ret = b->erase(v, cmp, rng);
 
     // TODO: merge with the left bucket if too small.
@@ -940,13 +818,13 @@ public:
     return ret;
   }
 
-  bool split_bucket(root_iterator it, bucket_type *b) {
+  bool split_bucket(root_iterator it, leaf_bucket_t *b) {
     // To avoid having too many cracker indexes in a bucket.
     if (b->n_cracks() > 40 && b->capacity() == MAX_BSIZE) {
       // assert(check());
       // fprintf(stderr, ".%lu", R.size());
 
-      vector<pair<T, bucket_type*>> nb = b->split(cmp);
+      vector<pair<T, leaf_bucket_t*>> nb = b->split(cmp);
       // assert(check());
 
       if (*it >= nb[0].first) {
@@ -974,40 +852,115 @@ public:
     return false;
   }
 
-  /* TODO: lazy lower_bound */
-  iterator lower_bound(T const &v, bool sort_piece = true) {
-    // static int nth = 0; nth++;
-    // fprintf(stderr, "lower_bound %d\n", v);
-    root_iterator it = break_chain(find_root(v), v);
-    // fprintf(stderr, "lower_bound2 %d\n", v);
+  bool split_chain(leaf_bucket_t *leafb) {
     // assert(check());
-    bucket_type *b = root_value(it).first;
-    // fprintf(stderr, "lower_bound3 %d\n", v);
-    int i, LL, RR, idx = b->crack(v, i, LL, RR, sort_piece, cmp, rng);
-    // assert(check());
+    if (!leafb->next()) return false;
 
-    if (idx == b->size()) {
-      // assert(check());
-      it++;
-      if (it != R.end()) {
-        it = break_chain(it, v);
-        b = root_value(it).first;
-        assert(b->size() > 0);
-        idx = b->crack(v, i, LL, RR, sort_piece, cmp, rng);
-        // fprintf(stderr, "idx = %d, v = %d\n", idx, v);
-        assert(idx == 0);
-        // B[Pb[ridx]].nth(0,cmp,rng);          // just to crack it
+    pair<T, Bucket<T>*> right_chain = leafb->stochastic_split_chain();
+    // fprintf(stderr, "split_chain2 %d\n", leafb);
+    // assert(check());
+    // fprintf(stderr, "promotedValue = %d\n", promotedValue);
+
+    InternalBucket *parent = (InternalBucket*) leafb->parent();
+    // fprintf(stderr, "parent = %d\n", parent);
+    while (parent && right_chain.second) {
+      if (parent->is_full()) {
+        // fprintf(stderr, "parful\n");
+        // Optional optimization: transfer_one_to_left_or_right();
+        InternalBucket *inb = parent->middle_split();
+        T midValue = parent->promote_last();
+        if (!cmp(right_chain.first, midValue)) {
+          inb->insert(right_chain.first, right_chain.second);
+        } else {
+          parent->insert(right_chain.first, right_chain.second);
+        }
+        right_chain.first = midValue;
+        right_chain.second = inb;
+        parent = right_chain.second->parent();
+      } else {
+        // fprintf(stderr, "internal\n");
+        parent->insert(right_chain.first, right_chain.second);
+        right_chain.second = nullptr;
       }
     }
     // assert(check());
-    // if (ith > 1e9) assert(check());
-    // fprintf(stderr, "lower_bound2 = %d\n", v);
-    return iterator(this, it, b, idx);
+    // fprintf(stderr, "nb = %d\n", nb);
+    if (right_chain.second) {
+      // fprintf(stderr, "OLD ROOT %d\n", root);
+      assert(!parent);
+      assert(!root->parent());
+      root = new InternalBucket(nullptr, root);
+      root->insert(right_chain.first, right_chain.second);
+      // fprintf(stderr, "NEW ROOT %d\n", root);
+    }
+    // fprintf(stderr, "\n\n\ndone split %d\n", b);
+    // debug();
+    // assert(check());
+    return true;
+  }
+
+  // Returns <bucket, pos> if found in internal node, otherwise returns <bucket, splitted> for leaf node.
+  pair<Bucket<T>*, int> find_bucket(T value, bool include_internal) {
+    Bucket<T> *b = root;
+    int splitted = 0;
+    // fprintf(stderr, "find_bucket %d\n", b);
+    while (true) {
+      if (b->is_leaf()) {
+        // fprintf(stderr, "find_bucket2 %d\n", b);
+        if (!split_chain((leaf_bucket_t*) b)) {
+          return make_pair(b, splitted);
+        }
+        // fprintf(stderr, "find_bucket3 %d\n", b);
+        splitted = 1;
+        b = b->parent();
+        assert(b);
+      } else {
+        int pos = b->lower_pos(value);
+        if (include_internal && eq(b->data(pos), value)) {
+          // fprintf(stderr, "find_bucket2 %d\n", b);
+          return make_pair(b, pos); // Found in the internal bucket.
+        }
+        b = b->child(pos);    // Search the child.
+      }
+    }
+    // fprintf(stderr, "find_bucket3 %d\n", b);
+  }
+
+  iterator end() {
+    return iterator(this, nullptr, 0);
+  }
+
+  /* TODO: lazy lower_bound */
+  iterator lower_bound(T const &value, bool sort_piece = true) {
+    // static int nth = 0; nth++;
+
+    // TODO: optimize leaf slack
+
+    pair<Bucket<T>*, int> p = find_bucket(value, true);
+
+    if (!p.first->is_leaf()) {
+      // Found in internal bucket.
+      return iterator(this, p.first, p.second);
+    }
+
+    int pos = p.first->lower_pos(value);
+    if (pos < p.first->size()) {
+      return iterator(this, p.first, pos);
+    }
+
+    for (InternalBucket* ib = p.first->parent(); ib; ib = ib->parent()) {
+      pos = ib->lower_pos(value);
+      if (pos < ib->size()) {
+        return iterator(this, ib, pos);
+      }
+    }
+
+    return end();
   }
 
   // erase from [v1, v2)
-  void erase(T const &v1, T const &v2){
-    if (cmp(v2, v1)) throw RangeError();
+  void erase(T const &v1, T const &v2) {
+    assert(!cmp(v2, v1));
     break_chain(find_root(v2), v2);
     break_chain(find_root(v1), v1);
     // TODO: destroy B from i1 to i2-1
@@ -1034,12 +987,10 @@ public:
     return ret + it2.idx;
   }
 
-  void erase(iterator it1, iterator it2){ throw RangeError(); }
-
   bool check() {
     int i = 0;
     for (auto it = R.begin(); it != R.end(); i++) {
-      bucket_type *b = it->second.first;
+      leaf_bucket_t *b = it->second.first;
       if (!b->next() && it->second.first != it->second.second) {
         fprintf(stderr, "Head mismatch %p %p, %p\n", it->second.first, it->second.second, it->second.first->next());
         return false;
@@ -1064,7 +1015,7 @@ public:
   int exists(T const &v, bool print=false) {
     int cnt = 0, i = 0;
     for (auto it = R.begin(); it != R.end(); i++, it++) {
-      bucket_type *b = it->second.first;
+      leaf_bucket_t *b = it->second.first;
       for (; b; b = b->next()) {
         int at = b->index_of(v, cmp);
         if (at != -1){

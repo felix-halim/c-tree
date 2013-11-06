@@ -10,10 +10,10 @@ test)         make -C src "../bin/$2_tests" && bin/$2_tests;;
 compile)      make -s -C src "../bin/$2" || exit;
               make -s -C src "../$N" || exit;;
 
-algo)         ./run.sh compile $2
+algo)         ./run.sh compile $2 || exit;
               bin/$2 $N $Q 0.1 1 $3;;
 
-seq)          ./run.sh compile $2
+seq)          ./run.sh compile $2 || exit;
               bin/$2 $N $Q 0.1 2 $3;;
               # valgrind --leak-check=yes bin/$2 $N $Q 0.001 1 $3;;
 
@@ -23,7 +23,7 @@ split)        make -s -C src "../bin/split" || exit;
                 bin/split $N $2 $ith
               done;;
 
-append)       ./run.sh compile $2
+append)       ./run.sh compile $2 || exit;
               bin/$2 $N $Q $3 1 7;;
               # bin/$2 data/skyserver.data $Q 0.001 $3 6;;
 
