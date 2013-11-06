@@ -38,16 +38,15 @@ static bool eq(T const &a, T const &b, CMP const &cmp){ return !cmp(a,b) && !cmp
 template <typename T, typename CMP>
 class Bucket {
  protected:
-  Bucket *par;  // Pointer to the parent bucket (must be an InternalBucket)
+  bool leaf;
   int N;        // Number of data elements in this bucket pointed by D.
+  Bucket *par;  // Pointer to the parent bucket (must be an InternalBucket)
 
  public:
 
   virtual ~Bucket() {};
-  virtual bool is_leaf() const = 0;
-
-  int size() const { return N; };
-  bool empty() const { return !N; }
+  int size() const { return N; }
+  bool is_leaf() const { return leaf; }
   Bucket* parent() const { return par; }
 
   void set_parent(Bucket* p) { par = p; }
@@ -62,6 +61,7 @@ class InternalBucket : public Bucket<T, CMP> {
  public:
 
   InternalBucket(Bucket<T, CMP> *parent, Bucket<T, CMP> *left_child) {
+    this->leaf = false;
     this->par = parent;
     this->N = 0;
     C[0] = left_child;
@@ -283,6 +283,7 @@ class LeafBucket : public Bucket<T, CMP> {
 
 public:
   LeafBucket(Bucket<T, CMP> *p, int c): D(new T[c]), cap(c), next_b(NULL) {
+    this->leaf = true;
     this->par = p;
     this->N = 0;
     clear_indexes();
@@ -614,7 +615,7 @@ public:
       if (++idx == bucket->size()) {
         if (bucket->next()) {
           bucket = bucket->next();
-          assert(!bucket->empty());
+          assert(bucket->size());
           idx = 0;
         } else {
           while (true) {
