@@ -44,17 +44,9 @@ class Bucket {
  public:
 
   virtual ~Bucket() {};
-  virtual int capacity() const = 0;
-  virtual Bucket* child(int i) const = 0;
-  virtual T& data(int i) = 0;
-  virtual const T* data_pointer(int i) const = 0;
-  virtual bool is_full() const = 0;
   virtual bool is_leaf() const = 0;
-  virtual Bucket* next() const = 0;
-  virtual void debug() const = 0;
 
   int size() const { return N; };
-  int slack() const { return capacity() - N; }
   bool empty() const { return !N; }
   Bucket* parent() const { return par; }
 
@@ -78,14 +70,13 @@ class InternalBucket : public Bucket<T, CMP> {
 
   void set_data(int i, T value) { assert(i >= 0 && i < this->N); D[i] = value; };
 
-  virtual int capacity() const { return INTERNAL_BSIZE; }
-  virtual Bucket<T, CMP>* child(int i) const { assert(i >= 0 && i <= this->N); return C[i]; }
-  virtual T& data(int i) { assert(i >= 0 && i < this->N); return D[i]; }
-  virtual const T* data_pointer(int i) const { assert(i >= 0 && i < this->N); return &D[i]; }
-  virtual T promote_last() { return D[--this->N]; }
-  virtual bool is_full() const { return this->N == INTERNAL_BSIZE; }
+  int capacity() const { return INTERNAL_BSIZE; }
+  Bucket<T, CMP>* child(int i) const { assert(i >= 0 && i <= this->N); return C[i]; }
+  T& data(int i) { assert(i >= 0 && i < this->N); return D[i]; }
+  const T* data_pointer(int i) const { assert(i >= 0 && i < this->N); return &D[i]; }
+  T promote_last() { return D[--this->N]; }
+  bool is_full() const { return this->N == INTERNAL_BSIZE; }
   virtual bool is_leaf() const { return false; }
-  virtual Bucket<T, CMP>* next() const { return nullptr; }
 
   int lower_pos(T value, CMP &cmp) {
     int pos = 0;
@@ -300,18 +291,18 @@ public:
   ~LeafBucket() { delete[] D; }
 
   int n_cracks() const { return nC; }
+  int slack() const { return cap - this->N; }
   void set_next(LeafBucket *b){ next_b = b; }
   void set_tail(LeafBucket *b){ tail_b = b; }
   void clear_indexes(){ S = nC = I = 0; }
   T randomValue(Random &rng) const { return D[rng.nextInt(this->N)]; }
 
-  virtual int capacity() const { return cap; }
-  virtual Bucket<T, CMP>* next() const { return next_b; }
-  virtual Bucket<T, CMP>* tail() const { return tail_b; }
-  virtual T& data(int i) { assert(i >= 0 && i < this->N); return D[i]; }
-  virtual const T* data_pointer(int i) const { assert(i >= 0 && i < this->N); return &D[i]; }
-  virtual bool is_full() const { return this->N == cap; }
-  virtual Bucket<T, CMP>* child(int i) const { return nullptr; }
+  int capacity() const { return cap; }
+  Bucket<T, CMP>* next() const { return next_b; }
+  Bucket<T, CMP>* tail() const { return tail_b; }
+  T& data(int i) { assert(i >= 0 && i < this->N); return D[i]; }
+  const T* data_pointer(int i) const { assert(i >= 0 && i < this->N); return &D[i]; }
+  bool is_full() const { return this->N == cap; }
   virtual bool is_leaf() const { return true; };
 
   void add_chain(LeafBucket *next) {
@@ -667,7 +658,9 @@ public:
     const reference operator*() {
       assert(bucket);
       assert(idx < bucket->size());
-      return bucket->data(idx);
+      return bucket->is_leaf()
+        ? ((leaf_bucket_t*) bucket)->data(idx)
+        : ((InternalBucket<T, CMP>*) bucket)->data(idx);
     }
 
     const pointer operator->() {
@@ -725,12 +718,12 @@ public:
     if (b->is_leaf()) {
       while (b) {
         ret += b->size();
-        b = b->next();
+        b = ((leaf_bucket_t*) b)->next();
       }
       return ret;
     }
     for (int i = 0; i <= b->size(); i++) {
-      ret += size(b->child(i));
+      ret += size(((InternalBucket<T, CMP>*) b)->child(i));
     }
     return ret;
   }
@@ -744,7 +737,7 @@ public:
         break;
       }
       int pos = ((InternalBucket<T, CMP>*) b)->lower_pos(value, cmp);
-      b = b->child(pos);
+      b = ((InternalBucket<T, CMP>*) b)->child(pos);
     }
   }
 
@@ -765,11 +758,11 @@ public:
         assert(b);
       } else {
         int pos = ((InternalBucket<T, CMP>*) b)->lower_pos(value, cmp);
-        if (include_internal && pos < b->size() && eq(b->data(pos), value, cmp)) {
+        if (include_internal && pos < b->size() && eq(((InternalBucket<T, CMP>*) b)->data(pos), value, cmp)) {
           // fprintf(stderr, "find_bucket4 %p\n", b);
           return make_pair(b, pos); // Found in the internal bucket.
         }
-        b = b->child(pos);    // Search the child.
+        b = ((InternalBucket<T, CMP>*) b)->child(pos);    // Search the child.
       }
     }
   }
@@ -847,7 +840,7 @@ public:
     }
     // fprintf(stderr, "ii res = %d, largest = %d\n", res.first, res.second);
     assert(!p.first->is_leaf());
-    assert(p.first->data(p.second) == value);
+    assert(((InternalBucket<T, CMP> *) p.first)->data(p.second) == value);
     assert(next_largest <= value);
     ((InternalBucket<T, CMP> *) p.first)->set_data(p.second, next_largest);
     // assert(check());
@@ -862,12 +855,12 @@ public:
       chain->set_next(nullptr);
       chain->set_tail(nullptr);
     } else {
-      assert(!chain->tail() || !chain->tail()->next());
+      assert(!chain->tail() || !((leaf_bucket_t*) chain->tail())->next());
       if (chain->slack()) {
         b->moveToFromIdx(chain, b->size() - std::min(b->size(), chain->slack()));
       } else if (chain->tail()) {
-        if (chain->tail()->slack()) {
-          b->moveToFromIdx((leaf_bucket_t*) chain->tail(), b->size() - std::min(b->size(), chain->tail()->slack()));
+        if (((leaf_bucket_t*) chain->tail())->slack()) {
+          b->moveToFromIdx((leaf_bucket_t*) chain->tail(), b->size() - std::min(b->size(), ((leaf_bucket_t*) chain->tail())->slack()));
         }
       }
       if (b->size()) {
@@ -1073,8 +1066,8 @@ public:
   }
 
   int count(iterator it1, iterator it2){
-    assert(!it1.bucket->next());
-    assert(!it2.bucket->next());
+    // assert(!it1.bucket->next());
+    // assert(!it2.bucket->next());
     if (it1.bucket == it2.bucket) return it2.idx - it1.idx;
     int ret = it1.bucket->size() - it1.idx;
     // for (it1.root_iter++; it1.root_iter != it2.root_iter; it1.root_iter++) {
