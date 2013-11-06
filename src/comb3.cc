@@ -3,7 +3,7 @@
 #include "comb3.h"
 #include "test.h"
 
-Comb<int> c;
+Comb<int, less<int>, 4096> c;
 
 void init(int *arr, int N) {
   c.load(arr, N);
