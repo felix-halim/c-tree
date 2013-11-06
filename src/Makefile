@@ -24,6 +24,11 @@ all: \
 $(ODIR)/dataset_gen: dataset_gen.cc
 	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
 
+../data/1000000.data: $(ODIR)/dataset_gen
+	mkdir -p ../data
+	$(ODIR)/dataset_gen 1000000
+	mv 1000000.data ../data
+
 ../data/10000000.data: $(ODIR)/dataset_gen
 	mkdir -p ../data
 	$(ODIR)/dataset_gen 10000000

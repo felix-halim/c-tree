@@ -301,11 +301,13 @@ public:
 
   int n_cracks() const { return nC; }
   void set_next(LeafBucket *b){ next_b = b; }
+  void set_tail(LeafBucket *b){ tail_b = b; }
   void clear_indexes(){ S = nC = I = 0; }
   T randomValue(Random &rng) const { return D[rng.nextInt(this->N)]; }
 
   virtual int capacity() const { return cap; }
   virtual Bucket<T, CMP>* next() const { return next_b; }
+  virtual Bucket<T, CMP>* tail() const { return tail_b; }
   virtual T& data(int i) { assert(i >= 0 && i < this->N); return D[i]; }
   virtual const T* data_pointer(int i) const { assert(i >= 0 && i < this->N); return &D[i]; }
   virtual bool is_full() const { return this->N == cap; }
@@ -458,126 +460,6 @@ public:
     T *Lp = D, *Rp = that->D;
     nhi -= m; nlo -= m;
     while (m--) std::swap(Lp[*(hip--)], Rp[*(lop--)]);
-  }
-
-  // add a LeafBucket (bidx) to the root chain 'ridx'
-  void add_to_chain(LeafBucket *&chain, LeafBucket *b) {
-    if (!chain) { // the root chain is empty.
-      fprintf(stderr, "add_to_chain1\n");
-      chain = b;  // b is the head of the chain.
-      chain->next_b = chain->tail_b = nullptr;
-    } else {
-      fprintf(stderr, "add_to_chain2 %p %d %d\n", chain, chain->is_leaf(), chain->slack());
-      if (chain->slack()) {
-        fprintf(stderr, "add_to_chain3\n");
-        b->moveToFromIdx(chain, b->N - std::min(b->N, chain->slack()));
-      } else if (chain->tail_b) {
-        fprintf(stderr, "add_to_chain tail_b %p %d\n", chain->tail_b, chain->tail_b->is_leaf());
-        if (chain->tail_b->slack()) {
-          fprintf(stderr, "add_to_chain4\n");
-          b->moveToFromIdx(chain->tail_b, b->N - std::min(b->N, chain->tail_b->slack()));
-        }
-      }
-      if (b->N) {
-        fprintf(stderr, "add_to_chain5\n");
-        chain->add_chain(b);
-      } else {
-        fprintf(stderr, "add_to_chain6\n");
-        delete b;
-        fprintf(stderr, "add_to_chain7\n");
-      }
-    }
-  }
-
-  T get_random_pivot(CMP &cmp, Random &rng) {  // pick the pivot near the median
-    T arr[11]; int nArr = 0, ni = 0;
-
-    // Reservoir sampling.
-    for (LeafBucket *b = this; b; b = b->next_b, ni++) {
-      b->clear_indexes();
-      if (nArr < 11) {
-        arr[nArr++] = b->randomValue(rng);
-      } else if (rng.nextInt(ni) < 11) {
-        arr[rng.nextInt(11)] = b->randomValue(rng);
-      }
-    }
-    while (nArr < 11) {
-      arr[nArr++] = randomValue(rng);
-    }
-    std::nth_element(arr, arr+5, arr+11, cmp);
-    return arr[5];      // the chosen pivot is here
-  }
-
-  // fusion
-  pair<T, Bucket<T, CMP>*> stochastic_split_chain(CMP &cmp, Random &rng) {
-    const T &p = get_random_pivot(cmp, rng);
-
-    fprintf(stderr, "stochastic_split_chain %p\n", this);
-    LeafBucket *b = this;
-    LeafBucket *left_chain = nullptr;
-    LeafBucket *right_chain = nullptr;
-    LeafBucket *Lb = nullptr, *Rb = nullptr;
-    int hi[MAX_BSIZE], lo[MAX_BSIZE];
-    int nhi = 0, nlo = 0;
-
-    while (true) {
-      if (nhi && nlo) {
-        assert(Lb && Rb);
-        Lb->fusion(Rb, hi, lo, nhi, nlo);
-        if (!nhi) { add_to_chain(left_chain, Lb); Lb = nullptr; }
-        if (!nlo) { add_to_chain(right_chain, Rb); Rb = nullptr; }
-      } else if (!Lb) {
-        if (!b) break;
-        Lb = b;
-        b = b->next_b;
-      } else if (!nhi) {
-        assert(Lb);
-        Lb->mark_hi(p, cmp, hi, nhi);
-        if (!nhi) { add_to_chain(left_chain, Lb); Lb = nullptr; }
-      } else if (!Rb) {
-        if (!b) break;
-        Rb = b;
-        b = b->next_b;
-      } else if (!nlo) {
-        assert(Rb);
-        Rb->mark_lo(p, cmp, lo, nlo);
-        if (!nlo) { add_to_chain(right_chain, Rb); Rb = nullptr; }
-      } else {
-        assert(0);
-      }
-    }
-
-    fprintf(stderr, "stochastic_split_chain2 %p\n", this);
-    if (Rb) { assert(!Lb); Lb = Rb; }
-    if (Lb) {
-      if (Lb->N) {
-        fprintf(stderr, "stochastic_split_chain a %p\n", Lb);
-        int i = Lb->partition(p, cmp);
-        if (i == 0) {
-          fprintf(stderr, "stochastic_split_chain b %p\n", Lb);
-          add_to_chain(right_chain, Lb);
-        } else if (i == Lb->N) {
-          fprintf(stderr, "stochastic_split_chain c %p\n", Lb);
-          add_to_chain(left_chain, Lb);
-        } else {
-          fprintf(stderr, "stochastic_split_chain d %p\n", Lb);
-          Rb = new LeafBucket(this->par, Lb->capacity());
-          fprintf(stderr, "stochastic_split_chain d1 %p\n", Lb);
-          Lb->moveToFromIdx(Rb, i);
-          fprintf(stderr, "stochastic_split_chain d2 %p %p\n", left_chain, Lb);
-          add_to_chain(left_chain, Lb);
-          fprintf(stderr, "stochastic_split_chain d3 %p %p\n", right_chain, Rb);
-          add_to_chain(right_chain, Rb);
-          fprintf(stderr, "stochastic_split_chain e %p\n", Lb);
-        }
-      } else {
-        delete Lb;
-      }
-    }
-
-    fprintf(stderr, "stochastic_split_chain3 %p\n", this);
-//    assert(check());
-    return make_pair(p, right_chain);
   }
 
   bool debug(const char *msg, int i, int j) const {
@@ -973,12 +855,131 @@ public:
     return true;
   }
 
+  // add a LeafBucket (bidx) to the root chain 'ridx'
+  void add_to_chain(leaf_bucket_t *&chain, leaf_bucket_t *b) {
+    if (!chain) { // the root chain is empty.
+      fprintf(stderr, "add_to_chain1\n");
+      chain = b;  // b is the head of the chain.
+      chain->set_next(nullptr);
+      chain->set_tail(nullptr);
+    } else {
+      fprintf(stderr, "add_to_chain2 %p %d %d\n", chain, chain->is_leaf(), chain->slack());
+      if (chain->slack()) {
+        fprintf(stderr, "add_to_chain3\n");
+        b->moveToFromIdx(chain, b->size() - std::min(b->size(), chain->slack()));
+      } else if (chain->tail()) {
+        if (chain->tail()->slack()) {
+          fprintf(stderr, "add_to_chain4\n");
+          b->moveToFromIdx((leaf_bucket_t*) chain->tail(), b->size() - std::min(b->size(), chain->tail()->slack()));
+        }
+      }
+      if (b->size()) {
+        fprintf(stderr, "add_to_chain5\n");
+        chain->add_chain(b);
+      } else {
+        fprintf(stderr, "add_to_chain6\n");
+        delete b;
+        fprintf(stderr, "add_to_chain7\n");
+      }
+    }
+  }
+
+  T get_random_pivot(leaf_bucket_t *head, CMP &cmp, Random &rng) {  // pick the pivot near the median
+    T arr[11]; int nArr = 0, ni = 0;
+
+    // Reservoir sampling.
+    for (leaf_bucket_t *b = head; b; b = (leaf_bucket_t*) b->next(), ni++) {
+      b->clear_indexes();
+      if (nArr < 11) {
+        arr[nArr++] = b->randomValue(rng);
+      } else if (rng.nextInt(ni) < 11) {
+        arr[rng.nextInt(11)] = b->randomValue(rng);
+      }
+    }
+    while (nArr < 11) {
+      arr[nArr++] = head->randomValue(rng);
+    }
+    std::nth_element(arr, arr+5, arr+11, cmp);
+    return arr[5];      // the chosen pivot is here
+  }
+
+  // fusion
+  pair<T, Bucket<T, CMP>*> stochastic_split_chain(leaf_bucket_t *b, CMP &cmp, Random &rng) {
+    const T &p = get_random_pivot(b, cmp, rng);
+
+    fprintf(stderr, "stochastic_split_chain %p\n", b);
+    leaf_bucket_t *left_chain = nullptr;
+    leaf_bucket_t *right_chain = nullptr;
+    leaf_bucket_t *Lb = nullptr, *Rb = nullptr;
+    int hi[MAX_BSIZE], lo[MAX_BSIZE];
+    int nhi = 0, nlo = 0;
+
+    while (true) {
+      if (nhi && nlo) {
+        assert(Lb && Rb);
+        Lb->fusion(Rb, hi, lo, nhi, nlo);
+        if (!nhi) { add_to_chain(left_chain, Lb); Lb = nullptr; }
+        if (!nlo) { add_to_chain(right_chain, Rb); Rb = nullptr; }
+      } else if (!Lb) {
+        if (!b) break;
+        Lb = b;
+        b = (leaf_bucket_t*) b->next();
+      } else if (!nhi) {
+        assert(Lb);
+        Lb->mark_hi(p, cmp, hi, nhi);
+        if (!nhi) { add_to_chain(left_chain, Lb); Lb = nullptr; }
+      } else if (!Rb) {
+        if (!b) break;
+        Rb = b;
+        b = (leaf_bucket_t*) b->next();
+      } else if (!nlo) {
+        assert(Rb);
+        Rb->mark_lo(p, cmp, lo, nlo);
+        if (!nlo) { add_to_chain(right_chain, Rb); Rb = nullptr; }
+      } else {
+        assert(0);
+      }
+    }
+
+    fprintf(stderr, "stochastic_split_chain2 %p\n", this);
+    if (Rb) { assert(!Lb); Lb = Rb; }
+    if (Lb) {
+      if (Lb->size()) {
+        fprintf(stderr, "stochastic_split_chain a %p\n", Lb);
+        int i = Lb->partition(p, cmp);
+        if (i == 0) {
+          fprintf(stderr, "stochastic_split_chain b %p\n", Lb);
+          add_to_chain(right_chain, Lb);
+        } else if (i == Lb->size()) {
+          fprintf(stderr, "stochastic_split_chain c %p\n", Lb);
+          add_to_chain(left_chain, Lb);
+        } else {
+          fprintf(stderr, "stochastic_split_chain d %p\n", Lb);
+          Rb = new leaf_bucket_t(Lb->parent(), Lb->capacity());
+          fprintf(stderr, "stochastic_split_chain d1 %p\n", Lb);
+          Lb->moveToFromIdx(Rb, i);
+          fprintf(stderr, "stochastic_split_chain d2 %p %p\n", left_chain, Lb);
+          add_to_chain(left_chain, Lb);
+          fprintf(stderr, "stochastic_split_chain d3 %p %p\n", right_chain, Rb);
+          add_to_chain(right_chain, Rb);
+          fprintf(stderr, "stochastic_split_chain e %p\n", Lb);
+        }
+      } else {
+        delete Lb;
+      }
+    }
+
+    fprintf(stderr, "stochastic_split_chain3 %p\n", this);
+//    assert(check());
+    return make_pair(p, right_chain);
+  }
+
   bool split_chain(leaf_bucket_t *leafb) {
     // assert(check());
     if (!leafb->next()) return false;
 
     fprintf(stderr, "split_chain %p\n", leafb);
-    pair<T, Bucket<T, CMP>*> right_chain = leafb->stochastic_split_chain(cmp, rng);
+    pair<T, Bucket<T, CMP>*> right_chain = stochastic_split_chain(leafb, cmp, rng);
     fprintf(stderr, "split_chain2 %p\n", leafb);
     // assert(check());
     // fprintf(stderr, "promotedValue = %d\n", promotedValue);
