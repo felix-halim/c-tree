@@ -570,7 +570,7 @@ public:
   }
 
   bool erase(T const &v, CMP &cmp, Random &rng) {
-    assert(!next_b && !tail_b);
+    assert(!next_b);
     int i, L, R, at = crack(v, i, L, R, false, cmp, rng);
     if (at >= R || !eq(D[at],v,cmp)) return false;  // the element to be erased is not found!
 
@@ -773,41 +773,24 @@ public:
     }
   }
 
-/*
-  bool split_bucket(root_iterator it, leaf_bucket_t *b) {
+  bool split_bucket(leaf_bucket_t *b) {
     // To avoid having too many cracker indexes in a bucket.
     if (b->n_cracks() > 40 && b->capacity() == MAX_BSIZE) {
       // assert(check());
       // fprintf(stderr, ".%lu", R.size());
 
       vector<pair<T, leaf_bucket_t*>> nb = b->split(cmp);
-      // assert(check());
-
-      if (*it >= nb[0].first) {
-        // Must be the leftmost root entry.
-        // fprintf(stderr, "REPLACE LEFTMOST ERASE %d\n", *it);
-        erase_root(*it);
-        set_root(b->data(0), make_pair(b, b));
-        it = find_root(b->data(0));
-        // assert(*it == b->data(0));
-        // fprintf(stderr, "REPLACE LEFTMOST ADD %d\n", *it);
+      for (int i = 1; i < (int) nb.size(); i++) {
+        assert(cmp(nb[i-1].first, nb[i].first));
       }
-      // assert(check());
-
-      for (auto it : nb) {
-        // fprintf(stderr, "SET ROOT %d\n", it.first);
-        // it.second->debug("he", 0, 0);
-        bucket_chain c(it.second, it.second);
-        while (c.second->next()) c.second = c.second->next();
-        set_root(it.first, c);
-        // assert(check());
+      for (auto it = nb.rbegin(); it != nb.rend(); it++) {
+        insert_internal(b, *it);
       }
       // assert(check());
       return true;
     }
     return false;
   }
-*/
 
   bool erase(T const &value) {
     // assert(check());
@@ -817,8 +800,11 @@ public:
     pair<Bucket<T, CMP>*, int> p = find_bucket(value, true);
     if (p.first->is_leaf()) {
       // fprintf(stderr, "ERASE1 %d\n", value);
-      // TODO: split_bucket(it, b);
-      return ((leaf_bucket_t*) p.first)->erase(value, cmp, rng);
+      fprintf(stderr, "a");
+      bool ret = ((leaf_bucket_t*) p.first)->erase(value, cmp, rng);
+      fprintf(stderr, "b");
+      split_bucket((leaf_bucket_t*) p.first);
+      return ret;
     }
 
     // Found in an internal node, delete the largest node <= value.
@@ -913,7 +899,7 @@ public:
   }
 
   // fusion
-  pair<T, Bucket<T, CMP>*> stochastic_split_chain(leaf_bucket_t *b, CMP &cmp, Random &rng) {
+  pair<T, leaf_bucket_t*> stochastic_split_chain(leaf_bucket_t *b, CMP &cmp, Random &rng) {
     const T &p = get_random_pivot(b, cmp, rng);
 
     // fprintf(stderr, "stochastic_split_chain %p\n", b);
@@ -973,16 +959,7 @@ public:
     return make_pair(p, right_chain);
   }
 
-  bool split_chain(leaf_bucket_t *leafb) {
-    // assert(check());
-    if (!leafb->next()) return false;
-
-    // fprintf(stderr, "split_chain %p\n", leafb);
-    pair<T, Bucket<T, CMP>*> right_chain = stochastic_split_chain(leafb, cmp, rng);
-    // fprintf(stderr, "split_chain2 %p\n", leafb);
-    // assert(check());
-    // fprintf(stderr, "promotedValue = %d\n", promotedValue);
-
+  void insert_internal(leaf_bucket_t *leafb, pair<T, Bucket<T, CMP>*> right_chain) {
     InternalBucket<T, CMP> *parent = (InternalBucket<T, CMP>*) leafb->parent();
     // fprintf(stderr, "parent = %p, right_chain = %p\n", parent, right_chain.second);
     while (parent && right_chain.second) {
@@ -1015,6 +992,19 @@ public:
       ((InternalBucket<T, CMP>*) root)->insert(right_chain.first, right_chain.second, 0, cmp);
       // fprintf(stderr, "NEW ROOT %d\n", root);
     }
+  }
+
+  bool split_chain(leaf_bucket_t *leafb) {
+    // assert(check());
+    if (!leafb->next()) return false;
+
+    // fprintf(stderr, "split_chain %p\n", leafb);
+    pair<T, leaf_bucket_t*> right_chain = stochastic_split_chain(leafb, cmp, rng);
+    // fprintf(stderr, "split_chain2 %p\n", leafb);
+    // assert(check());
+    // fprintf(stderr, "promotedValue = %d\n", promotedValue);
+
+    insert_internal(leafb, right_chain);
     // fprintf(stderr, "done split %p\n\n\n", leafb);
     // debug();
     // assert(check());
