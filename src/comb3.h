@@ -321,6 +321,8 @@ public:
       next_b = next;
     }
     tail_b = next;
+    next->set_next(nullptr);
+    next->set_tail(nullptr);
   }
 
   void insert(T const &v) {
@@ -738,21 +740,21 @@ public:
   pair<Bucket<T, CMP>*, int> find_bucket(T value, bool include_internal) {
     Bucket<T, CMP> *b = root;
     int splitted = 0;
-    fprintf(stderr, "find_bucket %p\n", b);
+    // fprintf(stderr, "find_bucket %p\n", b);
     while (true) {
       if (b->is_leaf()) {
-        fprintf(stderr, "find_bucket2 %p\n", b);
+        // fprintf(stderr, "find_bucket2 %p\n", b);
         if (!split_chain((leaf_bucket_t*) b)) {
           return make_pair(b, splitted);
         }
-        fprintf(stderr, "find_bucket3 %p\n", b);
+        // fprintf(stderr, "find_bucket3 %p\n", b);
         splitted = 1;
         b = b->parent();
         assert(b);
       } else {
         int pos = b->lower_pos(value, cmp, rng);
         if (include_internal && pos < b->size() && eq(b->data(pos), value, cmp)) {
-          fprintf(stderr, "find_bucket4 %p\n", b);
+          // fprintf(stderr, "find_bucket4 %p\n", b);
           return make_pair(b, pos); // Found in the internal bucket.
         }
         b = b->child(pos);    // Search the child.
@@ -856,13 +858,14 @@ public:
   }
 
   // add a LeafBucket (bidx) to the root chain 'ridx'
-  void add_to_chain(leaf_bucket_t *&chain, leaf_bucket_t *b) {
+  bool add_to_chain(leaf_bucket_t *&chain, leaf_bucket_t *b) {
     if (!chain) { // the root chain is empty.
       fprintf(stderr, "add_to_chain1\n");
       chain = b;  // b is the head of the chain.
       chain->set_next(nullptr);
       chain->set_tail(nullptr);
     } else {
+      assert(!chain->tail() || !chain->tail()->next());
       fprintf(stderr, "add_to_chain2 %p %d %d\n", chain, chain->is_leaf(), chain->slack());
       if (chain->slack()) {
         fprintf(stderr, "add_to_chain3\n");
@@ -877,11 +880,13 @@ public:
         fprintf(stderr, "add_to_chain5\n");
         chain->add_chain(b);
       } else {
-        fprintf(stderr, "add_to_chain6\n");
+        fprintf(stderr, "add_to_chain6 %p, %p %p\n", b, chain->next(), chain->tail());
         delete b;
         fprintf(stderr, "add_to_chain7\n");
+        return true;
       }
     }
+    return false;
   }
 
   T get_random_pivot(leaf_bucket_t *head, CMP &cmp, Random &rng) {  // pick the pivot near the median
@@ -889,6 +894,7 @@ public:
 
     // Reservoir sampling.
     for (leaf_bucket_t *b = head; b; b = (leaf_bucket_t*) b->next(), ni++) {
+      fprintf(stderr, "b = %p\n", b);
       b->clear_indexes();
       if (nArr < 11) {
         arr[nArr++] = b->randomValue(rng);
@@ -918,8 +924,8 @@ public:
       if (nhi && nlo) {
         assert(Lb && Rb);
         Lb->fusion(Rb, hi, lo, nhi, nlo);
-        if (!nhi) { add_to_chain(left_chain, Lb); Lb = nullptr; }
-        if (!nlo) { add_to_chain(right_chain, Rb); Rb = nullptr; }
+        if (!nhi) { if (add_to_chain(left_chain, Lb)) fprintf(stderr, "deleted 1\n");; Lb = nullptr; }
+        if (!nlo) { if (add_to_chain(right_chain, Rb)) fprintf(stderr, "deleted 2\n");; Rb = nullptr; }
       } else if (!Lb) {
         if (!b) break;
         Lb = b;
@@ -927,7 +933,7 @@ public:
       } else if (!nhi) {
         assert(Lb);
         Lb->mark_hi(p, cmp, hi, nhi);
-        if (!nhi) { add_to_chain(left_chain, Lb); Lb = nullptr; }
+        if (!nhi) { if (add_to_chain(left_chain, Lb)) fprintf(stderr, "deleted 3\n");; Lb = nullptr; }
       } else if (!Rb) {
         if (!b) break;
         Rb = b;
@@ -935,7 +941,7 @@ public:
       } else if (!nlo) {
         assert(Rb);
         Rb->mark_lo(p, cmp, lo, nlo);
-        if (!nlo) { add_to_chain(right_chain, Rb); Rb = nullptr; }
+        if (!nlo) { if (add_to_chain(right_chain, Rb)) fprintf(stderr, "deleted 4\n");; Rb = nullptr; }
       } else {
         assert(0);
       }
@@ -949,19 +955,19 @@ public:
         int i = Lb->partition(p, cmp);
         if (i == 0) {
           fprintf(stderr, "stochastic_split_chain b %p\n", Lb);
-          add_to_chain(right_chain, Lb);
+          if (add_to_chain(right_chain, Lb)) fprintf(stderr, "deleted 5\n");;
         } else if (i == Lb->size()) {
           fprintf(stderr, "stochastic_split_chain c %p\n", Lb);
-          add_to_chain(left_chain, Lb);
+          if (add_to_chain(left_chain, Lb)) fprintf(stderr, "deleted 6\n");;
         } else {
           fprintf(stderr, "stochastic_split_chain d %p\n", Lb);
           Rb = new leaf_bucket_t(Lb->parent(), Lb->capacity());
-          fprintf(stderr, "stochastic_split_chain d1 %p\n", Lb);
+          fprintf(stderr, "stochastic_split_chain d1 %p\n", Rb);
           Lb->moveToFromIdx(Rb, i);
           fprintf(stderr, "stochastic_split_chain d2 %p %p\n", left_chain, Lb);
-          add_to_chain(left_chain, Lb);
+          if (add_to_chain(left_chain, Lb)) fprintf(stderr, "deleted 7\n");;
           fprintf(stderr, "stochastic_split_chain d3 %p %p\n", right_chain, Rb);
-          add_to_chain(right_chain, Rb);
+          if (add_to_chain(right_chain, Rb)) fprintf(stderr, "deleted 8\n");;
           fprintf(stderr, "stochastic_split_chain e %p\n", Lb);
         }
       } else {
@@ -978,17 +984,17 @@ public:
     // assert(check());
     if (!leafb->next()) return false;
 
-    fprintf(stderr, "split_chain %p\n", leafb);
+    // fprintf(stderr, "split_chain %p\n", leafb);
     pair<T, Bucket<T, CMP>*> right_chain = stochastic_split_chain(leafb, cmp, rng);
-    fprintf(stderr, "split_chain2 %p\n", leafb);
+    // fprintf(stderr, "split_chain2 %p\n", leafb);
     // assert(check());
     // fprintf(stderr, "promotedValue = %d\n", promotedValue);
 
     InternalBucket<T, CMP> *parent = (InternalBucket<T, CMP>*) leafb->parent();
-    fprintf(stderr, "parent = %p, right_chain = %p\n", parent, right_chain.second);
+    // fprintf(stderr, "parent = %p, right_chain = %p\n", parent, right_chain.second);
     while (parent && right_chain.second) {
       if (parent->is_full()) {
-        fprintf(stderr, "parful\n");
+        // fprintf(stderr, "parful\n");
         // Optional optimization: transfer_one_to_left_or_right();
         InternalBucket<T, CMP> *inb = parent->middle_split();
         T midValue = parent->promote_last();
@@ -1001,22 +1007,22 @@ public:
         right_chain.second = inb;
         parent = (InternalBucket<T, CMP>*) right_chain.second->parent();
       } else {
-        fprintf(stderr, "internal\n");
+        // fprintf(stderr, "internal\n");
         parent->insert(right_chain.first, right_chain.second, 0, cmp);
         right_chain.second = nullptr;
       }
     }
     // assert(check());
-    fprintf(stderr, "split_chain3 = %p\n", leafb);
+    // fprintf(stderr, "split_chain3 = %p\n", leafb);
     if (right_chain.second) {
-      fprintf(stderr, "OLD ROOT %p\n", root);
+      // fprintf(stderr, "OLD ROOT %p\n", root);
       assert(!parent);
       assert(!root->parent());
       root = new InternalBucket<T, CMP>(nullptr, root);
       ((InternalBucket<T, CMP>*) root)->insert(right_chain.first, right_chain.second, 0, cmp);
       // fprintf(stderr, "NEW ROOT %d\n", root);
     }
-    fprintf(stderr, "done split %p\n\n\n", leafb);
+    // fprintf(stderr, "done split %p\n\n\n", leafb);
     // debug();
     // assert(check());
     return true;
@@ -1035,29 +1041,24 @@ public:
   /* TODO: lazy lower_bound */
   iterator lower_bound(T const &value, bool sort_piece = true) {
     // static int nth = 0; nth++;
-
+    assert(check());
     // TODO: optimize leaf slack
 
-    fprintf(stderr, "lower_bound %d\n", value);
+    // fprintf(stderr, "lower_bound %d\n", value);
     pair<Bucket<T, CMP>*, int> p = find_bucket(value, true);
 
-    fprintf(stderr, "lower_bound1 %d\n", value);
     if (!p.first->is_leaf()) {
       // Found in internal bucket.
-      fprintf(stderr, "lower_bound2 %d\n", value);
       return iterator(this, p.first, p.second);
     }
 
     int pos = p.first->lower_pos(value, cmp, rng);
     if (pos < p.first->size()) {
-      fprintf(stderr, "lower_bound3 %d\n", value);
       return iterator(this, p.first, pos);
     }
 
     InternalBucket<T, CMP> *ib = (InternalBucket<T, CMP>*) p.first->parent();
-    fprintf(stderr, "lower_bound4 %d\n", value);
     while (ib) {
-      fprintf(stderr, "lower_bound5 %d\n", value);
       pos = ib->lower_pos(value, cmp, rng);
       if (pos < ib->size()) {
         return iterator(this, ib, pos);
