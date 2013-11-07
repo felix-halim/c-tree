@@ -103,7 +103,7 @@ Cracking BTree (BTC) has similar performance with Cracking ART and thus omitted 
   yAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'log', domain: [0.5, 2e9], format: ticksPow10, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9], margin: 40 },
   xAxis: { label: 'Timeline (seconds)', attr: 'total_time', scale: 'log', domain: [0.4, 400], format: 'd', ticks: [0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20, 30, 40, 50, 60, 70, 100, 200, 300, 400], margin: 40 },
   legend: {
-    'comb3' : { x: 200, y: 110 },
+    'combt2048' : { x: 200, y: 110 },
     'comb' : { x: 200, y: 90 },
     'ctree_32_64' : { x: 200, y: 130 },
   },
@@ -111,7 +111,7 @@ Cracking BTree (BTC) has similar performance with Cracking ART and thus omitted 
     { attr: 'update_workload',   values: ['NOUP'] },
     { attr: 'query_workload',   values: ['Random'] },
     { attr: 'Q',   values: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9 ] },
-    { attr: 'algorithm',         values: ['comb3', 'comb', 'ctree_32_64'] },
+    { attr: 'algorithm',         values: ['combt2048', 'comb', 'ctree_32_64'] },
   ]), 'algorithm'),
 }</div>
 
@@ -188,13 +188,29 @@ I will implement the transitive indexing soon.
     'ctree_32_1024' : { x: 120, y: 110 },
     'ctree_32_4096' : { x: 250, y: 105 },
     'comb' : { x: 55, y: 135 },
-    'comb3' : { x: 50, y: 20 },
+    'combt2048' : { x: 50, y: 20 },
   },
   base: 'comb',
   data: group(filter([
     { attr: 'update_workload',   values: ['NOUP'] },
     { attr: 'query_workload',    values: ['Random'] },
-    { attr: 'algorithm',         values: ['comb', 'mdd1r', 'ctree_32_64', 'ctree_32_1024', 'ctree_32_4096', 'comb3'] },
+    { attr: 'algorithm',         values: ['comb', 'mdd1r', 'ctree_32_64', 'ctree_32_1024', 'ctree_32_4096', 'combt2048'] },
+  ]), 'algorithm'),
+}</div>
+
+<div class="chart" style="display: inline-block">{
+  xAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'log', domain: [0.5, 2e9], format: ticksPow10, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9], margin: 40 },
+  yAxis: { label: 'NOUP: Ratio to COMB', attr: 'total_time', scale: 'log', domain: [0.7, 5], format: 'pow10', ticks: [0.7, 0.8, 0.9, 1, 2, 3, 4, 5], margin: 40 },
+  legend: {
+    'combt512' : { x: 50, y: 40 },
+    'comb' : { x: 55, y: 135 },
+    'combt2048' : { x: 50, y: 20 },
+  },
+  base: 'comb',
+  data: group(filter([
+    { attr: 'update_workload',   values: ['NOUP'] },
+    { attr: 'query_workload',    values: ['Random'] },
+    { attr: 'algorithm',         values: ['comb', 'combt512', 'combt2048'] },
   ]), 'algorithm'),
 }</div>
 
@@ -267,15 +283,30 @@ ARTC is 48x, 8x, 2x faster than ART on 1, 1K, 1M queries respectively and compar
   base: 'ctree_32_64',
   legend: {
     'comb':           { x: 95, y: 20 },
-    'comb3200':       { x: 95, y: 40 },
     'comb1600':       { x: 95, y: 60 },
-    'comb800':        { x: 95, y: 80 },
-    'ctree_32_64':    { x: 30, y: 80 },
+    'comb800':        { x: 95, y: 40 },
+    'ctree_32_64':    { x: 95, y: 80 },
   },
   data: group(filter([
     { attr: 'update_workload',   values: ['LFHV'] },
     { attr: 'query_workload',    values: ['Random'] },
-    { attr: 'algorithm',         values: ['comb', 'ctree_32_64', 'comb800', 'comb1600', 'comb3200'] },
+    { attr: 'algorithm',         values: ['comb', 'ctree_32_64', 'comb800', 'comb1600'] },
+  ]), 'algorithm'),
+}</div>
+
+<div class="chart" style="display: inline-block">{
+  xAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'log', domain: [0.5, 2e9], format: ticksPow10, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9 ], margin: 40 },
+  yAxis: { label: 'LFHV: Ratio to CTree', attr: 'total_time', scale: 'log', domain: [0.3, 10], format: 'pow10', ticks: [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], margin: 30 },
+  base: 'ctree_32_64',
+  legend: {
+    'combt2048':       { x: 95, y: 40 },
+    'combt512':       { x: 95, y: 60 },
+    'ctree_32_64':    { x: 95, y: 80 },
+  },
+  data: group(filter([
+    { attr: 'update_workload',   values: ['LFHV'] },
+    { attr: 'query_workload',    values: ['Random'] },
+    { attr: 'algorithm',         values: ['ctree_32_64', 'combt512', 'combt2048'] },
   ]), 'algorithm'),
 }</div>
 
@@ -299,13 +330,13 @@ but worse in the long run because of the high cost in updating large Bucket with
   base: 'ctree_32_64',
   legend: {
     'comb':           { x: 95, y: 20 },
-    'comb3':        { x: 95, y: 40 },
+    'combt2048':        { x: 95, y: 40 },
     'ctree_32_64':    { x: 95, y: 60 },
   },
   data: group(filter([
     { attr: 'update_workload',   values: ['LFHV'] },
     { attr: 'query_workload',    values: ['Random'] },
-    { attr: 'algorithm',         values: ['comb', 'ctree_32_64', 'comb3'] },
+    { attr: 'algorithm',         values: ['comb', 'ctree_32_64', 'combt2048'] },
   ]), 'algorithm'),
 }</div>
 
