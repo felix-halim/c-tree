@@ -209,7 +209,8 @@ data.forEach(function (d) {
 
 var algo_name = {
   comb:            { name: "COMB", symbol: "diamond", color: "orange" },
-  comb3:            { name: "COMB-Tree", symbol: "square", color: "green" },
+  combt2048:       { name: "COMB-Tree2048", symbol: "square", color: "green" },
+  combt512:        { name: "COMB-Tree512", symbol: "square", color: "blue" },
   comb800:         { name: "COMB800", symbol: "diamond", color: "red" },
   comb1600:        { name: "COMB1600", symbol: "diamond", color: "blue" },
   comb3200:        { name: "COMB3200", symbol: "diamond", color: "green" },

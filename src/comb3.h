@@ -216,7 +216,7 @@ class LeafBucket : public Bucket<T, CMP> {
   void flush_pending_inserts(CMP &cmp) {
     assert(I <= this->N);                     // Indexed index should be less than the number of elements
     if (!nC){ I = this->N; S = 0; return; }   // no index yet, all the elements are considered "inserted"
-    assert(next_b == NULL);               // Indexes only makes sense when there is no chain
+    assert(!next_b && !tail_b);               // Indexes only makes sense when there is no chain
 
     // IMPROVE: bulk insert? (Currently using Merge Completely)
     int minC = nC;
@@ -289,7 +289,7 @@ class LeafBucket : public Bucket<T, CMP> {
   }
 
 public:
-  LeafBucket(Bucket<T, CMP> *p, int c): D(new T[c]), cap(c), next_b(NULL) {
+  LeafBucket(Bucket<T, CMP> *p, int c): D(new T[c]), cap(c), next_b(nullptr), tail_b(nullptr) {
     this->leaf = true;
     this->par = p;
     this->N = 0;
@@ -332,8 +332,12 @@ public:
       return;
     }
     assert(!tail_b || !tail_b->next());
-    if (!tail_b || tail_b->N == cap) {
+    if (!(!next_b || tail_b)) fprintf(stderr, "%p %p\n", next_b, tail_b);
+    assert(!next_b || tail_b);
+    if (!next_b || tail_b->N == cap) {
+      // fprintf(stderr, "c");
       add_chain(new LeafBucket(this->par, tail_b ? MAX_BSIZE : cap));
+      // fprintf(stderr, "d");
     }
     assert(tail_b && tail_b->N < tail_b->cap);
     tail_b->D[tail_b->N++] = v;
@@ -406,13 +410,13 @@ public:
         assert(0 <= n_move && n_move <= cap);
 
         LeafBucket *b = new LeafBucket(this->par, cap);
-        b->I = b->N = n_move;
-        for (int j = 0; j < n_move; j++) b->D[j] = D[pos + j];
+        b->I = b->N = n_move - 1;
+        for (int j = 1; j < n_move; j++) b->D[j - 1] = D[pos + j];
 
         assert(i < nC);
         int j = i + 1;
         for (; j < nC && C[j] < next_pos; j++) {
-          b->C[b->nC] = C[j] - pos;
+          b->C[b->nC] = C[j] - pos - 1;
           b->V[b->nC] = V[j];
           b->piece_set_sorted(b->nC, piece_is_sorted(j));
           b->nC++;
@@ -422,7 +426,9 @@ public:
 
         if (b->N < b->cap / 2) {
           // Chain it
-          ret.back().second->set_next(b);
+          assert(ret.size());
+          ret.back().second->append(D[pos]);
+          ret.back().second->add_chain(b);
         } else {
           ret.push_back(make_pair(D[pos], b));
         }
@@ -753,6 +759,7 @@ public:
       }
       return ret;
     }
+    ret += b->size();
     for (int i = 0; i <= b->size(); i++) {
       ret += size(((InternalBucket<T, CMP>*) b)->child(i));
     }
@@ -777,8 +784,10 @@ public:
     Bucket<T, CMP> *b = root;
     int splitted = 0;
     // fprintf(stderr, "find_bucket %p\n", b);
+    // fprintf(stderr, "1");
     while (true) {
       if (b->is_leaf()) {
+        // fprintf(stderr, "2");
         // fprintf(stderr, "find_bucket2 %p\n", b);
         if (!split_chain((leaf_bucket_t*) b)) {
           return make_pair(b, splitted);
@@ -788,6 +797,7 @@ public:
         b = b->parent();
         assert(b);
       } else {
+        // fprintf(stderr, "3");
         int pos = ((InternalBucket<T, CMP>*) b)->lower_pos(value, cmp);
         if (include_internal && pos < b->size() && eq(((InternalBucket<T, CMP>*) b)->data(pos), value, cmp)) {
           // fprintf(stderr, "find_bucket4 %p\n", b);
@@ -802,15 +812,17 @@ public:
     // To avoid having too many cracker indexes in a bucket.
     if (b->n_cracks() > 40 && b->capacity() == MAX_BSIZE) {
       // assert(check());
-      // fprintf(stderr, ".%lu", R.size());
+      // fprintf(stderr, "size1 = %d\n", size());
+      // fprintf(stderr, ".");
 
       vector<pair<T, leaf_bucket_t*>> nb = b->split(cmp);
       for (int i = 1; i < (int) nb.size(); i++) {
-        assert(cmp(nb[i-1].first, nb[i].first));
+        assert(cmp(nb[i - 1].first, nb[i].first));
       }
       for (auto it = nb.rbegin(); it != nb.rend(); it++) {
         insert_internal(b, *it);
       }
+      // fprintf(stderr, "size2 = %d\n", size());
       // assert(check());
       return true;
     }
@@ -822,23 +834,29 @@ public:
     // fprintf(stderr, "ERASED %d\n", value);
     // debug();
 
+    // static int nth = 0; nth++;
+    // if (nth % 1000 == 0) fprintf(stderr, "nth = %d, size = %d\n", nth, size());
+    // fprintf(stderr, "a");
+
     pair<Bucket<T, CMP>*, int> p = find_bucket(value, true);
+    // fprintf(stderr, "i");
     if (p.first->is_leaf()) {
       // fprintf(stderr, "ERASE1 %d\n", value);
-      // fprintf(stderr, "a");
       bool ret = ((leaf_bucket_t*) p.first)->erase(value, cmp, rng);
+      split_bucket((leaf_bucket_t*) p.first);
       // fprintf(stderr, "b");
-      // split_bucket((leaf_bucket_t*) p.first);
       return ret;
     }
 
     // Found in an internal node, delete the largest node <= value.
     pair<Bucket<T, CMP>*, int> upper = find_bucket(value, false);
+    // fprintf(stderr, "j");
 
     // It is possible that finding upper invalidated p's references.
     if (upper.second) p = find_bucket(value, true); // Refresh.
 
     // fprintf(stderr, "ERASE2 %d\n", value);
+    // fprintf(stderr, "c");
 
     // upper.first is the leaf bucket containing the value.
     // upper.second signify whether a leaf_split happened when finding the bucket.
@@ -848,19 +866,23 @@ public:
     if (b->size()) {
       // fprintf(stderr, "ERASE3 %d\n", value);
       next_largest = ((leaf_bucket_t*) b)->remove_largest(cmp, rng);
+      // fprintf(stderr, "d");
     } else {
       // Bucket b is empty, search ancestors.
       while (true) {
         // fprintf(stderr, "ERASE4 %d\n", b);
+        // fprintf(stderr, "e");
         assert(b != p.first);
         InternalBucket<T, CMP> *parent = (InternalBucket<T, CMP>*) b->parent();
         assert(parent);
         delete b;
         if (parent->size()) {
+          // fprintf(stderr, "f");
           if (parent == p.first) {
             // Found in the same internal node as p.first, just delete it.
             ((InternalBucket<T, CMP>*) p.first)->erase(p.second, 0);
             // fprintf(stderr, "yay\n");
+            // fprintf(stderr, "g");
             return true;
           }
           next_largest = parent->promote_last();
@@ -876,6 +898,7 @@ public:
     ((InternalBucket<T, CMP> *) p.first)->set_data(p.second, next_largest);
     // assert(check());
     // fprintf(stderr, "ERASE5 %d\n", value);
+    // fprintf(stderr, "h");
     return true;
   }
 
@@ -895,7 +918,9 @@ public:
         }
       }
       if (b->size()) {
+        // fprintf(stderr, "a");
         chain->add_chain(b);
+        // fprintf(stderr, "b");
       } else {
         delete b;
         return true;
@@ -918,8 +943,12 @@ public:
     // Replace R with the next buckets in the chain using reservoir sampling.
     leaf_bucket_t *Nb = (leaf_bucket_t*) B->next();
     for (int i = 1; Nb; i++) {
-      int j = rng.nextInt(i);
-      if (j < 11) Nb->swap_random_data_with(R[j], rng);
+      if (!Nb->size()) {
+        i--;
+      } else {
+        int j = rng.nextInt(i);
+        if (j < 11) Nb->swap_random_data_with(R[j], rng);
+      }
       Nb = (leaf_bucket_t*) Nb->next();
     }
 
