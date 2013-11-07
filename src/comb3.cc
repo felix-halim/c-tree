@@ -7,7 +7,6 @@ Comb<int, less<int>, 512> c;
 
 void init(int *arr, int N) {
   c.load(arr, N);
-  fprintf(stderr, "size = %d\n", c.size());
   // for (int i = 0; i < N; i++) {
   //   insert(arr[i]);
   //   if (i % 1000) lower_bound(arr[i]);
