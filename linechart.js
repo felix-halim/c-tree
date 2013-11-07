@@ -209,6 +209,7 @@ data.forEach(function (d) {
 
 var algo_name = {
   comb:            { name: "COMB", symbol: "diamond", color: "orange" },
+  combt8192:       { name: "COMB-Tree8192", symbol: "square", color: "red" },
   combt2048:       { name: "COMB-Tree2048", symbol: "square", color: "green" },
   combt512:        { name: "COMB-Tree512", symbol: "square", color: "blue" },
   comb800:         { name: "COMB800", symbol: "diamond", color: "red" },
@@ -221,7 +222,7 @@ var algo_name = {
   sort:            { name: "Sort", symbol: "triangle-down", color: "blue", },
   crack:           { name: "Crack", symbol: "circle", color: "red", },
   crack_count:     { name: "Crack", symbol: "circle", color: "red", },
-  mdd1r:           { name: "Scrack", symbol: "circle", color: "red", },
+  mdd1r:           { name: "Scrack", symbol: "triangle-down", color: "red", },
   ctree_32_64:     { name: "CT64", symbol: "square", color: "brown", },
   ctree_32_1024:   { name: "CT1024", symbol: "triangle-up", color: "magenta", },
   ctree_32_4096:   { name: "CT4096", symbol: "diamond", color: "blue", },

@@ -15,8 +15,8 @@
 }
 </style>
 <script src="d3.v3.min.js"></script>
-<script src="data.js?6"></script>
-<script src="linechart.js?6"></script>
+<script src="data.js?7"></script>
+<script src="linechart.js?7"></script>
 </head>
 
 <body onload="renderLinecharts()">
@@ -42,13 +42,14 @@ The setup is: insert 10^8 random integers and perform 10^9 point queries.
     'art_best_eager' : { x: 250, y: 80 },
     'btree_google' : { x: 250, y: 100 },
     'mdd1r' : { x: 70, y: 150 },
+    'crack' : { x: 30, y: 70 },
     'comb' : { x: 30, y: 90 },
   },
   data: group(filter([
     { attr: 'update_workload',   values: ['NOUP'] },
     { attr: 'query_workload',   values: ['Random'] },
     { attr: 'Q',   values: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9 ] },
-    { attr: 'algorithm',         values: ['sort', 'comb', 'mdd1r', 'art_best_eager', 'art', 'btree_google'] },
+    { attr: 'algorithm',         values: ['sort', 'crack', 'comb', 'mdd1r', 'art_best_eager', 'art', 'btree_google'] },
   ]), 'algorithm'),
 }</div>
 
@@ -198,7 +199,7 @@ I will implement the transitive indexing soon.
   ]), 'algorithm'),
 }</div>
 
-<div class="chart" style="display: inline-block">{
+<!-- <div class="chart" style="display: inline-block">{
   xAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'log', domain: [0.5, 2e9], format: ticksPow10, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9], margin: 40 },
   yAxis: { label: 'NOUP: Ratio to COMB', attr: 'total_time', scale: 'log', domain: [0.7, 5], format: 'pow10', ticks: [0.7, 0.8, 0.9, 1, 2, 3, 4, 5], margin: 40 },
   legend: {
@@ -213,7 +214,7 @@ I will implement the transitive indexing soon.
     { attr: 'algorithm',         values: ['comb', 'combt512', 'combt2048'] },
   ]), 'algorithm'),
 }</div>
-
+ -->
 <p>Cumulative runtime compared to Sort under read only queries.
 <ul>
 <li>COMB is consistently faster than Crack on 10th+ queries.
@@ -299,6 +300,7 @@ ARTC is 48x, 8x, 2x faster than ART on 1, 1K, 1M queries respectively and compar
   yAxis: { label: 'LFHV: Ratio to CTree', attr: 'total_time', scale: 'log', domain: [0.3, 10], format: 'pow10', ticks: [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], margin: 30 },
   base: 'ctree_32_64',
   legend: {
+    'combt8192':       { x: 95, y: 20 },
     'combt2048':       { x: 95, y: 40 },
     'combt512':       { x: 95, y: 60 },
     'ctree_32_64':    { x: 95, y: 80 },
@@ -306,7 +308,7 @@ ARTC is 48x, 8x, 2x faster than ART on 1, 1K, 1M queries respectively and compar
   data: group(filter([
     { attr: 'update_workload',   values: ['LFHV'] },
     { attr: 'query_workload',    values: ['Random'] },
-    { attr: 'algorithm',         values: ['ctree_32_64', 'combt512', 'combt2048'] },
+    { attr: 'algorithm',         values: ['ctree_32_64', 'combt512', 'combt2048', 'combt8192'] },
   ]), 'algorithm'),
 }</div>
 
@@ -340,9 +342,30 @@ but worse in the long run because of the high cost in updating large Bucket with
   ]), 'algorithm'),
 }</div>
 
+
+<div class="chart" style="display: inline-block">{
+  xAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'log', domain: [0.5, 2e9], format: ticksPow10, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9 ], margin: 40 },
+  yAxis: { label: 'LFHV: Ratio to CTree', attr: 'total_time', scale: 'log', domain: [0.3, 10], format: 'pow10', ticks: [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], margin: 30 },
+  base: 'ctree_32_64',
+  legend: {
+    'comb800':       { x: 95, y: 40 },
+    'combt512':       { x: 95, y: 60 },
+    'ctree_32_64':    { x: 95, y: 80 },
+  },
+  data: group(filter([
+    { attr: 'update_workload',   values: ['LFHV'] },
+    { attr: 'query_workload',    values: ['Random'] },
+    { attr: 'algorithm',         values: ['ctree_32_64', 'combt512', 'comb800'] },
+  ]), 'algorithm'),
+}</div>
+
 <p>Replacing COMB's root array to (incremental) BTree does significantly helps under updates!<br>
-This is because frequent updates to the root array is costly.<br>
-Note that the COMB bucket is <b>NOT YET TRANSITIVE</b>!<br>
+The left figure is COMB6400 vs COMB-Tree2048 (superior).<br>
+The right figure is for smaller bucket COMB800 vs COMB-Tree512 (superior).<br>
+COMB800 suffers because it has too many entries in the root array while<br>
+COMB-Tree512 handles the root array much better with (incremental) B-Tree.<br>
+
+<p>Note that the COMB bucket is <b>NOT YET TRANSITIVE</b>!<br>
 I believe it will be even better if it's transitive.
 
 

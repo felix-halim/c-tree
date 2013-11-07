@@ -810,10 +810,10 @@ public:
 
   bool split_bucket(leaf_bucket_t *b) {
     // To avoid having too many cracker indexes in a bucket.
-    if (b->n_cracks() > 40 && b->capacity() == MAX_BSIZE) {
+    if (b->n_cracks() > 20 && b->capacity() == MAX_BSIZE) {
       // assert(check());
       // fprintf(stderr, "size1 = %d\n", size());
-      // fprintf(stderr, ".");
+      fprintf(stderr, ".");
 
       vector<pair<T, leaf_bucket_t*>> nb = b->split(cmp);
       for (int i = 1; i < (int) nb.size(); i++) {
