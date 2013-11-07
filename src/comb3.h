@@ -25,8 +25,8 @@ class Random {
   int nextInt(int N) { return dis(gen) % N; } // Poor I know.
 };
 
-#define CRACK_AT (cap >> 5)
-#define DECRACK_AT (cap >> 6)
+#define CRACK_AT max(64, cap >> 5)
+#define DECRACK_AT max(30, cap >> 6)
 #ifndef INTERNAL_BSIZE
   #define INTERNAL_BSIZE 32
 #endif
