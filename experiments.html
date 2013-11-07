@@ -103,20 +103,25 @@ Cracking BTree (BTC) has similar performance with Cracking ART and thus omitted 
   yAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'log', domain: [0.5, 2e9], format: ticksPow10, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9], margin: 40 },
   xAxis: { label: 'Timeline (seconds)', attr: 'total_time', scale: 'log', domain: [0.4, 400], format: 'd', ticks: [0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20, 30, 40, 50, 60, 70, 100, 200, 300, 400], margin: 40 },
   legend: {
-    'comb3' : { x: 150, y: 110 },
-    'comb' : { x: 150, y: 90 },
+    'comb3' : { x: 200, y: 110 },
+    'comb' : { x: 200, y: 90 },
+    'ctree_32_64' : { x: 200, y: 130 },
   },
   data: group(filter([
     { attr: 'update_workload',   values: ['NOUP'] },
     { attr: 'query_workload',   values: ['Random'] },
     { attr: 'Q',   values: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9 ] },
-    { attr: 'algorithm',         values: ['comb3', 'comb'] },
+    { attr: 'algorithm',         values: ['comb3', 'comb', 'ctree_32_64'] },
   ]), 'algorithm'),
 }</div>
 
 <br style="clear:both">
 
-<p>Changing COMB's plain root array to (incremental) BTree helps but not that significant.
+<p>Changing COMB's plain root array to (incremental) BTree helps but not that significant.<br>
+Notice that CTree is bad for the first millions of queries because of bad Fusion efficiency.<br>
+However it catches up later on. I'm puzzled why? My hunch is that small buckets is memory-friendly?<br>
+This suggest that Transitive Indexing should be beneficial: Start with Large buckets, transition to smaller buckets eventually.<br>
+I will implement the transitive indexing soon.
 
 
 <p style="clear:both">
@@ -176,19 +181,20 @@ Cracking BTree (BTC) has similar performance with Cracking ART and thus omitted 
 
 <div class="chart" style="display: inline-block">{
   xAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'log', domain: [0.5, 2e9], format: ticksPow10, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9], margin: 40 },
-  yAxis: { label: 'NOUP: Ratio to COMB', attr: 'total_time', scale: 'log', domain: [0.7, 5], format: 'pow10', ticks: [0.7, 0.8, 0.9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], margin: 40 },
+  yAxis: { label: 'NOUP: Ratio to COMB', attr: 'total_time', scale: 'log', domain: [0.7, 5], format: 'pow10', ticks: [0.7, 0.8, 0.9, 1, 2, 3, 4, 5], margin: 40 },
   legend: {
     'mdd1r' : { x: 260, y: 50 },
     'ctree_32_64' : { x: 50, y: 40 },
     'ctree_32_1024' : { x: 120, y: 110 },
     'ctree_32_4096' : { x: 250, y: 105 },
     'comb' : { x: 55, y: 135 },
+    'comb3' : { x: 50, y: 20 },
   },
   base: 'comb',
   data: group(filter([
     { attr: 'update_workload',   values: ['NOUP'] },
     { attr: 'query_workload',    values: ['Random'] },
-    { attr: 'algorithm',         values: ['comb', 'mdd1r', 'ctree_32_64', 'ctree_32_1024', 'ctree_32_4096'] },
+    { attr: 'algorithm',         values: ['comb', 'mdd1r', 'ctree_32_64', 'ctree_32_1024', 'ctree_32_4096', 'comb3'] },
   ]), 'algorithm'),
 }</div>
 
