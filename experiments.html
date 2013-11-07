@@ -15,8 +15,8 @@
 }
 </style>
 <script src="d3.v3.min.js"></script>
-<script src="data.js?5"></script>
-<script src="linechart.js?5"></script>
+<script src="data.js?6"></script>
+<script src="linechart.js?6"></script>
 </head>
 
 <body onload="renderLinecharts()">
@@ -72,7 +72,6 @@ The setup is: insert 10^8 random integers and perform 10^9 point queries.
   ]), 'algorithm'),
 }</div>
 
-
 <div style="display:none">
 <br><br>
 <input type="checkbox"> BTree (Google)<br>
@@ -98,6 +97,26 @@ BTree (BT) starts answering the first query after 54.5 seconds.<br>
 In the end Cracking ART and ART finishes the 10^9 queries almost together.<br>
 Cracking BTree (BTC) has similar performance with Cracking ART and thus omitted in the graph to reduce clutter.
  --><br>
+
+<div class="chart" style="float:left; display: inline-block">{
+  width: 450, height: 225,
+  yAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'log', domain: [0.5, 2e9], format: ticksPow10, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9], margin: 40 },
+  xAxis: { label: 'Timeline (seconds)', attr: 'total_time', scale: 'log', domain: [0.4, 400], format: 'd', ticks: [0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20, 30, 40, 50, 60, 70, 100, 200, 300, 400], margin: 40 },
+  legend: {
+    'comb3' : { x: 150, y: 110 },
+    'comb' : { x: 150, y: 90 },
+  },
+  data: group(filter([
+    { attr: 'update_workload',   values: ['NOUP'] },
+    { attr: 'query_workload',   values: ['Random'] },
+    { attr: 'Q',   values: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9 ] },
+    { attr: 'algorithm',         values: ['comb3', 'comb'] },
+  ]), 'algorithm'),
+}</div>
+
+<br style="clear:both">
+
+<p>Changing COMB's plain root array to (incremental) BTree helps but not that significant.
 
 
 <p style="clear:both">
@@ -267,6 +286,28 @@ but worse in the long run because of the high cost in updating large Bucket with
 <li>COMB800 can match CTree performance on updates due to smaller bucket size and less shuffling data in/out of buckets.
 </ul>
 </p>
+
+<div class="chart" style="display: inline-block">{
+  xAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'log', domain: [0.5, 2e9], format: ticksPow10, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9 ], margin: 40 },
+  yAxis: { label: 'LFHV: Ratio to CTree', attr: 'total_time', scale: 'log', domain: [0.3, 10], format: 'pow10', ticks: [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], margin: 30 },
+  base: 'ctree_32_64',
+  legend: {
+    'comb':           { x: 95, y: 20 },
+    'comb3':        { x: 95, y: 40 },
+    'ctree_32_64':    { x: 95, y: 60 },
+  },
+  data: group(filter([
+    { attr: 'update_workload',   values: ['LFHV'] },
+    { attr: 'query_workload',    values: ['Random'] },
+    { attr: 'algorithm',         values: ['comb', 'ctree_32_64', 'comb3'] },
+  ]), 'algorithm'),
+}</div>
+
+<p>Replacing COMB's root array to (incremental) BTree does significantly helps under updates!<br>
+This is because frequent updates to the root array is costly.<br>
+Note that the COMB bucket is <b>NOT YET TRANSITIVE</b>!<br>
+I believe it will be even better if it's transitive.
+
 
 <h3>Initialization Cost vs. LFHV Query Cost</h3>
 
