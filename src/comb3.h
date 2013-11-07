@@ -576,6 +576,9 @@ public:
       int R = (i ==nC) ? this->N : C[i];            // the right crack boundary
       assert(L < R);
       if (R - L <= CRACK_AT) {
+        if (nC && R-L+1 <= DECRACK_AT) {
+          remove_cracker_index((i>0)?(--i):i);
+        }
         int j = L;
         for (i = L + 1; i < R; i++)
           if (cmp(D[j], D[i])) j = i;
