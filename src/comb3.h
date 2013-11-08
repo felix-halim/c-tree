@@ -290,10 +290,12 @@ class LeafBucket : public Bucket<T, CMP> {
 
 public:
   LeafBucket(Bucket<T, CMP> *p, int c): D(new T[c]), cap(c), next_b(nullptr), tail_b(nullptr) {
+    fprintf(stderr, "x");
     this->leaf = true;
     this->par = p;
     this->N = 0;
     clear_indexes();
+    fprintf(stderr, "y");
   }
 
   ~LeafBucket() { delete[] D; }
@@ -360,7 +362,7 @@ public:
     D[this->N++] = value;
   }
 
-  vector<pair<T, LeafBucket*>> split(CMP &cmp) {
+  vector<pair<T, LeafBucket*>> even_split(CMP &cmp) {
     assert(cap >= 512);
     flush_pending_inserts(cmp);
 
@@ -449,6 +451,44 @@ public:
 
     // assert(check(0, 0, 0, 0, cmp));
 
+    return ret;
+  }
+
+  vector<pair<T, LeafBucket*>> split(CMP &cmp) {
+    assert(cap > 64);
+    assert(nC > 1);
+    flush_pending_inserts(cmp);
+
+    fprintf(stderr, "a");
+    T *DD = nullptr;
+    vector<pair<T, LeafBucket*>> ret;
+    for (int i = 0; i <= nC; i++) {
+      int L = (i == 0) ? 0 : C[i - 1];
+      int R = (i == nC) ? this->N : C[i];
+      int NN = R - L;
+      // fprintf(stderr, "alloc %d, %d %d, %d / %d\n", NN, L, R, i, nC);
+      if (DD == nullptr) {
+        fprintf(stderr, "c");
+        DD = new T[NN];
+        memcpy(DD, D, sizeof(T) * NN);
+        I = NN;
+      } else {
+        fprintf(stderr, "d %d", NN);
+        LeafBucket *b = new LeafBucket(this->par, NN);
+        fprintf(stderr, "e");
+        b->I = b->N = NN - 1;
+        fprintf(stderr, "f");
+        for (int j = 1; j < NN; j++) b->D[j - 1] = D[L + j];
+        fprintf(stderr, "g");
+        ret.push_back(make_pair(D[L], b));
+        fprintf(stderr, "h");
+      }
+    }
+    delete[] D;
+    D = DD;
+    nC = 0;
+    this->N = I;
+    fprintf(stderr, "b");
     return ret;
   }
 

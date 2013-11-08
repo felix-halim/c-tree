@@ -197,8 +197,6 @@ function isOneOrTen(d) {
 
 
 
-data = d3.csv.parse(data);
-
 data.forEach(function (d) {
   d.Q = parseInt(d.Q);
   d.insert_time = parseFloat(d.insert_time);
