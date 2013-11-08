@@ -254,14 +254,14 @@ class LeafBucket : public Bucket<T, CMP> {
   }
 
   // partitions roughly in the middle satisfying the DECRACK_AT
-  T* rough_middle_partition(T *L, T *R, CMP &cmp, Random &rng) {
-    assert(R-L >= CRACK_AT);
+  T* rough_middle_partition(T *L, T *R, CMP &cmp, Random &rng, int dcrk_at, int crk_at) {
+    assert(R-L >= crk_at);
     int ntry = 10;
     for (T *i=L, *j=R, *p; ntry--; ){
       std::iter_swap(j-1, i + rng.nextInt(j-i));
       std::iter_swap(j-1, p = partition(i, j-1, *(j-1), cmp));
-      if (p-L <= DECRACK_AT) i = p;
-      else if (R-p <= DECRACK_AT) j = p;
+      if (p-L <= dcrk_at) i = p;
+      else if (R-p <= dcrk_at) j = p;
       else return p;
     }
     T *M = L+((R-L)>>1);
@@ -278,7 +278,7 @@ class LeafBucket : public Bucket<T, CMP> {
     L = i==0? 0 : C[i-1];            // the left crack boundary
     R = i==nC? this->N : C[i];            // the right crack boundary
     while (R-L > CRACK_AT){            // narrow down the piece using DDR
-      int M = rough_middle_partition(D+L+(i?1:0), D+R, cmp, rng) - D;
+      int M = rough_middle_partition(D+L+(i?1:0), D+R, cmp, rng, DECRACK_AT, CRACK_AT) - D;
       add_cracker_index(i, M);
 //        fprintf(stderr,"CRACKING %d %d, [%d %d]\n",M,D[M],L,R);
       if (cmp(v,D[M])) R=M; else L=M, i++;  // adjust the cracker index i
@@ -290,12 +290,10 @@ class LeafBucket : public Bucket<T, CMP> {
 
 public:
   LeafBucket(Bucket<T, CMP> *p, int c): D(new T[c]), cap(c), next_b(nullptr), tail_b(nullptr) {
-    fprintf(stderr, "x");
     this->leaf = true;
     this->par = p;
     this->N = 0;
     clear_indexes();
-    fprintf(stderr, "y");
   }
 
   ~LeafBucket() { delete[] D; }
@@ -454,41 +452,108 @@ public:
     return ret;
   }
 
-  vector<pair<T, LeafBucket*>> split(CMP &cmp) {
+  int next_power2(int n) {
+    n--;
+    n |= n >> 1;
+    n |= n >> 2;
+    n |= n >> 4;
+    n |= n >> 8;
+    n |= n >> 16;
+    n++;
+    return n;
+  }
+
+  vector<pair<T, LeafBucket*>> split2(CMP &cmp, Random &rng) {
     assert(cap > 64);
     assert(nC > 1);
     flush_pending_inserts(cmp);
 
-    fprintf(stderr, "a");
+    if (0 && nC < 55) {
+      pair<int, int> cand[nC + 1];
+      for (int i = 0; i <= nC; i++) {
+        int L = (i == 0) ? 0 : C[i - 1];
+        int R = (i == nC) ? this->N : C[i];
+        cand[i].first = R - L;
+        cand[i].first = i;
+      }
+      sort(cand, cand + nC + 1);
+      for (int j = nC; j >= 0 && nC < 55; j--) {
+        int i = cand[j].second;
+        int L = (i == 0) ? 0 : C[i - 1];
+        int R;
+        get_piece_by_value(D[L + 1], L, R, cmp, rng);
+      }
+    }
+
     T *DD = nullptr;
     vector<pair<T, LeafBucket*>> ret;
     for (int i = 0; i <= nC; i++) {
       int L = (i == 0) ? 0 : C[i - 1];
       int R = (i == nC) ? this->N : C[i];
       int NN = R - L;
+      assert(NN > 0 && NN < MAX_BSIZE);
       // fprintf(stderr, "alloc %d, %d %d, %d / %d\n", NN, L, R, i, nC);
       if (DD == nullptr) {
-        fprintf(stderr, "c");
-        DD = new T[NN];
+        cap = next_power2(NN);
+        assert(cap >= NN && cap < NN * 2);
+        DD = new T[cap];
         memcpy(DD, D, sizeof(T) * NN);
         I = NN;
       } else {
-        fprintf(stderr, "d %d", NN);
-        LeafBucket *b = new LeafBucket(this->par, NN);
-        fprintf(stderr, "e");
+        LeafBucket *b = new LeafBucket(this->par, next_power2(NN));
         b->I = b->N = NN - 1;
-        fprintf(stderr, "f");
         for (int j = 1; j < NN; j++) b->D[j - 1] = D[L + j];
-        fprintf(stderr, "g");
         ret.push_back(make_pair(D[L], b));
-        fprintf(stderr, "h");
       }
     }
     delete[] D;
     D = DD;
     nC = 0;
     this->N = I;
-    fprintf(stderr, "b");
+    fprintf(stderr, "%d; ", (int) ret.size());
+    return ret;
+  }
+
+  void rec_split(T *&DD, vector<pair<T, LeafBucket*>> &ret, int L, int R, int maxsz, CMP &cmp, Random &rng) {
+    int NN = R - L;
+    assert(NN > 0 && NN < MAX_BSIZE);
+    if (NN <= maxsz) {
+      if (DD == nullptr) {
+        cap = next_power2(NN);
+        assert(cap >= NN && cap < NN * 2);
+        DD = new T[cap];
+        memcpy(DD, D, sizeof(T) * NN);
+        I = NN;
+      } else {
+        LeafBucket *b = new LeafBucket(this->par, next_power2(NN));
+        b->I = b->N = NN - 1;
+        for (int j = 1; j < NN; j++) b->D[j - 1] = D[L + j];
+        ret.push_back(make_pair(D[L], b));
+      }
+    } else {
+      int M = rough_middle_partition(D+L+(DD?1:0), D+R, cmp, rng, maxsz, maxsz / 2 - 5) - D;
+      rec_split(DD, ret, L, M, maxsz, cmp, rng);
+      rec_split(DD, ret, M, R, maxsz, cmp, rng);
+    }
+  }
+
+  vector<pair<T, LeafBucket*>> split(CMP &cmp, Random &rng) {
+    assert(cap > 64);
+    assert(nC > 1);
+    flush_pending_inserts(cmp);
+
+    T *DD = nullptr;
+    vector<pair<T, LeafBucket*>> ret;
+    for (int i = 0; i <= nC; i++) {
+      int L = (i == 0) ? 0 : C[i - 1];
+      int R = (i == nC) ? this->N : C[i];
+      rec_split(DD, ret, L, R, 1024, cmp, rng);
+    }
+    delete[] D;
+    D = DD;
+    nC = 0;
+    this->N = I;
+    fprintf(stderr, "%d; ", (int) ret.size());
     return ret;
   }
 
@@ -850,12 +915,12 @@ public:
 
   bool split_bucket(leaf_bucket_t *b) {
     // To avoid having too many cracker indexes in a bucket.
-    if (b->n_cracks() > 20 && b->capacity() == MAX_BSIZE) {
+    if (b->n_cracks() > 3 && b->capacity() == MAX_BSIZE) {
       // assert(check());
       // fprintf(stderr, "size1 = %d\n", size());
       fprintf(stderr, ".");
 
-      vector<pair<T, leaf_bucket_t*>> nb = b->split(cmp);
+      vector<pair<T, leaf_bucket_t*>> nb = b->split(cmp, rng);
       for (int i = 1; i < (int) nb.size(); i++) {
         assert(cmp(nb[i - 1].first, nb[i].first));
       }
