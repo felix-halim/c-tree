@@ -197,8 +197,6 @@ function isOneOrTen(d) {
 
 
 
-data = d3.csv.parse(data);
-
 data.forEach(function (d) {
   d.Q = parseInt(d.Q);
   d.insert_time = parseFloat(d.insert_time);
@@ -209,6 +207,7 @@ data.forEach(function (d) {
 
 var algo_name = {
   comb:            { name: "COMB", symbol: "diamond", color: "orange" },
+  combtr:          { name: "COMB-TR", symbol: "diamond", color: "green" },
   combt8192:       { name: "COMB-Tree8192", symbol: "square", color: "red" },
   combt2048:       { name: "COMB-Tree2048", symbol: "square", color: "green" },
   combt512:        { name: "COMB-Tree512", symbol: "square", color: "blue" },
