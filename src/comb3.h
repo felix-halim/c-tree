@@ -369,7 +369,7 @@ public:
     cap /= nsplits;
 
     assert(nC > 1);
-    assert(nC < 64 - nsplits);
+    //assert(nC < 64 - nsplits);
     assert(this->N > cap);
 
     if (C[0] > cap) {
@@ -810,7 +810,7 @@ public:
 
   bool split_bucket(leaf_bucket_t *b) {
     // To avoid having too many cracker indexes in a bucket.
-    if (b->n_cracks() > 40 && b->capacity() == MAX_BSIZE) {
+    if (b->n_cracks() > 3 && b->capacity() == MAX_BSIZE) {
       // assert(check());
       // fprintf(stderr, "size1 = %d\n", size());
       // fprintf(stderr, ".");
