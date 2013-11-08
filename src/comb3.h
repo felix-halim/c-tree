@@ -801,7 +801,7 @@ public:
     }
 
    public:
-    typedef Comb<T, CMP, LARGE_SIZE> crack_type;
+    typedef Comb<T, CMP, LARGE_SIZE, SMALL_SIZE> crack_type;
     crack_type *crack;
     Bucket<T, CMP> *bucket;
     int idx;
@@ -926,6 +926,7 @@ public:
         case 1 : return ((large_leaf_t*) b)->insert(value);
         case 2 :
           if (((small_leaf_t*) b)->is_full()) {
+            // fprintf(stderr, "x");
             large_leaf_t *nb = new large_leaf_t(b->parent());
             nb->copy_from(((small_leaf_t*) b)->data_pointer(0), b->size());
             assert(par && par->child(pos) == b);
