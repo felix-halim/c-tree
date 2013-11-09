@@ -68,6 +68,7 @@ class InternalBucket : public Bucket<T, CMP> {
     left_child->set_parent(this);
   }
 
+  int slack() const { return capacity() - this->N; }
   void set_data(int i, T value) { assert(i >= 0 && i < this->N); D[i] = value; };
   void set_child(int i, Bucket<T, CMP> *b) { assert(i >= 0 && i <= this->N); C[i] = b; };
 
@@ -157,11 +158,21 @@ class SmallBucket : public Bucket<T, CMP> {
 
   int size() { return this->N; }
 
+  int slack() { return SMALL_SIZE - this->N; }
+
   bool is_full() { return this->N == SMALL_SIZE; }
 
   T& data(int i) { assert(i >= 0 && i < this->N); return D[i]; }
 
   T* data_pointer(int i) { assert(i >= 0 && i < this->N); return &D[i]; }
+
+  pair<T, Bucket<T, CMP>*> split() {
+    int H = this->N / 2;
+    if (!sorted) nth_element(D, D + H, D + this->N);
+    SmallBucket *nb = new SmallBucket(this->par, D + H + 1, this->N - H - 1);
+    this->N = H;
+    return make_pair(D[H], nb);
+  }
 
   void insert(T const &v) {
     assert(this->N < SMALL_SIZE);
@@ -569,7 +580,7 @@ public:
     if (NN <= maxsz) {
       callback(D + L, NN, L == 0);
     } else {
-      int M = rough_middle_partition(D+L+(L?1:0), D+R, cmp, rng, maxsz, maxsz / 2 - 5) - D;
+      int M = rough_middle_partition(D+L+(L?1:0), D+R, cmp, rng, maxsz, maxsz / 4) - D;
       rec_split(callback, M, R, maxsz, cmp, rng);
       rec_split(callback, L, M, maxsz, cmp, rng);
     }
@@ -577,7 +588,8 @@ public:
 
   void split(std::function<void(T*, int, bool)> callback, int cap, CMP &cmp, Random &rng) {
     flush_pending_inserts(cmp);
-    for (int i = nC; i >= 0; i--) {
+    rec_split(callback, 0, this->N, cap, cmp, rng);
+    for (int i = nC; 0 && i >= 0; i--) {
       int L = (i == 0) ? 0 : C[i - 1];
       int R = (i == nC) ? this->N : C[i];
       rec_split(callback, L, R, cap, cmp, rng);
@@ -911,6 +923,93 @@ public:
     return ret;
   }
 
+  int root_size(Bucket<T, CMP> *b = nullptr) {
+    if (!b) b = root;
+    int ret = 0;
+    switch (b->btype()) {
+      case 0 : 
+        ret++;
+        for (int i = 0; i <= b->size(); i++) {
+          ret += root_size(((InternalBucket<T, CMP>*) b)->child(i));
+        }
+        break;
+      default: break;
+    }
+    return ret;
+  }
+
+  int num_of_buckets(Bucket<T, CMP> *b = nullptr) {
+    if (!b) b = root;
+    int ret = 0;
+    switch (b->btype()) {
+      case 0 : 
+        ret++;
+        for (int i = 0; i <= b->size(); i++) {
+          ret += num_of_buckets(((InternalBucket<T, CMP>*) b)->child(i));
+        }
+        break;
+      case 1 : 
+        while (b) {
+          ret++;
+          b = ((large_leaf_t*) b)->next();
+        }
+        break;
+      case 2 :
+        ret++;
+        break;
+      default: assert(0); break;
+    }
+    return ret;
+  }
+
+  int capacity(Bucket<T, CMP> *b = nullptr) {
+    if (!b) b = root;
+    int ret = 0;
+    switch (b->btype()) {
+      case 0 : 
+        ret += INTERNAL_BSIZE;
+        for (int i = 0; i <= b->size(); i++) {
+          ret += num_of_buckets(((InternalBucket<T, CMP>*) b)->child(i));
+        }
+        break;
+      case 1 : 
+        while (b) {
+          ret += LARGE_SIZE;
+          b = ((large_leaf_t*) b)->next();
+        }
+        break;
+      case 2 :
+        ret += SMALL_SIZE;
+        break;
+      default: assert(0); break;
+    }
+    return ret;
+  }
+
+  int slack(Bucket<T, CMP> *b = nullptr) {
+    if (!b) b = root;
+    int ret = 0;
+    switch (b->btype()) {
+      case 0 : 
+        ret += ((InternalBucket<T, CMP>*) b)->slack();
+        for (int i = 0; i <= b->size(); i++) {
+          ret += size(((InternalBucket<T, CMP>*) b)->child(i));
+        }
+        break;
+      case 1 : 
+        while (b) {
+          ret += ((large_leaf_t*) b)->slack();
+          b = ((large_leaf_t*) b)->next();
+        }
+        break;
+      case 2 :
+        ret = ((small_leaf_t*) b)->slack();
+        break;
+      default: assert(0); break;
+    }
+    return ret;
+  }
+
   void insert(T const &value) {
     // fprintf(stderr, "ins %d\n", value);
     assert(root);
@@ -926,13 +1025,10 @@ public:
         case 1 : return ((large_leaf_t*) b)->insert(value);
         case 2 :
           if (((small_leaf_t*) b)->is_full()) {
+            pair<T, Bucket<T, CMP>*> nb = ((small_leaf_t*) b)->split();
+            ((small_leaf_t*) (cmp(value, nb.first) ? b : nb.second))->insert(value);
+            insert_internal(b, nb);
             // fprintf(stderr, "x");
-            large_leaf_t *nb = new large_leaf_t(b->parent());
-            nb->copy_from(((small_leaf_t*) b)->data_pointer(0), b->size());
-            assert(par && par->child(pos) == b);
-            par->set_child(pos, nb);
-            nb->insert(value);
-            delete b;
             return;
           }
           return ((small_leaf_t*) b)->insert(value);
@@ -1027,6 +1123,7 @@ public:
 
     if (p.first->btype() == 2) {
       // fprintf(stderr, "ERASE1 %d\n", value);
+      // if (p.first->size() < 50) fprintf(stderr, "%d ", p.first->size());
       return ((small_leaf_t*) p.first)->erase(value, cmp, rng);
     }
 
@@ -1208,7 +1305,8 @@ public:
     return make_pair(p, right_chain);
   }
 
-  void insert_internal(large_leaf_t *leafb, pair<T, Bucket<T, CMP>*> right_chain) {
+  void insert_internal(Bucket<T, CMP> *leafb, pair<T, Bucket<T, CMP>*> right_chain) {
+    assert(leafb->btype());
     InternalBucket<T, CMP> *parent = (InternalBucket<T, CMP>*) leafb->parent();
     // fprintf(stderr, "parent = %p, right_chain = %p\n", parent, right_chain.second);
     while (parent && right_chain.second) {

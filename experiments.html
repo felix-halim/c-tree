@@ -355,11 +355,12 @@ but worse in the long run because of the high cost in updating large Bucket with
     'combt512':       { x: 95, y: 60 },
     'ctree_32_64':    { x: 95, y: 80 },
     'combtr':    { x: 95, y: 20 },
+    'combtr2':    { x: 95, y: 20 },
   },
   data: group(filter([
     { attr: 'update_workload',   values: ['LFHV'] },
     { attr: 'query_workload',    values: ['Random'] },
-    { attr: 'algorithm',         values: ['ctree_32_64', 'combt512', 'comb800', 'combtr'] },
+    { attr: 'algorithm',         values: ['ctree_32_64', 'combt512x', 'comb800', 'combtrx', 'combtr2'] },
   ]), 'algorithm'),
 }</div>
 

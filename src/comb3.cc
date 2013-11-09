@@ -52,11 +52,12 @@ int count(int a, int b) {
 void results(Statistics &s) {
   // assert(c.check());
   s.note = "Lazy";
-  s.n_leaves = 0;//c.num_of_buckets();
-  s.n_capacity = 0;//c.num_of_buckets() * c.bucket_size();
+  s.n_leaves = c.num_of_buckets();
+  s.n_capacity = c.capacity();
   s.n_internals = 1;
   s.max_depth = 2;
-  s.in_size = 0;//c.root_size();
+  s.slack = c.slack();
+  s.in_size = c.root_size();
   s.ln_size = 0;//c.bucket_size();
   // c.alloc_sizes(s.ia_free, s.ia_size, s.la_free, s.la_size);
 }
