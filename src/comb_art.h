@@ -581,7 +581,7 @@ public:
     uint8_t key[8];
     assert(b->data(0) >= 0);
     loadKey(b->data(0), key);
-    fprintf(stderr, "add root %d\n", b->data(0));
+    // fprintf(stderr, "add root %d\n", b->data(0));
     ::insert(&tree, key, 0, (uintptr_t) b, 8);
   }
 
@@ -589,7 +589,7 @@ public:
     uint8_t key[8];
     assert(value >= 0);
     assert(value < (1ULL << 40));
-    fprintf(stderr, "insert root value %llu\n", (unsigned long long) value);
+    // fprintf(stderr, "insert root value %llu\n", (unsigned long long) value);
     loadKey(value, key);
     ::insert(&tree, key, 0, (value << 1) | 1, 8);
   }
@@ -628,7 +628,7 @@ public:
   }
 
   void insert(int const &value) {
-    fprintf(stderr, "ins %d\n", value);
+    // fprintf(stderr, "ins %d\n", value);
     Node *b = find_bucket(value);
     uintptr_t v = getLeafValue(b);
     if (isPointer(v)) {
