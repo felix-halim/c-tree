@@ -177,13 +177,9 @@ class SmallBucket : public Bucket<T, CMP> {
   SmallBucket* tail(){ return tail_b; }
   void set_next(SmallBucket *b){ next_b = b; }
   void set_tail(SmallBucket *b){ tail_b = b; }
-
   int size() { return this->N; }
-
   int slack() { return SMALL_SIZE - this->N; }
-
   bool is_full() { return this->N == SMALL_SIZE; }
-
   T& data(int i) { assert(i >= 0 && i < this->N); return D[i]; }
   T* data() { return D; }
 
@@ -209,10 +205,10 @@ class SmallBucket : public Bucket<T, CMP> {
     D[0] = v;
   }
 
-  void insert(T const &v) {
+  void insert(T const &v, CMP &cmp) {
     if (this->N < SMALL_SIZE) {
+      if (sorted) return insert_sorted(v, cmp);
       D[this->N++] = v;
-      sorted = false;
       return;
     }
     assert(!tail_b || !tail_b->next());
@@ -275,9 +271,14 @@ class SmallBucket : public Bucket<T, CMP> {
   }
 
   T remove_largest(CMP &cmp) {
-    sort(cmp);
     assert(this->N);
-    return D[--this->N];
+    if (sorted) return D[--this->N];
+    int pos = 0;
+    for (int i = 1; i < this->N; i++) {
+      if (cmp(D[pos], D[i])) pos = i;
+    }
+    swap(D[pos], D[--this->N]);
+    return D[this->N];
   }
 
   // partition this bucket based on value v, destroying all cracker indices
@@ -294,7 +295,8 @@ class SmallBucket : public Bucket<T, CMP> {
 
   bool erase(T const &value, CMP &cmp, Random &rng) {
     for (int i = 0; i < this->N; i++) {
-      if (eq(D[i], value, cmp)) {
+      if (D[i] == value) {
+      // if (eq(D[i], value, cmp)) {
         this->N--;
         if (sorted) {
           for (int j = i; j < this->N; j++) {
@@ -782,7 +784,8 @@ public:
   }
 
   int index_of(T const &v, CMP &cmp) const {
-    for (int i=0; i < this->N; i++) if (eq(D[i],v,cmp)) return i;
+    // for (int i=0; i < this->N; i++) if (eq(D[i],v,cmp)) return i;
+    for (int i=0; i < this->N; i++) if (D[i] == v) return i;
     return -1;
   }
 
@@ -812,7 +815,8 @@ public:
         piece_set_sorted(i,true);
       } else {
         for (int at=L; at<R; at++)
-          if (eq(D[at],v,cmp)) return at;
+          // if (eq(D[at],v,cmp)) return at;
+          if (D[at] == v) return at;
         return R;
       }
     }
@@ -847,7 +851,8 @@ public:
   bool erase(T const &v, CMP &cmp, Random &rng) {
     assert(!next_b);
     int i, L, R, at = crack(v, i, L, R, false, cmp, rng);
-    if (at >= R || !eq(D[at],v,cmp)) return false;  // the element to be erased is not found!
+    // if (at >= R || !eq(D[at],v,cmp)) return false;  // the element to be erased is not found!
+    if (at >= R || D[at] != v) return false;  // the element to be erased is not found!
 
     // decrack this cracker piece (it becomes too small) or
     // if the deleted element index is a cracker index
@@ -1074,14 +1079,14 @@ public:
     if (b->btype() == 1) {
       ((large_leaf_t*) b)->insert(value);
     } else {
-      ((small_leaf_t*) b)->insert(value);
-    }
+      ((small_leaf_t*) b)->insert(value, cmp);
     // if (((small_leaf_t*) b)->is_full()) {
     //   ((small_leaf_t*) b)->insert(value, cmp);
     //   pair<T, Bucket<T, CMP>*> nb = ((small_leaf_t*) b)->split(cmp);
     //   ((small_leaf_t*) (cmp(value, nb.first) ? b : nb.second))->insert(value, cmp);
     //   return insert_internal(b, nb);
     // }
+    }
   }
 
   // Returns <bucket, pos> if found in internal node, otherwise returns <bucket, splitted> for leaf node.
@@ -1091,7 +1096,7 @@ public:
     while (true) {
       if (!b->btype()) {
         int pos = ((InternalBucket<T, CMP>*) b)->lower_pos(value, cmp);
-        if (include_internal && pos < b->size() && eq(((InternalBucket<T, CMP>*) b)->data(pos), value, cmp)) {
+        if (include_internal && pos < b->size() && ((InternalBucket<T, CMP>*) b)->data(pos) == value) {
           return make_pair(b, pos); // Found in the internal bucket.
         }
         b = ((InternalBucket<T, CMP>*) b)->child(pos);    // Search the child.
@@ -1181,7 +1186,6 @@ public:
       }
     } else {
       // Bucket b is empty, search ancestors.
-      fprintf(stderr, "E");
       while (true) {
         assert(b != p.first);
         InternalBucket<T, CMP> *parent = (InternalBucket<T, CMP>*) b->parent();
