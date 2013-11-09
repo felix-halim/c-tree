@@ -9,6 +9,7 @@
 Comb c;
 
 void init(int *arr, int N) {
+  // art_debug = 1;
   c.load(arr, N);
   // for (int i = 0; i < N; i++) {
   //   insert(arr[i]);
@@ -33,7 +34,7 @@ void erase(int value) {
 
 int lower_bound(int value) {
   int ret = c.lower_bound(value);
-  fprintf(stdout, "%d (%d)\n", ret, value);
+  // fprintf(stdout, "%d (%d)\n", ret, value);
   return ret;
 }
 

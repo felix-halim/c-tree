@@ -191,6 +191,7 @@ public:
   CrackBucket* next() const { return next_b; }
   CrackBucket* tail() const { return tail_b; }
   int& data(int i) { assert(i >= 0 && i < this->N); return D[i]; }
+  void set_data(int i, int v) { assert(i >= 0 && i < this->N); D[i] = v; }
   int* data() { return D; }
   bool is_full() const { return this->N == BUCKET_SIZE; }
 
@@ -407,17 +408,18 @@ public:
   }
 };
 
-inline uintptr_t getLeafValue(Node* node) {
-  // The the value stored in the pseudo-leaf
-  return reinterpret_cast<uintptr_t>(node) >> 1;
-}
-
 inline bool isPointer(uintptr_t v) {
   return !(v & 1);
 }
 
 inline uintptr_t getData(uintptr_t v) {
   return v >> 1;
+}
+
+inline uintptr_t getLeafValue(Node* node) {
+  // The the value stored in the pseudo-leaf
+  uintptr_t v = getData((uintptr_t) node);
+  return isPointer(v) ? ((CrackBucket*) v)->data(0) : getData(v);
 }
 
 class Comb {
@@ -454,8 +456,10 @@ class Comb {
 
   template <typename B>
   int get_random_pivot(B *b, Random &rng) {  // pick the pivot near the median
+    assert(b->next());
     int R[11]; // Randomly pick 11 elements from b.
     for (int i = 0; i < 11; i++) {
+      // fprintf(stderr, "%p sz = %d\n", b, b->size());
       if (b->size()) {
         R[i] = b->remove_random_data(rng);
       } else {
@@ -566,13 +570,12 @@ class Comb {
     }
 
     assert(right_chain);
-    B *rb = new B();
-    rb->append(p);
-    rb->set_next(right_chain);
-    rb->set_tail(right_chain->tail());
+    int first = right_chain->data(0);
+    right_chain->set_data(0, p);
+    right_chain->insert(first);
 
 //    assert(check());
-    return rb;
+    return right_chain;
   }
 
 public:
@@ -629,8 +632,7 @@ public:
 
   void insert(int const &value) {
     // fprintf(stderr, "ins %d\n", value);
-    Node *b = find_bucket(value);
-    uintptr_t v = getLeafValue(b);
+    uintptr_t v = getData((uintptr_t) find_bucket(value));
     if (isPointer(v)) {
       ((CrackBucket*) v)->insert(value);
     } else {
@@ -648,7 +650,7 @@ public:
   }
 
   void artify(int value) {
-    uintptr_t v = getLeafValue(find_bucket(value));
+    uintptr_t v = getData((uintptr_t) find_bucket(value));
     if (isPointer(v)) {
       CrackBucket *lb = (CrackBucket*) v;
       while (lb->next()) {
@@ -674,8 +676,9 @@ public:
   /* TODO: lazy lower_bound */
   int lower_bound(int const &value) {
     static int nth = 0; nth++;
+    // art_debug = 1;
     // if (nth % 1000 == 0) assert(check());
-    fprintf(stderr, "lower_bound %d\n", value);
+    // fprintf(stderr, "lower_bound %d\n", value);
 
     artify(value);
 
@@ -684,12 +687,7 @@ public:
     loadKey(value64, key);
 
     Node* leaf = ::lower_bound(tree,key,8,0,8);
-    if (isLeaf(leaf)) {
-      uintptr_t v = getLeafValue(leaf);
-      assert(!isPointer(v));
-      return getData(v);
-    }
-    return 0;
+    return isLeaf(leaf) ? getLeafValue(leaf) : 0;
   }
 };
 

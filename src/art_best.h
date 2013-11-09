@@ -659,7 +659,14 @@ static Node* lower_bound(Node *&node, uint8_t key[], unsigned keyLength, unsigne
 
 static Node* lower_bound_prev(Node* node, uint8_t key[], unsigned keyLength, unsigned depth, unsigned maxKeyLength, bool skippedPrefix=false, bool is_less = false) {
    // ART_DEBUG("lower_prev1 %u, leaf = %d\n", depth, isLeaf(node));
-   if (!node) return NULL;
+   assert(node);
+
+   #ifndef EAGER
+   if (!isLeaf(node)) {
+      // fprintf(stderr, "nodep = %p, cnt = %d, psize = %d, depth = %d\n", node, node->count, node->psize, depth);
+      flush_bulk_insert(node, depth, maxKeyLength, node->parr(), abs(node->psize()), node->psize() >= 0);
+   }
+   #endif
 
    if (isLeaf(node)) {
       if (!skippedPrefix && depth == keyLength) // No check required
@@ -668,11 +675,13 @@ static Node* lower_bound_prev(Node* node, uint8_t key[], unsigned keyLength, uns
       if (depth && depth != keyLength && !is_less) {
          uint8_t leafKey[maxKeyLength];
          loadKey(getLeafValue(node),leafKey);
-         for (unsigned j = 0; j < keyLength; j++) {
-            ART_DEBUG("%u: %u %u\n", j, leafKey[j], key[j]);
+         if (art_debug) {
+            for (unsigned j = 0; j < keyLength; j++) {
+               ART_DEBUG("%u: %u %u\n", j, leafKey[j], key[j]);
+            }
          }
-         ART_DEBUG("THE VALUE = %lu\n", getLeafValue(node) >> 30);
          for (unsigned i=(skippedPrefix?0:depth);i<keyLength;i++) {
+            ART_DEBUG("i => %u, %u %u\n", i, leafKey[i], key[i]);
             if (leafKey[i] > key[i]) {
                ART_DEBUG("GAGAL %u %u\n", leafKey[i], key[i]);
                return NULL;
@@ -711,11 +720,11 @@ static Node* lower_bound_prev(Node* node, uint8_t key[], unsigned keyLength, uns
             ART_DEBUG("Node4P %d\n", node->count);
             Node4* node = static_cast<Node4*>(n);
             for (int i = node->count - 1; i >= 0; i--) {
-               if (isLeaf(node->child[i])) {
-                  ART_DEBUG("child %d, value = %lu\n", i, getLeafValue(node->child[i]) >> 30);
-               }
+               Node *&c = node->child[i];
+               ART_DEBUG("i = %d, key4 = %d <= %d, %lu, c = %p\n", i, node->key[i], keyByte, isLeaf(c) ? getLeafValue(c) : 0, c);
                if (node->key[i] <= keyByte || is_less) {
-                  Node *ret = lower_bound_prev(node->child[i], key, keyLength, depth, maxKeyLength, skippedPrefix, is_less || node->key[i] < keyByte);
+                  // ART_DEBUG("got it, %d\n", isLeaf(node->child[i]));
+                  Node *ret = lower_bound_prev(c, key, keyLength, depth, maxKeyLength, skippedPrefix, is_less || node->key[i] < keyByte);
                   if (ret) return ret;
                }
             }
@@ -727,17 +736,18 @@ static Node* lower_bound_prev(Node* node, uint8_t key[], unsigned keyLength, uns
             Node16* node = static_cast<Node16*>(n);
             int pos = node->count - 1;
             if (!is_less) {
-               // ART_DEBUG("Node16 is_less %d\n", node->count);
+               ART_DEBUG("Node16 is_less %d\n", node->count);
                __m128i cmp=_mm_cmplt_epi8(_mm_set1_epi8(flipSign(keyByte)),_mm_loadu_si128(reinterpret_cast<__m128i*>(node->key)));
                uint16_t bitfield=_mm_movemask_epi8(cmp)&(0xFFFF>>(16-node->count));
                pos = bitfield ? ctz(bitfield) : node->count;
-               while (pos >= node->count || flipSign(node->key[pos]) > keyByte) pos--;
-               while (pos + 1 < node->count && flipSign(node->key[pos + 1]) <= keyByte) pos++;
+               ART_DEBUG("Node16 is_less %d, pos = %d\n", node->count, pos);
+               while (pos > 0 && (pos >= node->count || flipSign(node->key[pos - 1]) >= keyByte)) pos--;
+               // while (pos + 1 < node->count && flipSign(node->key[pos + 1]) <= keyByte) pos++;
             }
-            ART_DEBUG("pos = %d\n", pos);
+            ART_DEBUG("pos = %d / %d\n", pos, node->count);
             assert(pos < node->count);
             while (pos >= 0) {
-               // ART_DEBUG("Node16 pos %d, %p, %u %u\n", pos, node->child[pos], flipSign(node->key[pos]), keyByte);
+               ART_DEBUG("Node16 pos %d, %p, %u %u\n", pos, node->child[pos], flipSign(node->key[pos]), keyByte);
                if (is_less || flipSign(node->key[pos]) <= keyByte) {
                   Node *ret = lower_bound_prev(node->child[pos], key, keyLength, depth, maxKeyLength, skippedPrefix, is_less || flipSign(node->key[pos]) < keyByte);
                   if (ret) return ret;
@@ -905,11 +915,11 @@ void bulk_insert(Node *&node, int *arr, int N) {
 
 static void insert(Node **node,uint8_t key[],unsigned depth,uintptr_t value,unsigned maxKeyLength) {
    // Insert the leaf value into the tree
-   // ART_DEBUG("Insert depth = %d, %u, node = %p\n", depth, depth < maxKeyLength ? key[depth] : 0, node);
+   ART_DEBUG("Insert depth = %d, %u, node = %p\n", depth, depth < maxKeyLength ? key[depth] : 0, node);
 
    while (true) {
       if (*node==NULL) {
-         // ART_DEBUG("null leaf %d %lu\n", depth, value);
+         ART_DEBUG("null leaf %d %lu\n", depth, value);
          *node=makeLeaf(value);
          return;
       }
@@ -924,7 +934,9 @@ static void insert(Node **node,uint8_t key[],unsigned depth,uintptr_t value,unsi
       if (isLeaf(*node)) {
          // Replace leaf with Node4 and store both leaves in it
          uint8_t existingKey[maxKeyLength];
-         loadKey(getLeafValue(*node),existingKey);
+         uintptr_t v = getLeafValue(*node);
+         loadKey(v,existingKey);
+         ART_DEBUG("split leaf %p, value = %llu\n", node, (unsigned long long) v);
          unsigned newPrefixLength=0;
          while (existingKey[depth+newPrefixLength]==key[depth+newPrefixLength])
             newPrefixLength++;
@@ -935,8 +947,8 @@ static void insert(Node **node,uint8_t key[],unsigned depth,uintptr_t value,unsi
          Node *oldNode = *node;
          *node=newNode;
 
-         insertNode4((Node4*&) *node,existingKey[depth+newPrefixLength],oldNode);
-         insertNode4((Node4*&) *node,key[depth+newPrefixLength],makeLeaf(value));
+         insertNode4((Node4*&) *node, existingKey[depth+newPrefixLength], oldNode);
+         insertNode4((Node4*&) *node, key[depth+newPrefixLength], makeLeaf(value));
          return;
       }
 
@@ -998,7 +1010,7 @@ static void insertNode4(Node4 *&node, uint8_t keyByte, Node *child) {
    // Insert leaf into inner node
    if (node->count < 4) {
       // Insert element
-      // ART_DEBUG("insert4 %d\n", node->count);
+      ART_DEBUG("insert4 cnt=%d, key=%d, %p\n", node->count, keyByte, node);
       int pos;
       for (pos=0;(pos<node->count)&&(node->key[pos]<keyByte);pos++);
       memmove(node->key+pos+1,node->key+pos,node->count-pos);
@@ -1009,7 +1021,7 @@ static void insertNode4(Node4 *&node, uint8_t keyByte, Node *child) {
       // ART_DEBUG("insert4d %d\n", node->count);
    } else {
       // Grow to Node16
-      // ART_DEBUG("insert4to16 %d\n", node->count);
+      ART_DEBUG("insert4to16 %d, %p\n", node->count, node);
       Node16* newNode=new Node16();
       newNode->count=4;
       copyPrefix(node,newNode);
@@ -1025,7 +1037,7 @@ static void insertNode4(Node4 *&node, uint8_t keyByte, Node *child) {
 static void insertNode16(Node16* &node,uint8_t keyByte,Node* child) {
    // Insert leaf into inner node
    if (node->count<16) {
-      // ART_DEBUG("insert16 %d\n", node->count);
+      ART_DEBUG("insert16 cnt=%d, key=%d, %p\n", node->count, keyByte, node);
       // Insert element
       uint8_t keyByteFlipped=flipSign(keyByte);
       __m128i cmp=_mm_cmplt_epi8(_mm_set1_epi8(keyByteFlipped),_mm_loadu_si128(reinterpret_cast<__m128i*>(node->key)));
