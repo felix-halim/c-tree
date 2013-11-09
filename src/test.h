@@ -163,11 +163,11 @@ int main(int argc, char *argv[]) {
     query_w.set_seq_jump(max(1, j));
   }
 
-  fprintf(stderr, "N = %d\n", s.N);
+  fprintf(stderr, "N = %d, ", s.N);
 
   s.insert_time = time_it([&] { init(update.get_arr(), s.N); });
 
-  fprintf(stderr, "I = %.6lf\n", s.insert_time);
+  fprintf(stderr, "I = %.6lf, ", s.insert_time);
 
   if (U == 5) {
     update.prepare_deletion(s.N);

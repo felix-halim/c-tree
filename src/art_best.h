@@ -1090,14 +1090,14 @@ static void eraseNode16(Node16* node,Node** nodeRef,Node** leafPlace);
 static void eraseNode48(Node48* node,Node** nodeRef,uint8_t keyByte);
 static void eraseNode256(Node256* node,Node** nodeRef,uint8_t keyByte);
 
-static void erase(Node* node,Node** nodeRef,uint8_t key[],unsigned keyLength,unsigned depth,unsigned maxKeyLength) {
+static bool erase(Node* node,Node** nodeRef,uint8_t key[],unsigned keyLength,unsigned depth,unsigned maxKeyLength) {
    // Delete a leaf from a tree
    while (true) {
       ART_DEBUG("ERASE %p %d\n", node, depth);
       assert(node);
       if (!node) {
          ART_DEBUG("NO NODE\n");
-         return;
+         return false;
       }
 
       #ifndef EAGER
@@ -1115,10 +1115,10 @@ static void erase(Node* node,Node** nodeRef,uint8_t key[],unsigned keyLength,uns
             ART_DEBUG("DONE DELETE %p %p\n", node, *nodeRef);
             *nodeRef=NULL;
             ART_DEBUG("DONE DELETE %p %p\n", node, *nodeRef);
-         } else {
-            ART_DEBUG("DONE LEAF NOT MATCH\n");
+            return true;
          }
-         return;
+         ART_DEBUG("DONE LEAF NOT MATCH\n");
+         return false;
       }
 
       // Handle prefix
@@ -1126,7 +1126,7 @@ static void erase(Node* node,Node** nodeRef,uint8_t key[],unsigned keyLength,uns
       if (node->prefixLength) {
          if (prefixMismatch(node,key,depth,maxKeyLength)!=node->prefixLength) {
             ART_DEBUG("PREFIX MISMATCH\n");
-            return;
+            return false;
          }
          depth+=node->prefixLength;
       }
@@ -1146,7 +1146,8 @@ static void erase(Node* node,Node** nodeRef,uint8_t key[],unsigned keyLength,uns
             case NodeType48: eraseNode48(static_cast<Node48*>(node),nodeRef,key[depth]); break;
             case NodeType256: eraseNode256(static_cast<Node256*>(node),nodeRef,key[depth]); break;
          }
-         return;
+         assert(0);
+         return false;
       }
       //Recurse
       node = *child;

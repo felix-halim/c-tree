@@ -144,9 +144,9 @@ class InternalBucket : public Bucket<T, CMP> {
 
 template <typename T, typename CMP, int SMALL_SIZE>
 class SmallBucket : public Bucket<T, CMP> {
-  T D[SMALL_SIZE];
-  SmallBucket *next_b, *tail_b;
   bool sorted;
+  SmallBucket *next_b, *tail_b;
+  T D[SMALL_SIZE];
 
  public:
   SmallBucket(Bucket<T, CMP> *p) {
