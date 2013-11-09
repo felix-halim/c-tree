@@ -958,24 +958,18 @@ public:
   void insert(T const &value) {
     // fprintf(stderr, "ins %d\n", value);
     assert(root);
-    for (Bucket<T, CMP> *b = root; ; ) {
-      switch (b->btype()) {
-        case 0 : {
-            InternalBucket<T, CMP> *par = (InternalBucket<T, CMP>*) b;
-            b = par->child(par->lower_pos(value, cmp));
-          }
-          break;
-        case 1 : return ((large_leaf_t*) b)->insert(value);
-        case 2 :
-          if (((small_leaf_t*) b)->is_full()) {
-            pair<T, Bucket<T, CMP>*> nb = ((small_leaf_t*) b)->split(cmp);
-            ((small_leaf_t*) (cmp(value, nb.first) ? b : nb.second))->insert(value, cmp);
-            return insert_internal(b, nb);
-          }
-          return ((small_leaf_t*) b)->insert(value, cmp);
-        default: assert(0); break;
-      }
+    Bucket<T, CMP> *b = root;
+    while (!b->btype()) {
+      InternalBucket<T, CMP> *par = (InternalBucket<T, CMP>*) b;
+      b = par->child(par->lower_pos(value, cmp));
     }
+    if (b->btype() == 1) return ((large_leaf_t*) b)->insert(value);
+    if (((small_leaf_t*) b)->is_full()) {
+      pair<T, Bucket<T, CMP>*> nb = ((small_leaf_t*) b)->split(cmp);
+      ((small_leaf_t*) (cmp(value, nb.first) ? b : nb.second))->insert(value, cmp);
+      return insert_internal(b, nb);
+    }
+    ((small_leaf_t*) b)->insert(value, cmp);
   }
 
   // Returns <bucket, pos> if found in internal node, otherwise returns <bucket, splitted> for leaf node.
@@ -1058,7 +1052,10 @@ public:
     pair<Bucket<T, CMP>*, int> upper = find_bucket(value, false);
 
     // It is possible that finding upper invalidated p's references.
-    if (upper.second) p = find_bucket(value, true); // Refresh.
+    if (upper.second) {
+      p = find_bucket(value, true); // Refresh.
+      // fprintf(stderr, "U");
+    }
 
     // upper.first is the leaf bucket containing the value.
     // upper.second signify whether a leaf_split happened when finding the bucket.
