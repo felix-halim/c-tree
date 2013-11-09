@@ -152,12 +152,14 @@ class SmallBucket : public Bucket<T, CMP> {
     this->type = 2;
     this->par = p;
     this->N = 0;
+    next_b = tail_b = nullptr;
   }
 
   SmallBucket(Bucket<T, CMP> *p, T *arr, int n, CMP &cmp, bool sorted) {
     this->type = 2;
     this->par = p;
     this->N = n;
+    next_b = tail_b = nullptr;
     memcpy(D, arr, sizeof(T) * n);
     if (!sorted) std::sort(D, D + n, cmp);
   }
@@ -1079,12 +1081,12 @@ public:
     pair<Bucket<T, CMP>*, int> p = find_bucket(value, true);
     if (p.first->btype() == 1) {
       bool ret = ((large_leaf_t*) p.first)->erase(value, cmp, rng);
-      split_bucket((large_leaf_t*) p.first);
+      split_bucket((large_leaf_t*) p.first); // Transition to small buckets.
       return ret;
     }
 
     if (p.first->btype() == 2) {
-      if (p.first->size() < 5) fprintf(stderr, "Z");
+      // if (p.first->size() < 5) fprintf(stderr, "Z");
       return ((small_leaf_t*) p.first)->erase(value, cmp, rng);
     }
 
