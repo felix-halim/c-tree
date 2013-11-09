@@ -23,6 +23,7 @@ void erase(int value) {
     c.erase(value);
   #else
     bool ok = c.erase(value);
+    if (!ok) fprintf(stderr, "ERASE error %d\n", value);
     assert(ok);
   #endif
 }
@@ -54,10 +55,10 @@ void results(Statistics &s) {
   s.note = "Lazy";
   s.n_leaves = c.num_of_buckets();
   s.n_capacity = c.capacity();
-  s.n_internals = 1;
+  s.n_internals = c.n_internals();
   s.max_depth = 2;
   s.slack = c.slack();
-  s.in_size = c.root_size();
-  s.ln_size = 0;//c.bucket_size();
+  s.in_size = INTERNAL_BSIZE;
+  s.ln_size = c.size();
   // c.alloc_sizes(s.ia_free, s.ia_size, s.la_free, s.la_size);
 }
