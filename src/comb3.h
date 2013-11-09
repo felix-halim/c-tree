@@ -82,7 +82,7 @@ class InternalBucket : public Bucket<T, CMP> {
     return 0;
   }
   T& data(int i) { assert(i >= 0 && i < this->N); return D[i]; }
-  const T* data_pointer(int i) const { assert(i >= 0 && i < this->N); return &D[i]; }
+  T* data() const { return D; }
   T promote_last() { return D[--this->N]; }
   bool is_full() const { return this->N == INTERNAL_BSIZE; }
 
@@ -145,15 +145,31 @@ class InternalBucket : public Bucket<T, CMP> {
 template <typename T, typename CMP, int SMALL_SIZE>
 class SmallBucket : public Bucket<T, CMP> {
   T D[SMALL_SIZE];
+  SmallBucket *next_b, *tail_b;
 
  public:
+  SmallBucket(Bucket<T, CMP> *p) {
+    this->type = 2;
+    this->par = p;
+    this->N = 0;
+  }
+
   SmallBucket(Bucket<T, CMP> *p, T *arr, int n, CMP &cmp, bool sorted) {
     this->type = 2;
     this->par = p;
     this->N = n;
     memcpy(D, arr, sizeof(T) * n);
-    if (!sorted) sort(D, D + n, cmp);
+    if (!sorted) std::sort(D, D + n, cmp);
   }
+
+  void sort(CMP &cmp) {
+    if (!next_b) std::sort(D, D + this->N, cmp);
+  }
+
+  SmallBucket* next(){ return next_b; }
+  SmallBucket* tail(){ return tail_b; }
+  void set_next(SmallBucket *b){ next_b = b; }
+  void set_tail(SmallBucket *b){ tail_b = b; }
 
   int size() { return this->N; }
 
@@ -162,8 +178,7 @@ class SmallBucket : public Bucket<T, CMP> {
   bool is_full() { return this->N == SMALL_SIZE; }
 
   T& data(int i) { assert(i >= 0 && i < this->N); return D[i]; }
-
-  T* data_pointer(int i) { assert(i >= 0 && i < this->N); return &D[i]; }
+  T* data() { return D; }
 
   pair<T, Bucket<T, CMP>*> split(CMP &cmp) {
     int H = this->N / 2;
@@ -185,6 +200,45 @@ class SmallBucket : public Bucket<T, CMP> {
     D[0] = v;
   }
 
+  T remove_random_data(Random &rng) {
+    int j = rng.nextInt(this->N);
+    T ret = D[j];
+    D[j] = D[--this->N];
+    return ret;
+  }
+
+  void swap_random_data_with(T &R, Random &rng) {
+    assert(this->N > 0);
+    swap(R, D[rng.nextInt(this->N)]);
+  }
+
+  void append(T value) {
+    assert(!is_full());
+    D[this->N++] = value;
+  }
+
+  // move this bucket data in range [fromIdx, end) and append
+  // it to the specified LargeBucket "to", destroying all cracker indices
+  void moveToFromIdx(SmallBucket *to, int fromIdx) {
+    assert(this->N > fromIdx);            // make sure there is something to move
+    assert(to->N + this->N - fromIdx <= SMALL_SIZE);    // make sure the receiver has enough space
+    memmove(to->D + to->N, D+fromIdx, (this->N - fromIdx) * sizeof(T));
+    to->N += this->N - fromIdx;
+    this->N = fromIdx;
+  }
+
+  void add_chain(SmallBucket *next) {
+    if (next_b) {
+      assert(tail_b);
+      tail_b->next_b = next;
+    } else {
+      next_b = next;
+    }
+    tail_b = next;
+    next->set_next(nullptr);
+    next->set_tail(nullptr);
+  }
+
   int lower_pos(T const &value, CMP &cmp) {
     for (int i = 0; i < this->N; i++) {
       if (!cmp(D[i], value)) return i;
@@ -195,6 +249,12 @@ class SmallBucket : public Bucket<T, CMP> {
   T remove_largest(CMP &cmp) {
     assert(this->N);
     return D[--this->N];
+  }
+
+  // partition this bucket based on value v, destroying all cracker indices
+  int partition(T const &v, CMP &cmp){
+    assert(this->N > 0 && this->N <= SMALL_SIZE);
+    return std::partition(D, D + this->N, [&](T x){ return cmp(x, v); }) - D;
   }
 
   bool erase(T const &value, CMP &cmp, Random &rng) {
@@ -382,7 +442,7 @@ public:
   Bucket<T, CMP>* next() const { return next_b; }
   Bucket<T, CMP>* tail() const { return tail_b; }
   T& data(int i) { assert(i >= 0 && i < this->N); return D[i]; }
-  const T* data_pointer(int i) const { assert(i >= 0 && i < this->N); return &D[i]; }
+  T* data() { return D; }
   bool is_full() const { return this->N == LARGE_SIZE; }
 
   void copy_from(T* arr, int n) {
@@ -608,33 +668,11 @@ public:
     return this->N = length;
   }
 
-  void mark_hi(T const &P, CMP &cmp, int *hi, int &nhi){
-    for (int i=0; i < this->N; i++){
-      hi[nhi] = i;
-      nhi += !cmp(D[i], P);
-    }
-  }
-
-  void mark_lo(T const &P, CMP &cmp, int *lo, int &nlo){
-    for (int i=0; i < this->N; i++){
-      lo[nlo] = i;
-      nlo += cmp(D[i], P);
-    }
-  }
-
   // partition this bucket based on value v, destroying all cracker indices
-  int partition(T const &v, CMP &cmp){
+  int partition(T const &v, CMP &cmp) {
     clear_indexes();
     assert(this->N > 0 && this->N <= LARGE_SIZE);
-    return partition(D, D + this->N, v, cmp) - D;
-  }
-
-  void fusion(LargeBucket *that, int *hi, int *lo, int &nhi, int &nlo){
-    int m = std::min(nhi, nlo); assert(m > 0);
-    int *hip = hi + nhi - 1, *lop = lo + nlo - 1;
-    T *Lp = D, *Rp = that->D;
-    nhi -= m; nlo -= m;
-    while (m--) std::swap(Lp[*(hip--)], Rp[*(lop--)]);
+    return std::partition(D, D + this->N, [&](T x){ return cmp(x, v); }) - D;
   }
 
   bool debug(const char *msg, int i, int j, bool verbose) const {
@@ -853,7 +891,7 @@ public:
     const pointer operator->() {
       assert(bucket);
       assert(idx < bucket->size());
-      return bucket->data_pointer(idx);
+      return bucket->data(idx);
     }
 
     bool operator==(const self_type &that) {
@@ -963,7 +1001,9 @@ public:
       InternalBucket<T, CMP> *par = (InternalBucket<T, CMP>*) b;
       b = par->child(par->lower_pos(value, cmp));
     }
-    if (b->btype() == 1) return ((large_leaf_t*) b)->insert(value);
+    if (b->btype() == 1) {
+      return ((large_leaf_t*) b)->insert(value);
+    }
     if (((small_leaf_t*) b)->is_full()) {
       pair<T, Bucket<T, CMP>*> nb = ((small_leaf_t*) b)->split(cmp);
       ((small_leaf_t*) (cmp(value, nb.first) ? b : nb.second))->insert(value, cmp);
@@ -977,28 +1017,27 @@ public:
     Bucket<T, CMP> *b = root;
     int splitted = 0;
     while (true) {
-      switch (b->btype()) {
-        case 0 : {
-            int pos = ((InternalBucket<T, CMP>*) b)->lower_pos(value, cmp);
-            if (include_internal && pos < b->size() && eq(((InternalBucket<T, CMP>*) b)->data(pos), value, cmp)) {
-              return make_pair(b, pos); // Found in the internal bucket.
-            }
-            b = ((InternalBucket<T, CMP>*) b)->child(pos);    // Search the child.
-          }
-          break;
-        case 1 :
-          if (((large_leaf_t*) b)->next()) {
-            pair<T, large_leaf_t*> right_chain = stochastic_split_chain((large_leaf_t*) b, cmp, rng);
-            insert_internal((large_leaf_t*) b, right_chain);
-          } else {
-            return make_pair(b, splitted);
-          }
-          splitted = 1;
-          b = b->parent();
-          assert(b);
-          break;
-        case 2 : return make_pair(b, splitted);
-        default: assert(0); break;
+      if (!b->btype()) {
+        int pos = ((InternalBucket<T, CMP>*) b)->lower_pos(value, cmp);
+        if (include_internal && pos < b->size() && eq(((InternalBucket<T, CMP>*) b)->data(pos), value, cmp)) {
+          return make_pair(b, pos); // Found in the internal bucket.
+        }
+        b = ((InternalBucket<T, CMP>*) b)->child(pos);    // Search the child.
+      } else {
+        if (b->btype() == 1) {
+          if (!((large_leaf_t*) b)->next()) return make_pair(b, splitted);
+          insert_internal(b, stochastic_split_chain((large_leaf_t*) b, cmp, rng));
+        } else {
+          assert(b->btype() == 2);
+          if (!((small_leaf_t*) b)->next()) return make_pair(b, splitted);
+          auto right_chain = stochastic_split_chain((small_leaf_t*) b, cmp, rng);
+          insert_internal(b, right_chain);
+          ((small_leaf_t*) b)->sort(cmp);
+          ((small_leaf_t*) right_chain.second)->sort(cmp);
+        }
+        splitted = 1;
+        b = b->parent();
+        assert(b);
       }
     }
   }
@@ -1045,6 +1084,7 @@ public:
     }
 
     if (p.first->btype() == 2) {
+      if (p.first->size() < 5) fprintf(stderr, "Z");
       return ((small_leaf_t*) p.first)->erase(value, cmp, rng);
     }
 
@@ -1072,6 +1112,7 @@ public:
       }
     } else {
       // Bucket b is empty, search ancestors.
+      fprintf(stderr, "E");
       while (true) {
         assert(b != p.first);
         InternalBucket<T, CMP> *parent = (InternalBucket<T, CMP>*) b->parent();
@@ -1099,18 +1140,19 @@ public:
   }
 
   // add a LargeBucket (bidx) to the root chain 'ridx'
-  bool add_to_chain(large_leaf_t *&chain, large_leaf_t *b) {
+  template <typename B>
+  bool add_to_chain(B *&chain, B *b) {
     if (!chain) { // the root chain is empty.
       chain = b;  // b is the head of the chain.
       chain->set_next(nullptr);
       chain->set_tail(nullptr);
     } else {
-      assert(!chain->tail() || !((large_leaf_t*) chain->tail())->next());
+      assert(!chain->tail() || !((B*) chain->tail())->next());
       if (chain->slack()) {
         b->moveToFromIdx(chain, b->size() - std::min(b->size(), chain->slack()));
       } else if (chain->tail()) {
-        if (((large_leaf_t*) chain->tail())->slack()) {
-          b->moveToFromIdx((large_leaf_t*) chain->tail(), b->size() - std::min(b->size(), ((large_leaf_t*) chain->tail())->slack()));
+        if (((B*) chain->tail())->slack()) {
+          b->moveToFromIdx((B*) chain->tail(), b->size() - std::min(b->size(), ((B*) chain->tail())->slack()));
         }
       }
       if (b->size()) {
@@ -1125,19 +1167,20 @@ public:
     return false;
   }
 
-  T get_random_pivot(large_leaf_t *B, CMP &cmp, Random &rng) {  // pick the pivot near the median
-    // large_leaf_t *C = (large_leaf_t*) B->tail();
+  template <typename B>
+  T get_random_pivot(B *b, CMP &cmp, Random &rng) {  // pick the pivot near the median
+    // B *C = (B*) b->tail();
 
-    assert(B->size() > 11);
+    assert(b->size() > 11);
 
-    // fprintf(stderr, "Picking random 11 elements, sizes = %d + %d\n", B->size(), T->size());
-    // while (B->size() < 11) B->append(C->leaf_promote_last());
+    // fprintf(stderr, "Picking random 11 elements, sizes = %d + %d\n", b->size(), T->size());
+    // while (b->size() < 11) b->append(C->leaf_promote_last());
 
-    T R[11]; // Randomly pick 11 elements from B.
-    for (int i = 0; i < 11; i++) R[i] = B->remove_random_data(rng);
+    T R[11]; // Randomly pick 11 elements from b.
+    for (int i = 0; i < 11; i++) R[i] = b->remove_random_data(rng);
 
     // Replace R with the next buckets in the chain using reservoir sampling.
-    large_leaf_t *Nb = (large_leaf_t*) B->next();
+    B *Nb = (B*) b->next();
     for (int i = 1; Nb; i++) {
       if (!Nb->size()) {
         i--;
@@ -1145,50 +1188,72 @@ public:
         int j = rng.nextInt(i);
         if (j < 11) Nb->swap_random_data_with(R[j], rng);
       }
-      Nb = (large_leaf_t*) Nb->next();
+      Nb = (B*) Nb->next();
     }
 
     std::nth_element(R, R + 5, R + 11);
     for (int i = 0; i < 11; i++) {
       // fprintf(stderr, "R[%d] = %d\n", i, R[i]);
-      if (i != 5) B->append(R[i]);
+      if (i != 5) b->append(R[i]);
     }
     // fprintf(stderr, "pivot = %d\n", pivot);
     return R[5];
   }
 
+  void mark_hi(T* D, int N, T const &P, CMP &cmp, int *hi, int &nhi){
+    for (int i=0; i < N; i++){
+      hi[nhi] = i;
+      nhi += !cmp(D[i], P);
+    }
+  }
+
+  void mark_lo(T* D, int N, T const &P, CMP &cmp, int *lo, int &nlo){
+    for (int i=0; i < N; i++){
+      lo[nlo] = i;
+      nlo += cmp(D[i], P);
+    }
+  }
+
+  void fusion(T *Lp, T *Rp, int *hi, int *lo, int &nhi, int &nlo){
+    int m = std::min(nhi, nlo); assert(m > 0);
+    int *hip = hi + nhi - 1, *lop = lo + nlo - 1;
+    nhi -= m; nlo -= m;
+    while (m--) std::swap(Lp[*(hip--)], Rp[*(lop--)]);
+  }
+
   // fusion
-  pair<T, large_leaf_t*> stochastic_split_chain(large_leaf_t *b, CMP &cmp, Random &rng) {
+  template <typename B>
+  pair<T, B*> stochastic_split_chain(B *b, CMP &cmp, Random &rng) {
     const T &p = get_random_pivot(b, cmp, rng);
 
     // fprintf(stderr, "stochastic_split_chain %p\n", b);
-    large_leaf_t *left_chain = nullptr;
-    large_leaf_t *right_chain = nullptr;
-    large_leaf_t *Lb = nullptr, *Rb = nullptr;
+    B *left_chain = nullptr;
+    B *right_chain = nullptr;
+    B *Lb = nullptr, *Rb = nullptr;
     int hi[LARGE_SIZE], lo[LARGE_SIZE];
     int nhi = 0, nlo = 0;
 
     while (true) {
       if (nhi && nlo) {
         assert(Lb && Rb);
-        Lb->fusion(Rb, hi, lo, nhi, nlo);
+        fusion(Lb->data(), Rb->data(), hi, lo, nhi, nlo);
         if (!nhi) { add_to_chain(left_chain, Lb); Lb = nullptr; }
         if (!nlo) { add_to_chain(right_chain, Rb); Rb = nullptr; }
       } else if (!Lb) {
         if (!b) break;
         Lb = b;
-        b = (large_leaf_t*) b->next();
+        b = (B*) b->next();
       } else if (!nhi) {
         assert(Lb);
-        Lb->mark_hi(p, cmp, hi, nhi);
+        mark_hi(Lb->data(), Lb->size(), p, cmp, hi, nhi);
         if (!nhi) { add_to_chain(left_chain, Lb); Lb = nullptr; }
       } else if (!Rb) {
         if (!b) break;
         Rb = b;
-        b = (large_leaf_t*) b->next();
+        b = (B*) b->next();
       } else if (!nlo) {
         assert(Rb);
-        Rb->mark_lo(p, cmp, lo, nlo);
+        mark_lo(Rb->data(), Rb->size(), p, cmp, lo, nlo);
         if (!nlo) { add_to_chain(right_chain, Rb); Rb = nullptr; }
       } else {
         assert(0);
@@ -1204,7 +1269,7 @@ public:
         } else if (i == Lb->size()) {
           add_to_chain(left_chain, Lb);
         } else {
-          Rb = new large_leaf_t(Lb->parent());
+          Rb = new B(Lb->parent());
           Lb->moveToFromIdx(Rb, i);
           add_to_chain(left_chain, Lb);
           add_to_chain(right_chain, Rb);
