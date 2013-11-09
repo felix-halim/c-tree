@@ -150,6 +150,7 @@ int main(int argc, char *argv[]) {
     query_w.set_max(update.max_element() + 1);
     if (U == 3) update.prepare_queue(s.N);
     else if (U == 7) s.N = 100000;
+    else if (U == 8) s.N = 10;
   } else {
     update.load(100000);
     s.N = update.size();
@@ -172,6 +173,8 @@ int main(int argc, char *argv[]) {
     update.prepare_deletion(s.N);
     MAXQ = min(s.N, MAXQ);
   }
+
+  fprintf(stderr, "Q = %d\n", MAXQ);
 
   int qm = (U == 6 || U == 7) ? 2 : 10; // Query multiplier
   for (s.Q = 1; ; s.Q *= qm) {
@@ -276,6 +279,20 @@ int main(int argc, char *argv[]) {
                       if (add > 0) {
                         int *arr = update.get_arr();
                         REP(j, min(add, 100000)) insert(arr[s.N++]);
+                      } else {
+                        MAXQ = -1;
+                      }
+                    }
+                  });
+                  break;
+
+          // APPEND.
+          case 8: if (i % 10 == 0) update_time += time_it([&] {
+                    if (MAXQ != -1) {
+                      int add = update.size() / 2 - s.N;
+                      if (add > 0) {
+                        int *arr = update.get_arr();
+                        REP(j, min(add, 10)) insert(arr[s.N++]);
                       } else {
                         MAXQ = -1;
                       }

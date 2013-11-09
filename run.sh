@@ -28,6 +28,10 @@ append)       ./run.sh compile $2 || exit;
               bin/$2 $N $Q $3 1 7;;
               # bin/$2 data/skyserver.data $Q 0.001 $3 6;;
 
+append8)      ./run.sh compile $2 || exit;
+              bin/$2 $N $Q $3 1 8;;
+              # bin/$2 data/skyserver.data $Q 0.001 $3 6;;
+
 skew)         make -s -C src "../bin/$2" || exit;
               bin/$2 `hostname` $N 2 $Q $3;;
 

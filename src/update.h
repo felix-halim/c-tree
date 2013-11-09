@@ -97,4 +97,5 @@ static const char *update_workload[] = {
   "DELETE", // 5. Delete 1000 tuples every 1000 queries.
   "APPENDSKY", // 6. Insert 100K tuples every query. 
   "APPEND", // 7. Insert 100K tuples every query. 
+  "APPEND", // 8. Insert 10 tuples every 10 query. 
 };
