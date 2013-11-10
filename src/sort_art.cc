@@ -16,12 +16,12 @@ Node* tree = NULL;
 void init(int *arr, int N) {
   int *t = new int[N];
   memcpy(t, arr, sizeof(int) * N);
-  random_shuffle(t, t + N);
+  sort(t, t + N);
   for (int i = 0; i < N; i++) {
     insert(t[i]);
   }
   delete[] t;
-  fprintf(stderr, "hash = %llu\n", (unsigned long long) hash_tree(tree));
+  // fprintf(stderr, "hash = %llu\n", (unsigned long long) hash_tree(tree));
   // art_debug = 1;
 }
 
