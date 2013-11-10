@@ -186,6 +186,7 @@ public:
   void set_tail(CrackBucket *b){ tail_b = b; }
   void clear_indexes(){ S = nC = I = 0; }
   int randomValue(Random &rng) const { return D[rng.nextInt(this->N)]; }
+  int remove_first() { assert(N > 0); int ret = D[0]; D[0] = D[--N]; return ret; }
 
   int capacity() const { return BUCKET_SIZE; }
   CrackBucket* next() const { return next_b; }
@@ -429,6 +430,11 @@ class Comb {
   // add a CrackBucket (bidx) to the root chain 'ridx'
   template <typename B>
   bool add_to_chain(B *&chain, B *b) {
+    if (!b->size()) {
+      delete b;
+      return true;
+    }
+
     if (!chain) { // the root chain is empty.
       chain = b;  // b is the head of the chain.
       chain->set_next(nullptr);
@@ -514,6 +520,7 @@ class Comb {
   // fusion
   template <typename B>
   B* stochastic_split_chain(B *b, Random &rng) {
+    const int &bp = b->remove_first();
     const int &p = get_random_pivot(b, rng);
 
     // fprintf(stderr, "stochastic_split_chain %p\n", b);
@@ -569,8 +576,13 @@ class Comb {
       }
     }
 
+    assert(left_chain);
+    int first = left_chain->data(0);
+    left_chain->set_data(0, bp);
+    left_chain->insert(first);
+
     assert(right_chain);
-    int first = right_chain->data(0);
+    first = right_chain->data(0);
     right_chain->set_data(0, p);
     right_chain->insert(first);
 
@@ -643,7 +655,10 @@ public:
   void transition_to_art(uintptr_t v) {
     if (isPointer(v)) {
       // Transition to root array.
+      // fprintf(stderr, "Transition %lu\n", v);
       CrackBucket *b = (CrackBucket*) v;
+      bool ok = erase_root(b->data(0));
+      assert(ok);
       b->each([&](int x) { insert_root_value(x); });
       delete b;
     }
@@ -662,15 +677,18 @@ public:
     }
   }
 
-  bool erase(int const &value) {
-    fprintf(stderr, "ERASE %d\n", value);
-    artify(value);
-
+  bool erase_root(uint64_t value64) {
     uint8_t key[8];
-    uint64_t value64 = value;
     loadKey(value64, key);
     // assert(lookup(&tree,key,8,0,8));
     return ::erase(tree,&tree,key,8,0,8);
+  }
+
+  bool erase(int const &value) {
+    // fprintf(stderr, "ERASE %d\n", value);
+    // art_debug = 1;
+    artify(value);
+    return erase_root(value);
   }
 
   /* TODO: lazy lower_bound */

@@ -1158,8 +1158,7 @@ static bool erase(Node* node,Node** nodeRef,uint8_t key[],unsigned keyLength,uns
             case NodeType48: eraseNode48(static_cast<Node48*>(node),nodeRef,key[depth]); break;
             case NodeType256: eraseNode256(static_cast<Node256*>(node),nodeRef,key[depth]); break;
          }
-         assert(0);
-         return false;
+         return true;
       }
       //Recurse
       node = *child;

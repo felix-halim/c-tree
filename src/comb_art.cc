@@ -34,7 +34,7 @@ void erase(int value) {
 
 int lower_bound(int value) {
   int ret = c.lower_bound(value);
-  // fprintf(stdout, "%d (%d)\n", ret, value);
+  // fprintf(stdout, "%d (%d)\n", ret, value); fflush(stdout);
   return ret;
 }
 
