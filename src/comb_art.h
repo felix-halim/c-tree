@@ -707,7 +707,7 @@ public:
         int pos = lb->lower_pos(value, rng);
         if (pos < lb->size()) {
           int ret = lb->data(pos);
-          if (lb->n_cracks() > 30 && lb->touch() > 10) transition_to_art(lb);
+          if (lb->n_cracks() > 30 && lb->touch() > 100) transition_to_art(lb);
           return ret;
         }
       }
