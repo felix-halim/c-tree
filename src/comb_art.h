@@ -434,7 +434,7 @@ public:
     // fprintf(stderr, "T");
     CrackBucket *b = (CrackBucket*) v;
 
-    if (b->size() < 256) {
+    if (b->size() < 1024) {
       bool ok = erase_root(b->data(0));
       assert(ok);
       // fprintf(stderr, "completing %d\n", b->size());
