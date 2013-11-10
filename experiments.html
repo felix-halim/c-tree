@@ -138,14 +138,31 @@ I will implement the transitive indexing soon.
   legend: {
     'sort' : { x: 50, y: 50 },
     'mdd1r' : { x: 250, y: 20 },
-    'comb' : { x: 130, y: 120 },
-    'comb_art' : { x: 130, y: 120 },
+    'comb' : { x: 170, y: 110 },
+    'comb_art' : { x: 170, y: 130 },
   },
   base: 'sort',
   data: group(filter([
     { attr: 'update_workload',   values: ['NOUP'] },
     { attr: 'query_workload',    values: ['Random'] },
-    { attr: 'algorithm',         values: ['sort', 'comb', 'mdd1r', 'comb_art'] },
+    { attr: 'algorithm',         values: ['sort', 'comb', 'mdd1r', 'comb_art', 'art_best_eager', 'art'] },
+  ]), 'algorithm'),
+}</div>
+
+<div class="chart" style="display: inline-block">{
+  height:500,
+  xAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'logx', domain: [1e8, 1e9], format: 's', ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9], margin: 40 },
+  yAxis: { label: 'NOUP: Ratio to Sort', attr: 'total_time', scale: 'logx', domain: [0.05, 1000], format: 's', ticks: [0.05, 0.06, 0.07, 0.08, 0.09, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], margin: 40 },
+  legend: {
+    'sort' : { x: 50, y: 50 },
+    'mdd1r' : { x: 250, y: 20 },
+    'comb' : { x: 170, y: 110 },
+    'comb_art' : { x: 170, y: 130 },
+  },
+  data: group(filter([
+    { attr: 'update_workload',   values: ['NOUP'] },
+    { attr: 'query_workload',    values: ['Random'] },
+    { attr: 'algorithm',         values: ['sort', 'comb', 'mdd1r', 'comb_art', 'art_best_eager', 'art'] },
   ]), 'algorithm'),
 }</div>
 

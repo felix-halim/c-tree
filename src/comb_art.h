@@ -607,7 +607,9 @@ public:
 
   void insert(int const &value) {
     // fprintf(stderr, "ins %d\n", value);
-    uintptr_t v = getData((uintptr_t) find_bucket(value));
+    Node *n = find_bucket(value);
+    assert(isLeaf(n));
+    uintptr_t v = getData((uintptr_t) n);
     if (isPointer(v)) {
       ((CrackBucket*) v)->insert(value);
     } else {
@@ -615,45 +617,36 @@ public:
     }
   }
 
-  CrackBucket* transition_to_art(uintptr_t v) {
-    assert(isPointer(v));
-    // Transition to root array.
-    // fprintf(stderr, "T");
-    CrackBucket *b = (CrackBucket*) v;
+  void transition_to_art(CrackBucket *b) {
+    // fprintf(stderr, "a");
 
-    if (1 || b->size() < 1024) {
-      fprintf(stderr, "transdel\n");
-      bool ok = erase_root(b->data(0));
-      assert(ok);
-      fprintf(stderr, "completing %d\n", b->size());
+    // fprintf(stderr, "transdel\n");
+    bool ok = erase_root(b->data(0));
+    assert(ok);
+    // fprintf(stderr, "completing %d\n", b->size());
+    // fprintf(stderr, "b");
 
-      // fprintf(stderr, "insert root value %llu\n", (unsigned long long) value);
-
-      b->sort();
-      for (int i = 0; i < b->size(); i++) {
-        insert_root_value(b->data(i));
-      }
-
-      // fprintf(stderr, "completing2 %d\n", b->size());
-      delete b;
-      n_buckets--;
-      assert(n_buckets >= 0);
-      if (!n_buckets) fprintf(stderr, "YAY!\n");
-      return nullptr;
-    } else {
-      // fprintf(stderr, "splitting\n");
-      assert(0);
-      return b->split(rng);
+    b->sort();
+    for (int i = 0; i < b->size(); i++) {
+      insert_root_value(b->data(i));
     }
+    // fprintf(stderr, "c");
+
+    // fprintf(stderr, "completing2 %d\n", b->size());
+    delete b;
+    n_buckets--;
+    assert(n_buckets >= 0);
+    if (!n_buckets) fprintf(stderr, "YAY!\n");
+    // fprintf(stderr, "d");
   }
 
   bool erase_root(uint64_t value64) {
     uint8_t key[8];
     loadKey(value64, key);
     // assert(lookup(&tree,key,8,0,8));
-    fprintf(stderr, "erase root %llu\n", value64);
+    // fprintf(stderr, "erase root %llu\n", value64);
     ::erase(tree,&tree,key,8,0,8);
-    fprintf(stderr, "erase root done %llu\n", value64);
+    // fprintf(stderr, "erase root done %llu\n", value64);
     return true;
   }
 
@@ -671,7 +664,10 @@ public:
     fprintf(stderr, "ERASE %d\n", value);
     // art_debug = 1;
     if (n_buckets) {
-      uintptr_t v = getData((uintptr_t) find_bucket(value));
+      /*
+      Node *n = find_bucket(value);
+      assert(isLeaf(n));
+      uintptr_t v = getData((uintptr_t) n);
       if (isPointer(v)) {
         CrackBucket *lb = make_standalone((CrackBucket*) v, value);
         if (lb->n_updates() > 3000) {
@@ -701,8 +697,14 @@ public:
           }
           return idx != -1;
         }
+      } else {
+        assert(0);
+        assert(getData(v) == value);
+        return erase_root(value);
       }
+      */
     }
+    assert(0);
     return erase_root(value);
   }
 
@@ -710,20 +712,29 @@ public:
   int lower_bound(int const &value) {
     static int nth = 0; nth++;
     // art_debug = 1;
-    // if (nth % 1000 == 0) assert(check());
     // fprintf(stderr, "lower_bound %d\n", value);
 
-    uintptr_t v = getData((uintptr_t) find_bucket(value));
+    Node *n = find_bucket(value);
+    assert(isLeaf(n));
+    uintptr_t v = getData((uintptr_t) n);
+    assert(v);
     if (isPointer(v)) {
       CrackBucket *lb = make_standalone((CrackBucket*) v, value);
+      assert(lb);
       int pos = lb->lower_pos(value, rng);
-      if (pos < lb->size()) return lb->data(pos);
+      if (pos < lb->size()) {
+        int ret = lb->data(pos);
+        transition_to_art(lb);
+        return ret;
+      }
     }
 
     uint64_t value64 = value;
     uint8_t key[8];
     loadKey(value64, key);
+    // fprintf(stderr, "a");
     Node* leaf = ::lower_bound(tree,key,8,0,8);
+    // fprintf(stderr, "b %p", leaf);
     return isLeaf(leaf) ? getLeafValue(leaf) : 0;
   }
 };
