@@ -666,7 +666,7 @@ public:
   }
 
   bool erase(int const &value) {
-    fprintf(stderr, "ERASE %d\n", value);
+    // fprintf(stderr, "ERASE %d\n", value);
     // art_debug = 1;
     if (n_buckets) {
       Node *n = find_bucket(value);
@@ -674,19 +674,17 @@ public:
       uintptr_t v = getData((uintptr_t) n);
       if (isPointer(v)) {
         CrackBucket *lb = (CrackBucket*) v;
-        int lo = lb->data(0);
         lb = make_standalone(lb, value);
-        assert(lo == lb->data(0));
-        if (value == lo) {
-
+        if (value == lb->data(0)) {
+          fprintf(stderr, "x");
+          transition_to_art(lb);
+        } else {
+          return lb->erase(value, rng);
         }
       } else {
-        assert(0);
         assert(getData(v) == (uintptr_t) value);
-        return erase_root(value);
       }
     }
-    assert(0);
     return erase_root(value);
   }
 
@@ -707,7 +705,7 @@ public:
         int pos = lb->lower_pos(value, rng);
         if (pos < lb->size()) {
           int ret = lb->data(pos);
-          if (lb->touch() > BUCKET_SIZE) transition_to_art(lb);
+          // if (lb->touch() > BUCKET_SIZE) transition_to_art(lb);
           return ret;
         }
       }
