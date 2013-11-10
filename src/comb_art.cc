@@ -49,7 +49,7 @@ int count(int a, int b) {
 void results(Statistics &s) {
   // assert(c.check());
   s.note = "Lazy";
-  s.n_leaves = 0;//c.num_of_buckets();
+  s.n_leaves = n_buckets;//c.num_of_buckets();
   s.n_capacity = 0;//c.capacity();
   s.n_internals = 0;//c.n_internals();
   s.max_depth = 2;

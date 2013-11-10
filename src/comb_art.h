@@ -28,6 +28,8 @@ class Random {
 #define CRACK_AT (BUCKET_SIZE >> 5)
 #define DECRACK_AT (BUCKET_SIZE >> 6)
 
+int n_buckets; // Number of leaf buckets.
+
 // Dynamically resize COMB bucket sizes.
 // If number of cracks > 32, it splits to two smaller buckets.
 class CrackBucket {
@@ -546,7 +548,6 @@ class Comb {
 
 public:
 
-  int n_buckets; // Number of leaf buckets.
 
   void insert_root(CrackBucket *b) {
     uint8_t key[8];

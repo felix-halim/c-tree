@@ -435,7 +435,7 @@ Node* lower_bound(Node* node, uint8_t key[], unsigned keyLength, unsigned depth,
 
 Node* lower_bound_prev(Node* node, uint8_t key[], unsigned keyLength, unsigned depth, unsigned maxKeyLength, bool skippedPrefix=false, bool is_less = false) {
    // ART_DEBUG("lower_prev1 %u, leaf = %d\n", depth, isLeaf(node));
-   if (!node) return NULL;
+   assert(node);
 
    if (isLeaf(node)) {
       if (!skippedPrefix && depth == keyLength) // No check required
@@ -444,11 +444,13 @@ Node* lower_bound_prev(Node* node, uint8_t key[], unsigned keyLength, unsigned d
       if (depth && depth != keyLength && !is_less) {
          uint8_t leafKey[maxKeyLength];
          loadKey(getLeafValue(node),leafKey);
-         for (unsigned j = 0; j < keyLength; j++) {
-            ART_DEBUG("%u: %u %u\n", j, leafKey[j], key[j]);
+         if (art_debug) {
+            for (unsigned j = 0; j < keyLength; j++) {
+               ART_DEBUG("%u: %u %u\n", j, leafKey[j], key[j]);
+            }
          }
-         ART_DEBUG("THE VALUE = %lu\n", getLeafValue(node) >> 30);
          for (unsigned i=(skippedPrefix?0:depth);i<keyLength;i++) {
+            ART_DEBUG("i => %u, %u %u\n", i, leafKey[i], key[i]);
             if (leafKey[i] > key[i]) {
                ART_DEBUG("GAGAL %u %u\n", leafKey[i], key[i]);
                return NULL;
@@ -487,11 +489,11 @@ Node* lower_bound_prev(Node* node, uint8_t key[], unsigned keyLength, unsigned d
             ART_DEBUG("Node4P %d\n", node->count);
             Node4* node = static_cast<Node4*>(n);
             for (int i = node->count - 1; i >= 0; i--) {
-               if (isLeaf(node->child[i])) {
-                  ART_DEBUG("child %d, value = %lu\n", i, getLeafValue(node->child[i]) >> 30);
-               }
+               Node *&c = node->child[i];
+               ART_DEBUG("i = %d, key4 = %d <= %d, %lu, c = %p\n", i, node->key[i], keyByte, isLeaf(c) ? getLeafValue(c) : 0, c);
                if (node->key[i] <= keyByte || is_less) {
-                  Node *ret = lower_bound_prev(node->child[i], key, keyLength, depth, maxKeyLength, skippedPrefix, is_less || node->key[i] < keyByte);
+                  // ART_DEBUG("got it, %d\n", isLeaf(node->child[i]));
+                  Node *ret = lower_bound_prev(c, key, keyLength, depth, maxKeyLength, skippedPrefix, is_less || node->key[i] < keyByte);
                   if (ret) return ret;
                }
             }
@@ -503,12 +505,13 @@ Node* lower_bound_prev(Node* node, uint8_t key[], unsigned keyLength, unsigned d
             Node16* node = static_cast<Node16*>(n);
             int pos = node->count - 1;
             if (!is_less) {
-               // ART_DEBUG("Node16 is_less %d\n", node->count);
+               ART_DEBUG("Node16 is_less %d\n", node->count);
                __m128i cmp=_mm_cmplt_epi8(_mm_set1_epi8(flipSign(keyByte)),_mm_loadu_si128(reinterpret_cast<__m128i*>(node->key)));
                uint16_t bitfield=_mm_movemask_epi8(cmp)&(0xFFFF>>(16-node->count));
                pos = bitfield ? ctz(bitfield) : node->count;
-               while (pos >= node->count || flipSign(node->key[pos]) > keyByte) pos--;
-               while (pos + 1 < node->count && flipSign(node->key[pos + 1]) <= keyByte) pos++;
+               ART_DEBUG("Node16 is_less %d, pos = %d\n", node->count, pos);
+               while (pos > 0 && (pos >= node->count || flipSign(node->key[pos - 1]) >= keyByte)) pos--;
+               // while (pos + 1 < node->count && flipSign(node->key[pos + 1]) <= keyByte) pos++;
             }
             ART_DEBUG("pos = %d\n", pos);
             assert(pos < node->count);
