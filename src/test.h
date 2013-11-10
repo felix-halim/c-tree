@@ -23,7 +23,7 @@ double time_it(Func f) {
 struct Statistics {
   // Managed by test framework.
   int N;
-  int Q;
+  long long Q;
   double selectivity;
   int verified;
   string algorithm;
@@ -59,7 +59,7 @@ struct Statistics {
     printf("\"%s\",", query_workload.c_str());
     printf("\"%s\",", update_workload.c_str());
     printf("%d,", N);
-    printf("%d,", Q);
+    printf("%lld,", Q);
     printf("%lf,", selectivity);
     printf("%d,", verified);
     printf("%.6lf,", insert_time);
@@ -132,9 +132,10 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
 
-  int MAXQ, W, U;
+  long long MAXQ;
+  int W, U;
   s.algorithm = algorithm_name(argv[0]);
-  sscanf(argv[2], "%d", &MAXQ);
+  sscanf(argv[2], "%lld", &MAXQ);
   sscanf(argv[3], "%lf", &s.selectivity);
   sscanf(argv[4], "%d", &W);
   sscanf(argv[5], "%d", &U);
@@ -171,18 +172,18 @@ int main(int argc, char *argv[]) {
 
   if (U == 5) {
     update.prepare_deletion(s.N);
-    MAXQ = min(s.N, MAXQ);
+    MAXQ = min((long long) s.N, MAXQ);
   }
 
-  fprintf(stderr, "Q = %d\n", MAXQ);
+  fprintf(stderr, "Q = %lld\n", MAXQ);
 
   int qm = (U == 6 || U == 7) ? 2 : 10; // Query multiplier
   for (s.Q = 1; ; s.Q *= qm) {
     double update_time = 0;
     double load_time = 0;
     s.query_time += time_it([&] {
-      int nQ = s.Q - s.Q / qm; // nQ = how many queries needed.
-      for (int i = 1, a, b; i <= nQ; i++) {
+      long long nQ = s.Q - s.Q / qm; // nQ = how many queries needed.
+      for (long long i = 1, a, b; i <= nQ; i++) {
         // if (U == 3) {
         //   a = update.get_next_smallest();
         // } else {
