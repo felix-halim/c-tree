@@ -198,8 +198,8 @@ public:
   void set_next(CrackBucket *b){ next_b = b; }
   void set_tail(CrackBucket *b){ tail_b = b; }
   void clear_indexes(){ S = nC = I = 0; }
-  int touch() { return ++n_touch; }
-  int n_updates() { return n_erase; }
+  int n_touched() { return ++n_touch; }
+  int n_erased() { return ++n_erase; }
   int remove_first() { assert(N > 0); int ret = D[0]; D[0] = D[--N]; return ret; }
   int capacity() const { return BUCKET_SIZE; }
   CrackBucket* next() const { return next_b; }
@@ -318,7 +318,6 @@ public:
   }
 
   int erase(int v, Random &rng) {
-    n_erase++;
     assert(!next_b);
     int i, L, R, at = crack(v, i, L, R, false, rng);
     // if (at >= R || !eq(D[at],v)) return false;  // the element to be erased is not found!
@@ -675,7 +674,7 @@ public:
       if (isPointer(v)) {
         CrackBucket *lb = (CrackBucket*) v;
         lb = make_standalone(lb, value);
-        if (value == lb->data(0) || lb->touch() > 10) {
+        if (value == lb->data(0) || lb->n_erased() > 20) {
           // fprintf(stderr, "x");
           transition_to_art(lb);
         } else {
@@ -705,7 +704,7 @@ public:
         int pos = lb->lower_pos(value, rng);
         if (pos < lb->size()) {
           int ret = lb->data(pos);
-          // if (lb->touch() > BUCKET_SIZE) transition_to_art(lb);
+          // if (lb->n_touched() > BUCKET_SIZE) transition_to_art(lb);
           return ret;
         }
       }
