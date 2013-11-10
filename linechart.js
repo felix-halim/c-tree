@@ -203,6 +203,8 @@ data.forEach(function (d) {
   d.query_time = parseFloat(d.query_time) + 1e-9;
   d.update_time = parseFloat(d.update_time) + 1e-9;
   d.total_time = d.insert_time + d.query_time + d.update_time;
+  d.avg_time = d.total_time / d.Q;
+  d.qps = d.Q / d.total_time;
 });
 
 var algo_name = {

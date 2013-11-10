@@ -367,8 +367,8 @@ but worse in the long run because of the high cost in updating large Bucket with
 <div class="chart" style="display: inline-block">{
   width: 600, height: 400,
   xAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'log', domain: [0.5, 2e9], format: ticksPow10, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9 ], margin: 40 },
-  yAxis: { label: 'LFHV: Ratio to CTree', attr: 'total_time', scale: 'logx', domain: [0.3, 1.5], format: 'pow10', ticks: [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4, 1.5, 6, 7, 8, 9, 10], margin: 30 },
-  base: 'ctree_32_64',
+  yAxis: { label: 'LFHV: Ratio to CTree', attr: 'total_time', scale: 'logx', domain: [0.01, 2.5], format: 'pow10', ticks: [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4, 1.5, 6, 7, 8, 9, 10], margin: 30 },
+  base: 'art_best_eager',
   legend: {
     'comb800':         { x: 90, y: 20 },
     'ctree_32_64':     { x: 90, y: 40 },
@@ -378,11 +378,12 @@ but worse in the long run because of the high cost in updating large Bucket with
     'combt512':        { x: 90, y: 120 },
     'combtr2':         { x: 90, y: 160 },
     'art_best':        { x: 90, y: 180 },
+    'btree_google':        { x: 90, y: 180 },
   },
   data: group(filter([
     { attr: 'update_workload',   values: ['LFHV'] },
     { attr: 'query_workload',    values: ['Random'] },
-    { attr: 'algorithm',         values: ['ctree_32_64', 'comb800', 'comb_art', 'art_best_eager', 'combt512', 'combtr2', 'art_best', 'art'] },
+    { attr: 'algorithm',         values: ['ctree_32_64', 'comb800', 'comb_art', 'art_best_eager', 'combt512', 'combtr2', 'art_best', 'art', 'btree_google'] },
   ]), 'algorithm'),
 }</div>
 
