@@ -17,6 +17,7 @@ void init(int *arr, int N) {
   for (int i = 0; i < N; i++) {
     insert(arr[i]);
   }
+  fprintf(stderr, "hash = %llu\n", (unsigned long long) hash_tree(tree));
   // art_debug = 1;
 }
 
