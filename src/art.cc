@@ -14,9 +14,12 @@ using namespace std;
 Node* tree = NULL;
 
 void init(int *arr, int N) {
-  for (int i = 0; i < N; i++) {
+  for (int i = N - 1; i >= 0; i--) {
     insert(arr[i]);
   }
+  // for (int i = 0; i < N; i++) {
+  //   insert(arr[i]);
+  // }
   fprintf(stderr, "hash = %llu\n", (unsigned long long) hash_tree(tree));
   // art_debug = 1;
 }
