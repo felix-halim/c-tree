@@ -353,13 +353,15 @@ but worse in the long run because of the high cost in updating large Bucket with
   legend: {
     'comb800':       { x: 235, y: 20 },
     'ctree_32_64':    { x: 30, y: 50 },
-    'comb_art':    { x: 170, y: 105 },
+    'comb_art':    { x: 30, y: 20 },
     'art':    { x: 265, y: 120 },
+    'combt512':    { x: 30, y: 35 },
+    'combtr2':    { x: 30, y: 75 },
   },
   data: group(filter([
     { attr: 'update_workload',   values: ['LFHV'] },
     { attr: 'query_workload',    values: ['Random'] },
-    { attr: 'algorithm',         values: ['ctree_32_64', 'comb800', 'comb_art', 'art'] },
+    { attr: 'algorithm',         values: ['ctree_32_64', 'comb800', 'comb_art', 'art', 'combt512', 'combtr2'] },
   ]), 'algorithm'),
 }</div>
 
@@ -375,7 +377,7 @@ but worse in the long run because of the high cost in updating large Bucket with
   data: group(filter([
     { attr: 'update_workload',   values: ['LFHV'] },
     { attr: 'query_workload',    values: ['Random'] },
-    { attr: 'algorithm',         values: ['ctree_32_64', 'comb800', 'comb_art', 'art_best'] },
+    { attr: 'algorithm',         values: ['ctree_32_64', 'comb800', 'comb_art', 'art_best', 'combt512'] },
   ]), 'algorithm'),
 }</div>
 
