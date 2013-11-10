@@ -31,95 +31,13 @@ class Random {
 // Dynamically resize COMB bucket sizes.
 // If number of cracks > 32, it splits to two smaller buckets.
 class CrackBucket {
-  static const unsigned short MAX_CRACK = 64;
-
   int N;        // Number of data elements in this bucket pointed by D.
-  int I;                // last indexed position
-  unsigned char nC;     // the number of cracker indices
-  unsigned long long S; // sorted bits
-  int C[MAX_CRACK-1];   // the cracker indices
-  int V[MAX_CRACK-1];     // the cracker value
+  int cap;      // last indexed position
   int D[BUCKET_SIZE];      // the data elements
   CrackBucket* next_b;   // buckets can be chained like a linked list of buckets
                         // the value of next is -1 if there is no next chain
                         // otherwise the index of the bucket [0, num_of_buckets)
   CrackBucket* tail_b;   // pointer to the last bucket in the chain.
-
-  void piece_set_sorted(int i, bool sorted) {
-    assert(i >= 0 && i < MAX_CRACK);
-    if (sorted) {
-      S |= 1ULL << i;
-    } else {
-      S &= ~(1ULL << i);
-    }
-  }
-
-  bool piece_is_sorted(int i) const {
-    assert(i >= 0 && i < MAX_CRACK);
-    return S & (1ULL << i);
-  }
-
-  void piece_set_unsorted_onwards(int i) {
-    assert(i >= 0 && i < MAX_CRACK);
-    S &= (1ULL << i) - 1;          // destroy sorted bit std::vector from i onwards
-  }
-
-  void insert_bit_at(unsigned long long &S, int at) {
-    S = ((S<<1) & ~((((1ULL<<at)-1)<<1)|1)) | (S & ((1ULL<<at)-1));
-  }
-
-  void remove_bit_at(unsigned long long &S, int at) {
-    S = ((S & ~((((1ULL<<at)-1)<<1)|1)) >> 1) | (S & ((1ULL<<at)-1));
-  }
-
-  void add_cracker_index(int at, int M) {
-    assert(at >= 0 && at <= nC && nC < MAX_CRACK - 1);
-    for (int i = nC-1; i >= at; i--) {
-      C[i + 1] = C[i];
-      V[i + 1] = V[i];
-    }
-    C[at] = M;
-    V[at] = D[M];
-    nC++;
-    assert(nC < MAX_CRACK);
-    assert(at == 0 || C[at - 1] < C[at]);
-    assert(at + 1 == nC || C[at] < C[at + 1]);
-    insert_bit_at(S, at);
-  }
-
-  void remove_cracker_index(int at) {
-    assert(at >= 0 && at < nC);
-    for (int i = at + 1; i < nC; i++) {
-      C[i - 1] = C[i];
-      V[i - 1] = V[i];
-    }
-    nC--;
-    // assert(nC>=0);
-    remove_bit_at(S,at);
-  }
-
-  void flush_pending_inserts() {
-    assert(I <= this->N);                     // Indexed index should be less than the number of elements
-    if (!nC){ I = this->N; S = 0; return; }   // no index yet, all the elements are considered "inserted"
-    assert(!next_b && !tail_b);               // Indexes only makes sense when there is no chain
-
-    // IMPROVE: bulk insert? (Currently using Merge Completely)
-    int minC = nC;
-    for (int j = I; I < this->N; j= ++I) {        // insert all pending elements (from I to N)
-      int i = nC - 1;
-      int tmp = D[j];            // store the pending tuple
-      for (; i>=0 && tmp < V[i]; i--){  // insert by shuffling through the cracker indices C
-        int &L = C[i];          // left boundary of this cracker piece
-        D[j] = D[L+1];          // replace the pending with the next to cracker boundary
-        D[L+1] = D[L];          // shift the cracker boundary to the right
-        j = L++;            // reposition the cracker piece separator
-      }
-      D[j] = tmp;              // the pending tuple is now merged in
-      minC = std::min(minC, i+1);      // keep track the lowest piece that is touched
-    }
-
-    piece_set_unsorted_onwards(minC);
-  }
 
   int* partition(int *F, int *L, int const &v) {
     while (true) {
@@ -154,52 +72,22 @@ class CrackBucket {
     return M;
   }
 
-  // returns a piece [L,R) that contains v
-  // it will reorganize the elements so that the R-L range gets smaller overtime
-  int get_piece_by_value(int const &v, int &L, int &R, Random &rng) {
-    flush_pending_inserts();
-    int i = 0;
-    while (i<nC && (v >= V[i])) i++;      // find the cracker indices that covers v
-    L = i==0? 0 : C[i-1];            // the left crack boundary
-    R = i==nC? this->N : C[i];            // the right crack boundary
-    while (R-L > CRACK_AT){            // narrow down the piece using DDR
-      int M = rough_middle_partition(D+L+(i?1:0), D+R, rng, DECRACK_AT, CRACK_AT) - D;
-      add_cracker_index(i, M);
-//        fprintf(stderr,"CRACKING %d %d, [%d %d]\n",M,D[M],L,R);
-      if ((v < D[M])) R=M; else L=M, i++;  // adjust the cracker index i
-    }
-    assert(i>=0 && i<=nC);
-//      assert(check(D[0],false,D[0],false, cmp));
-    return i;
-  }
-
 public:
   CrackBucket(): next_b(nullptr), tail_b(nullptr) {
     this->N = 0;
-    clear_indexes();
   }
 
   int size() const { return N; }
-  int n_cracks() const { return nC; }
   int slack() const { return BUCKET_SIZE - this->N; }
   void set_next(CrackBucket *b){ next_b = b; }
   void set_tail(CrackBucket *b){ tail_b = b; }
-  void clear_indexes(){ S = nC = I = 0; }
-  int randomValue(Random &rng) const { return D[rng.nextInt(this->N)]; }
   int remove_first() { assert(N > 0); int ret = D[0]; D[0] = D[--N]; return ret; }
-
   int capacity() const { return BUCKET_SIZE; }
   CrackBucket* next() const { return next_b; }
   CrackBucket* tail() const { return tail_b; }
   int& data(int i) { assert(i >= 0 && i < this->N); return D[i]; }
   void set_data(int i, int v) { assert(i >= 0 && i < this->N); D[i] = v; }
   int* data() { return D; }
-  bool is_full() const { return this->N == BUCKET_SIZE; }
-
-  void copy_from(int* arr, int n) {
-    memcpy(D, arr, sizeof(int) * n);
-    this->N = n;
-  }
 
   void add_chain(CrackBucket *next) {
     if (next_b) {
@@ -243,7 +131,7 @@ public:
   }
 
   void append(int value) {
-    assert(!is_full());
+    assert(this->N < BUCKET_SIZE);
     D[this->N++] = value;
   }
 
@@ -261,151 +149,18 @@ public:
 
   // partition this bucket based on value v, destroying all cracker indices
   int partition(int const &v) {
-    clear_indexes();
     assert(this->N > 0 && this->N <= BUCKET_SIZE);
     return std::partition(D, D + this->N, [&](int x){ return (x < v); }) - D;
-  }
-
-  bool debug(const char *msg, int i, int j, bool verbose = true) const {
-    for (int k=0; k<nC; k++)
-      fprintf(stderr,"C[%d/%d] = %d, %d (sorted = %d)\n",
-        k,nC,C[k],(int)D[C[k]],piece_is_sorted(k));
-    fprintf(stderr,"%s : i=%d/N=%d, j=%d/nC=%d, D[i,i+1] = %d, %d; I=%d, N=%d, next=%p\n",
-      msg, i,this->N, j,nC, (int)D[i],(int)D[i+1], I,this->N,next_b);
-    if (verbose) {
-      fprintf(stderr, "[[");
-      for (int k = 0; k < this->N; k++) {
-        fprintf(stderr, "%d ", D[k]);
-      }
-      fprintf(stderr, "]]\n");
-    }
-    return false;
-  }
-
-  // call this function to check the consistency of this CrackBucket structure
-  bool check(int lo, bool useLo, int hi, bool useHi) const {
-    if (useLo) for (int i=0; i < this->N; i++) if ((D[i] < lo)){
-      fprintf(stderr,"D[%d] = %d, lo = %d, bucket = %p\n",i, D[i], lo, this);
-      return debug("useLo failed", i,0);
-    }
-    if (useHi) for (int i=0; i < this->N; i++) if ((D[i] >= hi)){
-      fprintf(stderr,"D[%d] = %d, hi = %d, bucket = %p\n",i, D[i], hi, this);
-      return debug("useHi failed", i,0);
-    }
-    for (int i = 0; i < nC; i++) {
-      if (V[i] != D[C[i]]) {
-        fprintf(stderr, "not equal %d, %d != %d\n", i, V[i], D[C[i]]);
-        return false;
-      }
-    }
-    for (int i=0,j=0; i<I; i++){                    // check cracker indices
-      if (j<nC && C[j]==i) assert((V[j] == D[i])), lo = D[i], j++;
-      if (piece_is_sorted(j) && (j==nC? (i+1<I) : (i<C[j])) && (D[i+1] < D[i]))
-        return debug("sortedness violation", i,j);
-      if (j>0 && (D[i] < D[C[j-1]])) return debug("lower bound fail", i,j);
-      if (j<nC && (D[C[j]] < D[i])) return debug("upper bound fail", i,j);
-    }
-    return true;
-  }
-
-  int index_of(int const &v) const {
-    for (int i=0; i < this->N; i++) if (D[i] == v) return i;
-    return -1;
   }
 
   // move this bucket data in range [fromIdx, end) and append
   // it to the specified CrackBucket "to", destroying all cracker indices
   void moveToFromIdx(CrackBucket *to, int fromIdx) {
-    clear_indexes(); to->clear_indexes();    // destroy both buckets' cracker indices
     assert(this->N > fromIdx);            // make sure there is something to move
     assert(to->N + this->N - fromIdx <= BUCKET_SIZE);    // make sure the receiver has enough space
     memmove(to->D + to->N, D+fromIdx, (this->N - fromIdx) * sizeof(int));
     to->N += this->N - fromIdx;
     this->N = fromIdx;
-  }
-
-  int lower_pos(int value, Random &rng) {
-    int i, L, R;
-    return crack(value, i, L, R, true, rng);
-  }
-
-  int crack(int const &v, int &i, int &L, int &R, bool sort_piece, Random &rng){
-    assert(!next());            // it doesn't make sense crack a chained bucket!
-    i = get_piece_by_value(v,L,R,rng);    // find the piece [L,R) containing v
-    assert(L>=0 && L<=R && R <= this->N);        // range check
-    if (!piece_is_sorted(i)){
-      if (sort_piece){            // sort the piece if requested
-        std::sort(D+L,D+R);
-        piece_set_sorted(i,true);
-      } else {
-        for (int at=L; at<R; at++)
-          // if (eq(D[at],v)) return at;
-          if (D[at] == v) return at;
-        return R;
-      }
-    }
-    for (int pos = L; pos < R; pos++) if ((D[pos] >= v)) return pos;
-    return R;
-    // return std::lower_bound(D+L, D+R, v) - D;    // find the element v using binary search
-  }
-
-  int remove_largest(Random &rng) {
-    flush_pending_inserts();
-    while (true) {
-      int i = nC;
-      int L = (i == 0) ? 0 : C[i - 1];            // the left crack boundary
-      int R = (i ==nC) ? this->N : C[i];            // the right crack boundary
-      assert(L < R);
-      if (R - L <= CRACK_AT) {
-        if (nC && R-L+1 <= DECRACK_AT) {
-          remove_cracker_index((i>0)?(--i):i);
-        }
-        int j = L;
-        for (i = L + 1; i < R; i++)
-          if ((D[j] < D[i])) j = i;
-        swap(D[j], D[R - 1]);
-        // fprintf(stderr, "REM LARGEST I = %d, N = %d, R = %d, largest = %d\n", I, this->N, R, D[R - 1]);
-        assert(this->N == R);
-        return D[I = this->N = R - 1];
-      }
-      get_piece_by_value(D[L + rng.nextInt(R - L)], L, R, rng);
-    }
-  }
-
-  bool erase(int const &v, Random &rng) {
-    assert(!next_b);
-    int i, L, R, at = crack(v, i, L, R, false, rng);
-    if (at >= R || D[at] != v) return false;  // the element to be erased is not found!
-
-    // decrack this cracker piece (it becomes too small) or
-    // if the deleted element index is a cracker index
-    if (nC && R-L+1 <= DECRACK_AT){
-      remove_cracker_index((i>0)?(--i):i);
-    } else if (i > 0 && at == L){
-      at = L+1;
-      for (int j=L+2; j<R; j++)    // find a replacement element for the cracker index
-        if ((D[j] < D[at])) at = j;  // that is the smallest element in the piece (L,R)
-      std::swap(D[L], D[at]);
-      piece_set_sorted(i,false);
-      V[i-1] = D[L];
-    }
-
-    assert(at<R && (D[at] == v));    // the element v must be found!
-
-    // IMPROVE: use pending delete? antimatter?
-    piece_set_unsorted_onwards(i);      // unset the sorted bit i onwards
-    assert(i==nC || (D[at] < V[i]));
-    for (int j=i; j<nC; j++){        // shuffle out the deleted element
-      R = C[j]--;
-      D[at] = D[R-1];
-      D[R-1] = D[R];
-      at = R;
-    }
-    D[at] = D[--this->N];    // the deleted element has been shuffled out from the bucket
-    I--;        // adjust the pending index
-
-//      assert(check(D[0],false,D[0],false));
-    return true;
   }
 };
 
