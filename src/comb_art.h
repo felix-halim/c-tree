@@ -12,7 +12,7 @@
 
 using namespace std;
 
-#include "art_best.h"
+#include "art.h"
 
 class Random {
   mt19937 gen;
@@ -372,7 +372,7 @@ public:
     loadKey(b->data(0), key);
     n_buckets++;
     // fprintf(stderr, "add root %d\n", b->data(0));
-    ::insert(&tree, key, 0, (uintptr_t) b, 8);
+    ::insert(tree, &tree, key, 0, (uintptr_t) b, 8);
   }
 
   void insert_root_value(uintptr_t value) {
@@ -381,7 +381,7 @@ public:
     assert(value < (1ULL << 40));
     // fprintf(stderr, "insert root value %llu\n", (unsigned long long) value);
     loadKey(value, key);
-    ::insert(&tree, key, 0, (value << 1) | 1, 8);
+    ::insert(tree, &tree, key, 0, (value << 1) | 1, 8);
   }
 
   void load(int const *arr, int n) {
@@ -475,7 +475,8 @@ public:
     uint8_t key[8];
     loadKey(value64, key);
     // assert(lookup(&tree,key,8,0,8));
-    return ::erase(tree,&tree,key,8,0,8);
+    ::erase(tree,&tree,key,8,0,8);
+    return true;
   }
 
   bool erase(int const &value) {
