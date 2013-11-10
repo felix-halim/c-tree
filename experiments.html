@@ -352,15 +352,13 @@ but worse in the long run because of the high cost in updating large Bucket with
   base: 'ctree_32_64',
   legend: {
     'comb800':       { x: 95, y: 40 },
-    'combt512':       { x: 95, y: 60 },
     'ctree_32_64':    { x: 95, y: 80 },
-    'combtr':    { x: 95, y: 20 },
-    'combtr2':    { x: 95, y: 20 },
+    'comb_art':    { x: 95, y: 20 },
   },
   data: group(filter([
     { attr: 'update_workload',   values: ['LFHV'] },
     { attr: 'query_workload',    values: ['Random'] },
-    { attr: 'algorithm',         values: ['ctree_32_64', 'combt512x', 'comb800', 'combtrx', 'combtr2', 'art_best'] },
+    { attr: 'algorithm',         values: ['ctree_32_64', 'comb800', 'comb_art', 'art'] },
   ]), 'algorithm'),
 }</div>
 
@@ -369,16 +367,14 @@ but worse in the long run because of the high cost in updating large Bucket with
   yAxis: { label: 'LFHV: Ratio to CTree', attr: 'total_time', scale: 'log', domain: [0.3, 2000], format: 'pow10', ticks: [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], margin: 30 },
   legend: {
     'comb800':       { x: 95, y: 40 },
-    'combt512':       { x: 95, y: 60 },
     'ctree_32_64':    { x: 95, y: 80 },
-    'combtr':    { x: 95, y: 20 },
-    'combtr2':    { x: 95, y: 20 },
+    'comb_art':    { x: 95, y: 20 },
     'art_best':    { x: 95, y: 20 },
   },
   data: group(filter([
     { attr: 'update_workload',   values: ['LFHV'] },
     { attr: 'query_workload',    values: ['Random'] },
-    { attr: 'algorithm',         values: ['ctree_32_64', 'combt512x', 'comb800', 'combtrx', 'combtr2', 'art_best'] },
+    { attr: 'algorithm',         values: ['ctree_32_64', 'comb800', 'comb_art', 'art_best'] },
   ]), 'algorithm'),
 }</div>
 

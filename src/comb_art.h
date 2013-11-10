@@ -592,10 +592,13 @@ class Comb {
 
 public:
 
+  int n_buckets; // Number of leaf buckets.
+
   void insert_root(CrackBucket *b) {
     uint8_t key[8];
     assert(b->data(0) >= 0);
     loadKey(b->data(0), key);
+    n_buckets++;
     // fprintf(stderr, "add root %d\n", b->data(0));
     ::insert(&tree, key, 0, (uintptr_t) b, 8);
   }
@@ -655,12 +658,16 @@ public:
   void transition_to_art(uintptr_t v) {
     if (isPointer(v)) {
       // Transition to root array.
-      // fprintf(stderr, "Transition %lu\n", v);
+      // fprintf(stderr, "T");
       CrackBucket *b = (CrackBucket*) v;
       bool ok = erase_root(b->data(0));
       assert(ok);
       b->each([&](int x) { insert_root_value(x); });
       delete b;
+
+      n_buckets--;
+      assert(n_buckets >= 0);
+      if (!n_buckets) fprintf(stderr, "YAY!\n");
     }
   }
 
@@ -687,7 +694,7 @@ public:
   bool erase(int const &value) {
     // fprintf(stderr, "ERASE %d\n", value);
     // art_debug = 1;
-    artify(value);
+    if (n_buckets) artify(value);
     return erase_root(value);
   }
 
@@ -697,8 +704,7 @@ public:
     // art_debug = 1;
     // if (nth % 1000 == 0) assert(check());
     // fprintf(stderr, "lower_bound %d\n", value);
-
-    artify(value);
+    if (n_buckets) artify(value);
 
     uint64_t value64 = value;
     uint8_t key[8];
