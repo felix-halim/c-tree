@@ -78,6 +78,9 @@ $(ODIR)/dd1r: dd1r.cc crack.h test.h update.h query.h checksum.h
 $(ODIR)/art: art.cc art.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
 
+$(ODIR)/sort_art: sort_art.cc art.h test.h update.h query.h checksum.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
+
 $(ODIR)/arto: arto.cc arto.h test.h update.h query.h checksum.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
 
