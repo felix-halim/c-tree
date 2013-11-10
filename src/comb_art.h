@@ -676,7 +676,7 @@ public:
         CrackBucket *lb = (CrackBucket*) v;
         lb = make_standalone(lb, value);
         if (value == lb->data(0)) {
-          fprintf(stderr, "x");
+          // fprintf(stderr, "x");
           transition_to_art(lb);
         } else {
           return lb->erase(value, rng);
