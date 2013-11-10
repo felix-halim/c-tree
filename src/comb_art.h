@@ -43,6 +43,7 @@ class CrackBucket {
   int V[MAX_CRACK-1];     // the cracker value
   int D[BUCKET_SIZE];      // the data elements
   int n_erase;  // number of erase operations performed to this bucket.
+  int n_touch;
   CrackBucket* next_b;   // buckets can be chained like a linked list of buckets
                         // the value of next is -1 if there is no next chain
                         // otherwise the index of the bucket [0, num_of_buckets)
@@ -182,11 +183,13 @@ public:
   CrackBucket(): next_b(nullptr), tail_b(nullptr) {
     this->N = 0;
     clear_indexes();
+    n_erase = n_touch = 0;
   }
 
   CrackBucket(int *arr, int n): next_b(nullptr), tail_b(nullptr) {
     memcpy(D, arr, sizeof(int) * n);
     this->N = n;
+    n_erase = n_touch = 0;
   }
 
 
@@ -195,6 +198,7 @@ public:
   void set_next(CrackBucket *b){ next_b = b; }
   void set_tail(CrackBucket *b){ tail_b = b; }
   void clear_indexes(){ S = nC = I = 0; }
+  int touch() { return ++n_touch; }
   int n_updates() { return n_erase; }
   int remove_first() { assert(N > 0); int ret = D[0]; D[0] = D[--N]; return ret; }
   int capacity() const { return BUCKET_SIZE; }
@@ -665,45 +669,22 @@ public:
     fprintf(stderr, "ERASE %d\n", value);
     // art_debug = 1;
     if (n_buckets) {
-      /*
       Node *n = find_bucket(value);
       assert(isLeaf(n));
       uintptr_t v = getData((uintptr_t) n);
       if (isPointer(v)) {
-        CrackBucket *lb = make_standalone((CrackBucket*) v, value);
-        if (lb->n_updates() > 3000) {
-          assert(0);
-          transition_to_art((uintptr_t) lb);
-        } else {
-          int idx = lb->erase(value, rng);
-          if (idx == 0) { erase_root(value); insert_root(lb); }
-          else if (idx == lb->size()) {
-            Node *n = find_bucket_upper(value);
-            assert(isLeaf(n));
-            if (!isLeaf(n)) return false;
-            fprintf(stderr, "AAAAAAA\n");
-            v = getData((uintptr_t) n);
-            if (isPointer(v)) {
-              lb = make_standalone((CrackBucket*) v, value);
-              if (lb->n_updates() > 3000) {
-                assert(0);
-                transition_to_art((uintptr_t) lb);
-              } else {
-                idx = lb->erase(value, rng);
-                if (idx == 0) { erase_root(value); insert_root(lb); }
-              }
-            } else {
-              return erase_root(value);
-            }
-          }
-          return idx != -1;
+        CrackBucket *lb = (CrackBucket*) v;
+        int lo = lb->data(0);
+        lb = make_standalone(lb, value);
+        assert(lo == lb->data(0));
+        if (value == lo) {
+
         }
       } else {
         assert(0);
-        assert(getData(v) == value);
+        assert(getData(v) == (uintptr_t) value);
         return erase_root(value);
       }
-      */
     }
     assert(0);
     return erase_root(value);
@@ -715,18 +696,20 @@ public:
     // art_debug = 1;
     // fprintf(stderr, "lower_bound %d\n", value);
 
-    Node *n = find_bucket(value);
-    assert(isLeaf(n));
-    uintptr_t v = getData((uintptr_t) n);
-    assert(v);
-    if (isPointer(v)) {
-      CrackBucket *lb = make_standalone((CrackBucket*) v, value);
-      assert(lb);
-      int pos = lb->lower_pos(value, rng);
-      if (pos < lb->size()) {
-        int ret = lb->data(pos);
-        transition_to_art(lb);
-        return ret;
+    if (n_buckets) {
+      Node *n = find_bucket(value);
+      assert(isLeaf(n));
+      uintptr_t v = getData((uintptr_t) n);
+      assert(v);
+      if (isPointer(v)) {
+        CrackBucket *lb = make_standalone((CrackBucket*) v, value);
+        assert(lb);
+        int pos = lb->lower_pos(value, rng);
+        if (pos < lb->size()) {
+          int ret = lb->data(pos);
+          if (lb->touch() > 10) transition_to_art(lb);
+          return ret;
+        }
       }
     }
 
