@@ -674,7 +674,7 @@ public:
       if (isPointer(v)) {
         CrackBucket *lb = (CrackBucket*) v;
         lb = make_standalone(lb, value);
-        if (value == lb->data(0) || lb->n_erased() > 50) {
+        if (value == lb->data(0) || lb->n_erased() > 20) {
           // fprintf(stderr, "x");
           transition_to_art(lb);
         } else {
