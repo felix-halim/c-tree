@@ -183,7 +183,8 @@ int main(int argc, char *argv[]) {
     double load_time = 0;
     s.query_time += time_it([&] {
       long long nQ = s.Q - s.Q / qm; // nQ = how many queries needed.
-      for (long long i = 1, a, b; i <= nQ; i++) {
+      int a, b;
+      for (long long i = 1; i <= nQ; i++) {
         // if (U == 3) {
         //   a = update.get_next_smallest();
         // } else {
