@@ -96,6 +96,7 @@ public:
   CrackBucket* next() const { return next_b; }
   CrackBucket* tail() const { return tail_b; }
   int& data(int i) { assert(i >= 0 && i < this->N); return D[i]; }
+  void sort() { std::sort(D, D + N); };
   void set_data(int i, int v) { assert(i >= 0 && i < this->N); D[i] = v; }
   int* data() { return D; }
 
@@ -437,7 +438,14 @@ public:
       bool ok = erase_root(b->data(0));
       assert(ok);
       // fprintf(stderr, "completing %d\n", b->size());
-      b->each([&](int x) { insert_root_value(x); });
+
+      // fprintf(stderr, "insert root value %llu\n", (unsigned long long) value);
+
+      b->sort();
+      for (int i = 0; i < b->size(); i++) {
+        insert_root_value(b->data(i));
+      }
+
       // fprintf(stderr, "completing2 %d\n", b->size());
       delete b;
       n_buckets--;
