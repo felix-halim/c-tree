@@ -1,7 +1,7 @@
 #include <cstdio>
 #include <cassert>
 
-#define BUCKET_SIZE 1600
+#define BUCKET_SIZE 1024
 
 #include "comb_art.h"
 #include "test.h"
