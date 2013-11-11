@@ -775,7 +775,7 @@ public:
   SmallBucket* to_small_bucket(Bucket *b, int value) {
     assert(b);
     if (b->large_type) {
-      LargeBucket *lb = make_standalone((LargeBucket*) b, value);
+      LargeBucket *lb = (LargeBucket*) b;
       erase_root(lb->data(0));
       SmallBucket *target = nullptr;
       lb->split(rng, [&](int *D, int n) {
@@ -804,13 +804,24 @@ public:
       uintptr_t v = getData((uintptr_t) n);
       assert(v);
       if (isPointer(v)) {
-        SmallBucket *sb = to_small_bucket((Bucket*) v, value);
-        if (sb) {
-          int pos = sb->lower_pos(value);
-          if (pos < sb->size()) {
-            int ret = sb->data(pos);
-            // if (lb->n_touched() > LARGE_SIZE) transition_to_art(lb);
+        Bucket *b = (Bucket*) v;
+        if (b->large_type) {
+          LargeBucket *lb = make_standalone((LargeBucket*) b, value);
+          int pos = lb->lower_pos(value, rng);
+          if (pos < lb->size()) {
+            int ret = lb->data(pos);
+            if (lb->n_touched() > 100) to_small_bucket(lb, value);
             return ret;
+          }
+        } else {
+          SmallBucket *sb = to_small_bucket(b, value);
+          if (sb) {
+            int pos = sb->lower_pos(value);
+            if (pos < sb->size()) {
+              int ret = sb->data(pos);
+              // if (lb->n_touched() > LARGE_SIZE) transition_to_art(lb);
+              return ret;
+            }
           }
         }
       }
