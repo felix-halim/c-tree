@@ -763,7 +763,16 @@ public:
       assert(isLeaf(n));
       uintptr_t v = getData((uintptr_t) n);
       if (isPointer(v)) {
-        SmallBucket *sb = to_small_bucket((Bucket*) v, value);
+        Bucket *b = (Bucket*) v;
+        if (b->large_type) {
+          LargeBucket *lb = make_standalone((LargeBucket*) b, value);
+          if (lb->data(0) == value) {
+            b = to_small_bucket(lb, value);
+          } else {
+            return lb->erase(value, rng);
+          }
+        }
+        SmallBucket *sb = (SmallBucket*) b;
         // fprintf(stderr, "smallize\n");
         if (!sb) return false;
         // fprintf(stderr, "trans\n");
