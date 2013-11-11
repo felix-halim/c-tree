@@ -770,7 +770,7 @@ public:
         Bucket *b = (Bucket*) v;
         if (b->large_type) {
           LargeBucket *lb = make_standalone((LargeBucket*) b, value);
-          if (lb->data(0) == value || lb->n_erased() > 100) {
+          if (lb->data(0) == value || lb->n_touched() + lb->n_erased() > LARGE_TOUCH) {
             b = to_small_bucket(lb, value);
           } else {
             return lb->erase(value, rng);
@@ -780,7 +780,7 @@ public:
         // fprintf(stderr, "smallize\n");
         if (!sb) return false;
         // fprintf(stderr, "trans\n");
-        if (sb->data(0) == value || sb->size() < 10 || sb->n_touched() > SMALL_SIZE) {
+        if (sb->data(0) == value || sb->size() < 10 || sb->n_touched() > SMALL_TOUCH) {
           // fprintf(stderr, ".");
           transition_to_art(sb);
         } else {
@@ -835,7 +835,7 @@ public:
           int pos = lb->lower_pos(value, rng);
           if (pos < lb->size()) {
             int ret = lb->data(pos);
-            if (lb->n_touched() > 50) to_small_bucket(lb, value);
+            if (lb->n_touched() > LARGE_TOUCH) to_small_bucket(lb, value);
             return ret;
           }
         } else {
@@ -844,11 +844,13 @@ public:
             int pos = sb->lower_pos(value);
             if (pos < sb->size()) {
               int ret = sb->data(pos);
-              if (sb->n_touched() > SMALL_SIZE) transition_to_art(sb);
+              if (sb->n_touched() > SMALL_TOUCH) transition_to_art(sb);
               return ret;
             }
           }
         }
+      } else if ((int) getData(v) == value) {
+        return value;
       }
     }
 
