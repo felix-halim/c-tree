@@ -5,7 +5,7 @@
 #define SMALL_SIZE 64
 
 #define LARGE_TOUCH 0
-#define SMALL_TOUCH 2
+#define SMALL_TOUCH 0
 
 #include "comb_art.h"
 #include "test.h"
