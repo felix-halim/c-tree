@@ -770,7 +770,7 @@ public:
         Bucket *b = (Bucket*) v;
         if (b->large_type) {
           LargeBucket *lb = make_standalone((LargeBucket*) b, value);
-          if (lb->data(0) == value || lb->n_erased() > 50) {
+          if (lb->data(0) == value || lb->n_erased() > 100) {
             b = to_small_bucket(lb, value);
           } else {
             return lb->erase(value, rng);
