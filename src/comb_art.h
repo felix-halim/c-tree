@@ -43,6 +43,8 @@ class Bucket {
 
 class SmallBucket : public Bucket {
   int D[SMALL_SIZE];
+  int n_touch;
+
  public:
   SmallBucket(int *arr, int n) {
     N = n;
@@ -55,6 +57,8 @@ class SmallBucket : public Bucket {
   ~SmallBucket() {
     n_small--;
   }
+
+  int n_touched() { return ++n_touch; }
 
   int data(int i) {
     // fprintf(stderr, "i = %d / %d\n", i, N);
@@ -766,7 +770,7 @@ public:
         Bucket *b = (Bucket*) v;
         if (b->large_type) {
           LargeBucket *lb = make_standalone((LargeBucket*) b, value);
-          if (lb->data(0) == value) {
+          if (lb->data(0) == value || lb->n_erased() > 10) {
             b = to_small_bucket(lb, value);
           } else {
             return lb->erase(value, rng);
@@ -776,7 +780,7 @@ public:
         // fprintf(stderr, "smallize\n");
         if (!sb) return false;
         // fprintf(stderr, "trans\n");
-        if (sb->data(0) == value || sb->size() < 10) {
+        if (sb->data(0) == value || sb->size() < 10 || sb->n_touched() > SMALL_SIZE) {
           // fprintf(stderr, ".");
           transition_to_art(sb);
         } else {
@@ -840,7 +844,7 @@ public:
             int pos = sb->lower_pos(value);
             if (pos < sb->size()) {
               int ret = sb->data(pos);
-              // if (lb->n_touched() > LARGE_SIZE) transition_to_art(lb);
+              if (sb->n_touched() > SMALL_SIZE) transition_to_art(sb);
               return ret;
             }
           }
