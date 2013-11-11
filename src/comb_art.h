@@ -658,6 +658,7 @@ public:
     assert(value >= 0);
     loadKey(value, key);
     // fprintf(stderr, "add root %d\n", data(b));
+    n_index++;
     ::insert(tree, &tree, key, 0, (uintptr_t) b, 8);
   }
 
@@ -861,6 +862,27 @@ public:
     Node* leaf = ::lower_bound(tree,key,8,0,8);
     // fprintf(stderr, "b %p", leaf);
     return isLeaf(leaf) ? getLeafValue(leaf) : 0;
+  }
+
+  int n_chains() {
+    int ret = 0;
+    visit_leaves(tree, [&](Node *n) {
+      assert(isLeaf(n));
+      uintptr_t v = getData((uintptr_t) n);
+      assert(v);
+      if (isPointer(v)) {
+        Bucket *b = (Bucket*) v;
+        if (b->large_type) {
+          LargeBucket *lb = (LargeBucket*) b;
+          ret--;
+          while (lb) {
+            lb = lb->next();
+            ret++;
+          }
+        }
+      }
+    });
+    return ret;
   }
 };
 

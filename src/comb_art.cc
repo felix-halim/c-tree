@@ -4,8 +4,8 @@
 #define LARGE_SIZE 4096
 #define SMALL_SIZE 64
 
-#define LARGE_TOUCH 50
-#define SMALL_TOUCH 50
+#define LARGE_TOUCH 10
+#define SMALL_TOUCH 10
 
 #include "comb_art.h"
 #include "test.h"
@@ -56,7 +56,7 @@ void results(Statistics &s) {
   s.n_leaves = n_large;//c.num_of_buckets();
   s.n_capacity = n_small;//c.capacity();
   s.n_internals = n_index;//c.n_internals();
-  s.max_depth = 2;
+  s.max_depth = c.n_chains();
   s.slack = 0;//c.slack();
   s.in_size = 0;//INTERNAL_BSIZE;
   s.ln_size = 0;//c.size();

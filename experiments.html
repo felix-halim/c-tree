@@ -15,11 +15,11 @@
 }
 </style>
 <script src="d3.v3.min.js"></script>
-<script src="data.js?7"></script>
+<script src="data.js?8"></script>
 <script>
 data = d3.csv.parse(data);
 </script>
-<script src="linechart.js?7"></script>
+<script src="linechart.js?8"></script>
 </head>
 
 <body onload="renderLinecharts()">
@@ -41,7 +41,6 @@ The setup is: insert 10^8 random integers and perform 10^9 point queries.
   xAxis: { label: 'Timeline (seconds)', attr: 'total_time', scale: 'log', domain: [0.4, 3000], format: 'd', ticks: [0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20, 30, 40, 50, 60, 70, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 2000, 3000], margin: 40 },
   legend: {
     'sort' : { x: 250, y: 120 },
-    'art' : { x: 250, y: 60 },
     'art_best_eager' : { x: 250, y: 80 },
     'btree_google' : { x: 250, y: 100 },
     'mdd1r' : { x: 70, y: 150 },
@@ -52,7 +51,7 @@ The setup is: insert 10^8 random integers and perform 10^9 point queries.
     { attr: 'update_workload',   values: ['NOUP'] },
     { attr: 'query_workload',   values: ['Random'] },
     { attr: 'Q',   values: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9 ] },
-    { attr: 'algorithm',         values: ['sort', 'crack', 'comb', 'mdd1r', 'art_best_eager', 'art', 'btree_google'] },
+    { attr: 'algorithm',         values: ['sort', 'crack', 'comb', 'mdd1r', 'art_best_eager', 'btree_google'] },
   ]), 'algorithm'),
 }</div>
 
@@ -62,7 +61,6 @@ The setup is: insert 10^8 random integers and perform 10^9 point queries.
   xAxis: { label: 'Timeline (seconds)', attr: 'total_time', scale: 'log', domain: [0.4, 400], format: 'd', ticks: [0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20, 30, 40, 50, 60, 70, 100, 200, 300, 400], margin: 40 },
   legend: {
     'sort' : { x: 185, y: 95 },
-    'art' : { x: 185, y: 135 },
     'art_best_eager' : { x: 110, y: 140 },
     'btree_google' : { x: 275, y: 80 },
     'mdd1r' : { x: 90, y: 70 },
@@ -72,7 +70,7 @@ The setup is: insert 10^8 random integers and perform 10^9 point queries.
     { attr: 'update_workload',   values: ['NOUP'] },
     { attr: 'query_workload',   values: ['SeqOver'] },
     { attr: 'Q',   values: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9 ] },
-    { attr: 'algorithm',         values: ['sort', 'comb', 'mdd1r', 'art_best_eager', 'art', 'btree_google'] },
+    { attr: 'algorithm',         values: ['sort', 'comb', 'mdd1r', 'art_best_eager', 'btree_google'] },
   ]), 'algorithm'),
 }</div>
 
@@ -145,24 +143,7 @@ I will implement the transitive indexing soon.
   data: group(filter([
     { attr: 'update_workload',   values: ['NOUP'] },
     { attr: 'query_workload',    values: ['Random'] },
-    { attr: 'algorithm',         values: ['sort', 'comb', 'mdd1r', 'comb_art', 'art_best_eager', 'art'] },
-  ]), 'algorithm'),
-}</div>
-
-<div class="chart" style="display: inline-block">{
-  height:500,
-  xAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'logx', domain: [1e8, 1e9], format: 's', ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9], margin: 40 },
-  yAxis: { label: 'NOUP: Ratio to Sort', attr: 'total_time', scale: 'logx', domain: [0.05, 1000], format: 's', ticks: [0.05, 0.06, 0.07, 0.08, 0.09, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], margin: 40 },
-  legend: {
-    'sort' : { x: 50, y: 50 },
-    'mdd1r' : { x: 250, y: 20 },
-    'comb' : { x: 170, y: 110 },
-    'comb_art' : { x: 170, y: 130 },
-  },
-  data: group(filter([
-    { attr: 'update_workload',   values: ['NOUP'] },
-    { attr: 'query_workload',    values: ['Random'] },
-    { attr: 'algorithm',         values: ['sort', 'comb', 'mdd1r', 'comb_art', 'art_best_eager', 'art'] },
+    { attr: 'algorithm',         values: ['sort', 'comb', 'mdd1r', 'comb_art', 'art_best_eager'] },
   ]), 'algorithm'),
 }</div>
 
@@ -353,46 +334,42 @@ but worse in the long run because of the high cost in updating large Bucket with
 
 <div class="chart" style="display: inline-block">{
   xAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'log', domain: [0.5, 2e9], format: ticksPow10, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9 ], margin: 40 },
-  yAxis: { label: 'LFHV: Ratio to CTree', attr: 'total_time', scale: 'log', domain: [0.3, 10], format: 'pow10', ticks: [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], margin: 30 },
+  yAxis: { label: 'LFHV: Ratio to CTree', attr: 'total_time', scale: 'logx', domain: [0.3, 1.5], format: 'pow10', ticks: [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4, 1.5, 6, 7, 8, 9, 10], margin: 30 },
   base: 'ctree_32_64',
   legend: {
-    'comb':           { x: 95, y: 20 },
-    'combt2048':        { x: 95, y: 40 },
-    'ctree_32_64':    { x: 95, y: 60 },
+    'comb':            { x: 30, y: 15 },
+    'comb800':         { x: 30, y: 30 },
+    'ctree_32_64':     { x: 30, y: 45 },
+    'combt512':        { x: 30, y: 75 },
+    'comb_art':        { x: 30, y: 90 },
   },
   data: group(filter([
     { attr: 'update_workload',   values: ['LFHV'] },
     { attr: 'query_workload',    values: ['Random'] },
     { attr: 'Q',                 values: [1,10,1e2,1e3,1e4,1e5,1e6,1e7,1e8,1e9] },
-    { attr: 'algorithm',         values: ['comb', 'ctree_32_64', 'combt2048'] },
+    { attr: 'algorithm',         values: ['comb', 'ctree_32_64', 'comb800', 'comb_art', 'combt512'] },
   ]), 'algorithm'),
 }</div>
 
-
 <div class="chart" style="display: inline-block">{
-  width: 600, height: 400,
-  xAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'log', domain: [0.5, 2e10], format: ticksPow10, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9 ], margin: 40 },
+  xAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'log', domain: [0.5, 2e9], format: ticksPow10, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9 ], margin: 40 },
   yAxis: { label: 'LFHV: Ratio to CTree', attr: 'total_time', scale: 'logx', domain: [0.3, 1.5], format: 'pow10', ticks: [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4, 1.5, 6, 7, 8, 9, 10], margin: 30 },
   base: 'ctree_32_64',
   legend: {
-    'comb800':         { x: 90, y: 20 },
-    'ctree_32_64':     { x: 90, y: 40 },
-    'comb_art':        { x: 90, y: 60 },
-    'art':             { x: 90, y: 80 },
-    'art_best_eager':  { x: 90, y: 100 },
-    'combt512':        { x: 90, y: 120 },
-    'combtr2':         { x: 90, y: 160 },
-    'art_best':        { x: 90, y: 180 },
+    'comb_art':        { x: 75, y: 30 },
+    'ctree_32_64':     { x: 75, y: 45 },
+    'art_best_eager':  { x: 75, y: 75 },
+    'art_best':        { x: 75, y: 90 },
   },
   data: group(filter([
     { attr: 'update_workload',   values: ['LFHV'] },
     { attr: 'query_workload',    values: ['Random'] },
-    { attr: 'Q',                 values: [1,10,1e2,1e3,1e4,1e5,1e6,1e7,1e8,1e9,1e10] },
-    { attr: 'algorithm',         values: ['comb_art', 'ctree_32_64', 'art', 'art_best_eager'] },
+    { attr: 'Q',                 values: [1,10,1e2,1e3,1e4,1e5,1e6,1e7,1e8,1e9] },
+    { attr: 'algorithm',         values: ['ctree_32_64', 'comb_art', 'art_best_eager', 'art_best'] },
   ]), 'algorithm'),
 }</div>
 
-<div class="chart" style="display: inline-block">{
+<!-- <div class="chart" style="display: inline-block">{
   width: 600, height: 400,
   xAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'log', domain: [0.5, 2e9], format: ticksPow10, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9 ], margin: 40 },
   yAxis: { label: 'LFHV: Ratio to CTree', attr: 'total_time', scale: 'logx', domain: [0.3, 1.5], format: 'pow10', ticks: [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4, 1.5, 6, 7, 8, 9, 10], margin: 30 },
@@ -401,7 +378,6 @@ but worse in the long run because of the high cost in updating large Bucket with
     'comb800':         { x: 90, y: 20 },
     'ctree_32_64':     { x: 90, y: 40 },
     'comb_art':        { x: 90, y: 60 },
-    'art':             { x: 90, y: 80 },
     'art_best_eager':  { x: 90, y: 100 },
     'combt512':        { x: 90, y: 120 },
     'combtr2':         { x: 90, y: 160 },
@@ -411,11 +387,28 @@ but worse in the long run because of the high cost in updating large Bucket with
     { attr: 'update_workload',   values: ['LFHV'] },
     { attr: 'query_workload',    values: ['Random'] },
     { attr: 'Q',                 values: [1,10,1e2,1e3,1e4,1e5,1e6,1e7,1e8,1e9] },
-    { attr: 'algorithm',         values: ['ctree_32_64', 'comb800', 'comb_art', 'art_best_eager', 'combt512', 'combtr2', 'art_best', 'art'] },
+    { attr: 'algorithm',         values: ['ctree_32_64', 'comb800', 'comb_art', 'art_best_eager', 'combt512', 'combtr2', 'art_best'] },
+  ]), 'algorithm'),
+}</div>
+ -->
+<div class="chart" style="display: inline-block">{
+  xAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'log', domain: [0.5, 2e10], format: ticksPow10, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10 ], margin: 40 },
+  yAxis: { label: 'LFHV: Ratio to CTree', attr: 'total_time', scale: 'logx', domain: [0.3, 1.5], format: 'pow10', ticks: [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4, 1.5, 6, 7, 8, 9, 10], margin: 30 },
+  base: 'ctree_32_64',
+  legend: {
+    'ctree_32_64':     { x: 40, y: 45 },
+    'art_best_eager':  { x: 40, y: 75 },
+    'comb_art':        { x: 40, y: 90 },
+  },
+  data: group(filter([
+    { attr: 'update_workload',   values: ['LFHV'] },
+    { attr: 'query_workload',    values: ['Random'] },
+    { attr: 'Q',                 values: [1,10,1e2,1e3,1e4,1e5,1e6,1e7,1e8,1e9,1e10] },
+    { attr: 'algorithm',         values: ['comb_art', 'ctree_32_64', 'art_best_eager'] },
   ]), 'algorithm'),
 }</div>
 
-<div class="chart" style="display: inline-block">{
+<!-- <div class="chart" style="display: inline-block">{
   xAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'log', domain: [0.5, 2e9], format: ticksPow10, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9 ], margin: 40 },
   yAxis: { label: 'LFHV: Ratio to CTree', attr: 'total_time', scale: 'log', domain: [0.3, 2000], format: 'pow10', ticks: [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], margin: 30 },
   legend: {
@@ -431,7 +424,7 @@ but worse in the long run because of the high cost in updating large Bucket with
     { attr: 'algorithm',         values: ['ctree_32_64', 'comb800', 'comb_art', 'art_best', 'combt512'] },
   ]), 'algorithm'),
 }</div>
-
+ -->
 <p>Replacing COMB's root array to (incremental) BTree does significantly helps under updates!<br>
 The left figure is COMB6400 vs COMB-Tree2048 (superior).<br>
 The right figure is for smaller bucket COMB800 vs COMB-Tree512 (superior).<br>
@@ -456,7 +449,7 @@ On one billion LFHV queries, however the lazy insert took noticeable overhead.<b
 This can be mitigated by doing eager insert after 100M queries.
 
 <h2>Streaming Insert Interleaved with Random Count Queries</h2>
-<div class="chartx">{
+<div class="chart">{
 width: 255,
 xAxis: { label: 'Query Sequence', attr: 'Q', scale: 'log', domain: [0.5, 2e3], format: null, ticks: [1, 10, 1e2, 1e3], margin: 40 },
 yAxis: { label: 'Cumulative Runtime', attr: 'total_time', scale: 'logx', domain: [-50, 500], format: 'pow10', ticks: [0, 100, 200, 300, 400, 500], margin: 40 },
@@ -562,53 +555,53 @@ Each count query requires the algo to iterate for each pieces to acquire it's si
 
 <script>
 barchart("#fig1", '(a) 1 Query', 'Total Time (s)', data, 'NOUP', '1', {
-  art: 'ART', art_best_eager: 'ARTB', art_best: 'ARTC', btree_google: 'BT', ctree_eager: 'CTE', ctree_32_1024: 'CT', crack: 'CRK',
+  art_best_eager: 'ARTB', art_best: 'ARTC', btree_google: 'BT', ctree_eager: 'CTE', ctree_32_1024: 'CT', crack: 'CRK',
   comb: 'COMB',
   sort: 'SORT',
 });
 
 barchart("#fig2", '(b) 1K Queries', null, data, 'NOUP', '1000', {
-  art: 'ART', art_best_eager: 'ARTB', art_best: 'ARTC', btree_google: 'BT', ctree_eager: 'CTE', ctree_32_1024: 'CT', crack: 'CRK',
+  art_best_eager: 'ARTB', art_best: 'ARTC', btree_google: 'BT', ctree_eager: 'CTE', ctree_32_1024: 'CT', crack: 'CRK',
   comb: 'COMB',
   sort: 'SORT',
 });
 
 barchart("#fig3", '(c) 1M Queries', null, data, 'NOUP', '1000000', {
-  art: 'ART', art_best_eager: 'ARTB', art_best: 'ARTC', btree_google: 'BT', ctree_eager: 'CTE', ctree_32_1024: 'CT', crack: 'CRK',
+  art_best_eager: 'ARTB', art_best: 'ARTC', btree_google: 'BT', ctree_eager: 'CTE', ctree_32_1024: 'CT', crack: 'CRK',
   comb: 'COMB',
   sort: 'SORT',
 });
 
 barchart("#fig4", '(d) 100M Queries', null, data, 'NOUP', '100000000', {
-  art: 'ART', art_best_eager: 'ARTB', art_best: 'ARTC', btree_google: 'BT', ctree_eager: 'CTE', ctree_32_1024: 'CT', crack: 'CRK',
+  art_best_eager: 'ARTB', art_best: 'ARTC', btree_google: 'BT', ctree_eager: 'CTE', ctree_32_1024: 'CT', crack: 'CRK',
   comb: 'COMB',
   sort: 'SORT',
 });
 
 barchart("#fig41", '(e) 1B Queries', null, data, 'NOUP', '1000000000', {
-  art: 'ART', art_best_eager: 'ARTB', art_best: 'ARTC', btree_google: 'BT', ctree_eager: 'CTE', ctree_32_1024: 'CT', crack: 'CRK',
+  art_best_eager: 'ARTB', art_best: 'ARTC', btree_google: 'BT', ctree_eager: 'CTE', ctree_32_1024: 'CT', crack: 'CRK',
   comb: 'COMB',
   sort: 'SORT',
 });
 
 barchart("#fig5", '(a) 1 Query', 'Total Time (s)', data, 'LFHV', '1', {
-  art: 'ART', art_best_eager: 'ARTB', art_best: 'ARTC', btree_google: 'BT', ctree_eager: 'CTE', ctree_32_64: 'CT', crack: 'CRK', comb800: 'COMB',
+  art_best_eager: 'ARTB', art_best: 'ARTC', btree_google: 'BT', ctree_eager: 'CTE', ctree_32_64: 'CT', crack: 'CRK', comb800: 'COMB',
 });
 
 barchart("#fig6", '(b) 1K Queries', null, data, 'LFHV', '1000', {
-  art: 'ART', art_best_eager: 'ARTB', art_best: 'ARTC', btree_google: 'BT', ctree_eager: 'CTE', ctree_32_64: 'CT', crack: 'CRK', comb800: 'COMB',
+  art_best_eager: 'ARTB', art_best: 'ARTC', btree_google: 'BT', ctree_eager: 'CTE', ctree_32_64: 'CT', crack: 'CRK', comb800: 'COMB',
 });
 
 barchart("#fig7", '(c) 1M Queries', null, data, 'LFHV', '1000000', {
-  art: 'ART', art_best_eager: 'ARTB', art_best: 'ARTC', btree_google: 'BT', ctree_eager: 'CTE', ctree_32_64: 'CT', crack: 'CRK', comb800: 'COMB',
+  art_best_eager: 'ARTB', art_best: 'ARTC', btree_google: 'BT', ctree_eager: 'CTE', ctree_32_64: 'CT', crack: 'CRK', comb800: 'COMB',
 });
 
 barchart("#fig8a", '(d) 100M Queries', null, data, 'LFHV', '100000000', {
-  art: 'ART', art_best_eager: 'ARTB', art_best: 'ARTC', btree_google: 'BT', ctree_eager: 'CTE', ctree_32_64: 'CT', crack: 'CRK', comb800: 'COMB',
+  art_best_eager: 'ARTB', art_best: 'ARTC', btree_google: 'BT', ctree_eager: 'CTE', ctree_32_64: 'CT', crack: 'CRK', comb800: 'COMB',
 });
 
 barchart("#fig8b", '(e) 1B Queries', null, data, 'LFHV', '1000000000', {
-  art: 'ART', art_best_eager: 'ARTB', art_best: 'ARTC', btree_google: 'BT', ctree_eager: 'CTE', ctree_32_64: 'CT', crack: 'CRK', comb800: 'COMB',
+  art_best_eager: 'ARTB', art_best: 'ARTC', btree_google: 'BT', ctree_eager: 'CTE', ctree_32_64: 'CT', crack: 'CRK', comb800: 'COMB',
 });
 </script>
 </body>
