@@ -50,9 +50,9 @@ int count(int a, int b) {
 void results(Statistics &s) {
   // assert(c.check());
   s.note = "Lazy";
-  s.n_leaves = n_buckets;//c.num_of_buckets();
-  s.n_capacity = 0;//c.capacity();
-  s.n_internals = 0;//c.n_internals();
+  s.n_leaves = n_large;//c.num_of_buckets();
+  s.n_capacity = n_small;//c.capacity();
+  s.n_internals = n_index;//c.n_internals();
   s.max_depth = 2;
   s.slack = 0;//c.slack();
   s.in_size = 0;//INTERNAL_BSIZE;

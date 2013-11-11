@@ -29,7 +29,9 @@ class Random {
 #define CRACK_AT (LARGE_SIZE >> 5)
 #define DECRACK_AT (LARGE_SIZE >> 6)
 
-int n_buckets; // Number of leaf buckets.
+int n_large; // Number of leaf buckets.
+int n_small; // Number of leaf buckets.
+int n_index; // Number of leaf buckets.
 
 class Bucket {
  protected:
@@ -47,6 +49,11 @@ class SmallBucket : public Bucket {
     memcpy(D, arr, sizeof(int) * n);
     sort(D, D + N);
     large_type = 0;
+    n_small++;
+  }
+
+  ~SmallBucket() {
+    n_small--;
   }
 
   int data(int i) {
@@ -256,6 +263,7 @@ public:
     clear_indexes();
     n_erase = n_touch = 0;
     large_type = 1;
+    n_large++;
   }
 
   LargeBucket(int *arr, int n): next_b(nullptr), tail_b(nullptr) {
@@ -263,6 +271,11 @@ public:
     this->N = n;
     n_erase = n_touch = 0;
     large_type = 1;
+    n_large++;
+  }
+
+  ~LargeBucket() {
+    n_large--;
   }
 
   int n_cracks() { return nC; }
@@ -640,7 +653,6 @@ public:
     uint64_t value = data(b);
     assert(value >= 0);
     loadKey(value, key);
-    n_buckets++;
     // fprintf(stderr, "add root %d\n", data(b));
     ::insert(tree, &tree, key, 0, (uintptr_t) b, 8);
   }
@@ -650,6 +662,7 @@ public:
     assert(value >= 0);
     assert(value < (1ULL << 40));
     // fprintf(stderr, "insert root value %llu\n", (unsigned long long) value);
+    n_index++;
     loadKey(value, key);
     ::insert(tree, &tree, key, 0, (value << 1) | 1, 8);
   }
@@ -720,9 +733,7 @@ public:
       insert_root_value(b->data(i));
     }
     delete b;
-    n_buckets--;
-    assert(n_buckets >= 0);
-    return !n_buckets;
+    return (n_large + n_small == 0);
   }
 
   bool erase_root(uint64_t value64) {
@@ -730,6 +741,7 @@ public:
     loadKey(value64, key);
     // fprintf(stderr, "erase root %llu\n", value64);
     ::erase(tree,&tree,key,8,0,8);
+    n_index--;
     return true;
   }
 
@@ -746,7 +758,7 @@ public:
   bool erase(int const &value) {
     // fprintf(stderr, "ERASE %d\n", value);
     // art_debug = 1;
-    if (n_buckets) {
+    if (n_large + n_small) {
       Node *n = find_bucket(value);
       assert(isLeaf(n));
       uintptr_t v = getData((uintptr_t) n);
@@ -798,7 +810,7 @@ public:
     // art_debug = 1;
     // fprintf(stderr, "lower_bound %d\n", value);
 
-    if (n_buckets) {
+    if (n_large + n_small) {
       Node *n = find_bucket(value);
       assert(isLeaf(n));
       uintptr_t v = getData((uintptr_t) n);
