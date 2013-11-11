@@ -755,7 +755,7 @@ public:
         // fprintf(stderr, "smallize\n");
         if (!sb) return false;
         // fprintf(stderr, "trans\n");
-        if (sb->data(0) == value || sb->size() < 20) {
+        if (sb->data(0) == value || sb->size() < 10) {
           // fprintf(stderr, ".");
           transition_to_art(sb);
         } else {
