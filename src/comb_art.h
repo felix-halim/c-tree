@@ -831,7 +831,7 @@ public:
           int pos = lb->lower_pos(value, rng);
           if (pos < lb->size()) {
             int ret = lb->data(pos);
-            if (lb->n_touched() > 100) to_small_bucket(lb, value);
+            if (lb->n_touched() > 200) to_small_bucket(lb, value);
             return ret;
           }
         } else {
