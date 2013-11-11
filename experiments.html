@@ -278,6 +278,7 @@ ARTC is 48x, 8x, 2x faster than ART on 1, 1K, 1M queries respectively and compar
   data: group(filter([
     { attr: 'update_workload',   values: ['LFHV'] },
     { attr: 'query_workload',    values: ['Random'] },
+    { attr: 'Q',                 values: [1,10,1e2,1e3,1e4,1e5,1e6,1e7,1e8,1e9] },
     { attr: 'algorithm',         values: ['crack', 'comb', 'ctree_32_64', 'ctree_32_1024'] },
   ]), 'algorithm'),
 }</div>
@@ -295,6 +296,7 @@ ARTC is 48x, 8x, 2x faster than ART on 1, 1K, 1M queries respectively and compar
   data: group(filter([
     { attr: 'update_workload',   values: ['LFHV'] },
     { attr: 'query_workload',    values: ['Random'] },
+    { attr: 'Q',                 values: [1,10,1e2,1e3,1e4,1e5,1e6,1e7,1e8,1e9] },
     { attr: 'algorithm',         values: ['comb', 'art_best', 'art_best_eager', 'ctree_32_64'] },
   ]), 'algorithm'),
 }</div>
@@ -312,6 +314,7 @@ ARTC is 48x, 8x, 2x faster than ART on 1, 1K, 1M queries respectively and compar
   data: group(filter([
     { attr: 'update_workload',   values: ['LFHV'] },
     { attr: 'query_workload',    values: ['Random'] },
+    { attr: 'Q',                 values: [1,10,1e2,1e3,1e4,1e5,1e6,1e7,1e8,1e9] },
     { attr: 'algorithm',         values: ['comb', 'ctree_32_64', 'comb800', 'comb1600'] },
   ]), 'algorithm'),
 }</div>
@@ -329,6 +332,7 @@ ARTC is 48x, 8x, 2x faster than ART on 1, 1K, 1M queries respectively and compar
   data: group(filter([
     { attr: 'update_workload',   values: ['LFHV'] },
     { attr: 'query_workload',    values: ['Random'] },
+    { attr: 'Q',                 values: [1,10,1e2,1e3,1e4,1e5,1e6,1e7,1e8,1e9] },
     { attr: 'algorithm',         values: ['ctree_32_64', 'combt512', 'combt2048', 'combt8192'] },
   ]), 'algorithm'),
 }</div>
@@ -359,10 +363,34 @@ but worse in the long run because of the high cost in updating large Bucket with
   data: group(filter([
     { attr: 'update_workload',   values: ['LFHV'] },
     { attr: 'query_workload',    values: ['Random'] },
+    { attr: 'Q',                 values: [1,10,1e2,1e3,1e4,1e5,1e6,1e7,1e8,1e9] },
     { attr: 'algorithm',         values: ['comb', 'ctree_32_64', 'combt2048'] },
   ]), 'algorithm'),
 }</div>
 
+
+<div class="chart" style="display: inline-block">{
+  width: 600, height: 400,
+  xAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'log', domain: [0.5, 2e10], format: ticksPow10, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9 ], margin: 40 },
+  yAxis: { label: 'LFHV: Ratio to CTree', attr: 'total_time', scale: 'logx', domain: [0.3, 1.5], format: 'pow10', ticks: [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4, 1.5, 6, 7, 8, 9, 10], margin: 30 },
+  base: 'ctree_32_64',
+  legend: {
+    'comb800':         { x: 90, y: 20 },
+    'ctree_32_64':     { x: 90, y: 40 },
+    'comb_art':        { x: 90, y: 60 },
+    'art':             { x: 90, y: 80 },
+    'art_best_eager':  { x: 90, y: 100 },
+    'combt512':        { x: 90, y: 120 },
+    'combtr2':         { x: 90, y: 160 },
+    'art_best':        { x: 90, y: 180 },
+  },
+  data: group(filter([
+    { attr: 'update_workload',   values: ['LFHV'] },
+    { attr: 'query_workload',    values: ['Random'] },
+    { attr: 'Q',                 values: [1,10,1e2,1e3,1e4,1e5,1e6,1e7,1e8,1e9,1e10] },
+    { attr: 'algorithm',         values: ['comb_art', 'ctree_32_64', 'art', 'art_best_eager'] },
+  ]), 'algorithm'),
+}</div>
 
 <div class="chart" style="display: inline-block">{
   width: 600, height: 400,
@@ -382,6 +410,7 @@ but worse in the long run because of the high cost in updating large Bucket with
   data: group(filter([
     { attr: 'update_workload',   values: ['LFHV'] },
     { attr: 'query_workload',    values: ['Random'] },
+    { attr: 'Q',                 values: [1,10,1e2,1e3,1e4,1e5,1e6,1e7,1e8,1e9] },
     { attr: 'algorithm',         values: ['ctree_32_64', 'comb800', 'comb_art', 'art_best_eager', 'combt512', 'combtr2', 'art_best', 'art'] },
   ]), 'algorithm'),
 }</div>
@@ -398,6 +427,7 @@ but worse in the long run because of the high cost in updating large Bucket with
   data: group(filter([
     { attr: 'update_workload',   values: ['LFHV'] },
     { attr: 'query_workload',    values: ['Random'] },
+    { attr: 'Q',                 values: [1,10,1e2,1e3,1e4,1e5,1e6,1e7,1e8,1e9] },
     { attr: 'algorithm',         values: ['ctree_32_64', 'comb800', 'comb_art', 'art_best', 'combt512'] },
   ]), 'algorithm'),
 }</div>
@@ -426,7 +456,7 @@ On one billion LFHV queries, however the lazy insert took noticeable overhead.<b
 This can be mitigated by doing eager insert after 100M queries.
 
 <h2>Streaming Insert Interleaved with Random Count Queries</h2>
-<div class="chart">{
+<div class="chartx">{
 width: 255,
 xAxis: { label: 'Query Sequence', attr: 'Q', scale: 'log', domain: [0.5, 2e3], format: null, ticks: [1, 10, 1e2, 1e3], margin: 40 },
 yAxis: { label: 'Cumulative Runtime', attr: 'total_time', scale: 'logx', domain: [-50, 500], format: 'pow10', ticks: [0, 100, 200, 300, 400, 500], margin: 40 },

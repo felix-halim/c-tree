@@ -305,7 +305,7 @@ function barchart(id, xcap, ylabel, data, update_w, Q, algo_name) {
     }
   });
 
-  console.log(algos);
+  // console.log(algos);
 
   var svg = d3.select(id);
   if (!svg[0][0]) return;
@@ -334,7 +334,7 @@ function barchart(id, xcap, ylabel, data, update_w, Q, algo_name) {
       values[1] = { name:'update', y0: r.insert_time, y1: r.insert_time + r.update_time };
       values[2] = { name:'query', y0: r.insert_time + r.update_time, y1: r.total_time };
     }
-    console.log(name + ' ' + JSON.stringify(values));
+    // console.log(name + ' ' + JSON.stringify(values));
 
     return {
       name: name,

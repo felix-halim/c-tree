@@ -139,7 +139,7 @@ int main(int argc, char *argv[]) {
   sscanf(argv[3], "%lf", &s.selectivity);
   sscanf(argv[4], "%d", &W);
   sscanf(argv[5], "%d", &U);
-  Update update(argv[1], U);
+  Update update(argv[1]);
 
   Workload query_w(W, s.selectivity);
   s.query_workload = workload_name[W];

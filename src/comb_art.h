@@ -6,6 +6,7 @@
 #include <cstring>
 
 #include <functional>
+#include <random>
 #include <vector>
 #include <algorithm>
 #include <string>
@@ -25,29 +26,99 @@ class Random {
   int nextInt(int N) { return dis(gen) % N; } // Poor I know.
 };
 
-#define CRACK_AT (BUCKET_SIZE >> 5)
-#define DECRACK_AT (BUCKET_SIZE >> 6)
+#define CRACK_AT (LARGE_SIZE >> 5)
+#define DECRACK_AT (LARGE_SIZE >> 6)
 
 int n_buckets; // Number of leaf buckets.
 
+class Bucket {
+ protected:
+  int N;        // Number of data elements in this bucket pointed by D.
+ public:
+  int large_type;
+  int size() { return N; }
+};
+
+class SmallBucket : public Bucket {
+  int D[SMALL_SIZE];
+ public:
+  SmallBucket(int *arr, int n) {
+    N = n;
+    memcpy(D, arr, sizeof(int) * n);
+    sort(D, D + N);
+    large_type = 0;
+  }
+
+  int data(int i) {
+    // fprintf(stderr, "i = %d / %d\n", i, N);
+    assert(i >= 0 && i < N); return D[i];
+  }
+
+  int lower_pos(int v) {
+    for (int i = 0; i < N; i++) {
+      if (D[i] >= v) return i;
+    }
+    return N;
+  }
+
+  int erase(int v) {
+    assert(N);
+    int i = 0;
+    for (; i < N; i++) {
+      if (D[i] == v) break;
+    }
+    if (i == N) return -1;
+    N--;
+    for (int j = i; j < N; j++) {
+      D[j] = D[j + 1];
+    }
+    return i;
+  }
+
+  bool insert(int &v) {
+    if (N == SMALL_SIZE) {
+      if (D[N - 1] < v) return false;
+      int t = D[N - 1];
+      for (int i = N - 1; i > 0; i--) {
+        if (D[i - 1] > v) {
+          D[i] = D[i - 1];
+        } else {
+          D[i] = v;
+          v = t;
+          return false;
+        }
+      }
+      assert(0);
+    }
+    int i = N++;
+    for (; i > 0; i--) {
+      if (D[i - 1] > v) {
+        D[i] = D[i - 1];
+      } else break;
+    }
+    assert(i);
+    D[i] = v;
+    return true;
+  }
+};
+
 // Dynamically resize COMB bucket sizes.
 // If number of cracks > 32, it splits to two smaller buckets.
-class CrackBucket {
+class LargeBucket : public Bucket {
   static const unsigned short MAX_CRACK = 64;
 
-  int N;        // Number of data elements in this bucket pointed by D.
   int I;                // last indexed position
   unsigned char nC;     // the number of cracker indices
   unsigned long long S; // sorted bits
   int C[MAX_CRACK-1];   // the cracker indices
   int V[MAX_CRACK-1];     // the cracker value
-  int D[BUCKET_SIZE];      // the data elements
+  int D[LARGE_SIZE];      // the data elements
   int n_erase;  // number of erase operations performed to this bucket.
   int n_touch;
-  CrackBucket* next_b;   // buckets can be chained like a linked list of buckets
+  LargeBucket* next_b;   // buckets can be chained like a linked list of buckets
                         // the value of next is -1 if there is no next chain
                         // otherwise the index of the bucket [0, num_of_buckets)
-  CrackBucket* tail_b;   // pointer to the last bucket in the chain.
+  LargeBucket* tail_b;   // pointer to the last bucket in the chain.
 
   int* partition(int *F, int *L, int const &v) {
     while (true) {
@@ -180,43 +251,51 @@ class CrackBucket {
 
 public:
 
-  CrackBucket(): next_b(nullptr), tail_b(nullptr) {
+  LargeBucket(): next_b(nullptr), tail_b(nullptr) {
     this->N = 0;
     clear_indexes();
     n_erase = n_touch = 0;
+    large_type = 1;
   }
 
-  CrackBucket(int *arr, int n): next_b(nullptr), tail_b(nullptr) {
+  LargeBucket(int *arr, int n): next_b(nullptr), tail_b(nullptr) {
     memcpy(D, arr, sizeof(int) * n);
     this->N = n;
     n_erase = n_touch = 0;
+    large_type = 1;
   }
 
   int n_cracks() { return nC; }
-  int size() const { return N; }
-  int slack() const { return BUCKET_SIZE - this->N; }
-  void set_next(CrackBucket *b){ next_b = b; }
-  void set_tail(CrackBucket *b){ tail_b = b; }
+  int slack() const { return LARGE_SIZE - this->N; }
+  void set_next(LargeBucket *b){ next_b = b; }
+  void set_tail(LargeBucket *b){ tail_b = b; }
   void clear_indexes(){ S = nC = I = 0; }
   int n_touched() { return ++n_touch; }
   int n_erased() { return ++n_erase; }
   int remove_first() { assert(N > 0); int ret = D[0]; D[0] = D[--N]; return ret; }
-  int capacity() const { return BUCKET_SIZE; }
-  CrackBucket* next() const { return next_b; }
-  CrackBucket* tail() const { return tail_b; }
+  int capacity() const { return LARGE_SIZE; }
+  LargeBucket* next() const { return next_b; }
+  LargeBucket* tail() const { return tail_b; }
   int& data(int i) { assert(i >= 0 && i < this->N); return D[i]; }
   void sort() { std::sort(D, D + N); };
   void set_data(int i, int v) { assert(i >= 0 && i < this->N); D[i] = v; }
   int* data() { return D; }
 
-  CrackBucket* split(Random &rng) {
-    int M = rough_middle_partition(D + 1, D + N, rng, N / 3) - D;
-    CrackBucket *rb = new CrackBucket(D + M, N - M);
-    N = M;
-    return rb;
+  void rec_split(int L, int R, Random &rng, std::function<void(int*, int)> callback) {
+    if (R - L <= SMALL_SIZE) {
+      callback(D + L, R - L);
+    } else {
+      int M = rough_middle_partition(D + L + 1, D + R, rng, (R - L) / 3) - D;
+      rec_split(L, M, rng, callback);
+      rec_split(M, R, rng, callback);
+    }
   }
 
-  void add_chain(CrackBucket *next) {
+  void split(Random &rng, std::function<void(int*, int)> callback) {
+    rec_split(0, N, rng, callback);
+  }
+
+  void add_chain(LargeBucket *next) {
     if (next_b) {
       assert(tail_b);
       tail_b->next_b = next;
@@ -229,7 +308,7 @@ public:
   }
 
   void insert(int const &v) {
-    if (this->N < BUCKET_SIZE) {
+    if (this->N < LARGE_SIZE) {
       D[this->N++] = v;
       return;
     }
@@ -238,7 +317,7 @@ public:
     assert(!next_b || tail_b);
     if (!next_b || tail_b->N == tail_b->capacity()) {
       // fprintf(stderr, "c");
-      add_chain(new CrackBucket());
+      add_chain(new LargeBucket());
       // fprintf(stderr, "d");
     }
     assert(tail_b && tail_b->N < tail_b->capacity());
@@ -258,7 +337,7 @@ public:
   }
 
   void append(int value) {
-    assert(this->N < BUCKET_SIZE);
+    assert(this->N < LARGE_SIZE);
     D[this->N++] = value;
   }
 
@@ -277,16 +356,16 @@ public:
   // partition this bucket based on value v, destroying all cracker indices
   int partition(int const &v) {
     clear_indexes();
-    assert(this->N > 0 && this->N <= BUCKET_SIZE);
+    assert(this->N > 0 && this->N <= LARGE_SIZE);
     return std::partition(D, D + this->N, [&](int x){ return (x < v); }) - D;
   }
 
   // move this bucket data in range [fromIdx, end) and append
-  // it to the specified CrackBucket "to", destroying all cracker indices
-  void moveToFromIdx(CrackBucket *to, int fromIdx) {
+  // it to the specified LargeBucket "to", destroying all cracker indices
+  void moveToFromIdx(LargeBucket *to, int fromIdx) {
     clear_indexes(); to->clear_indexes();    // destroy both buckets' cracker indices
     assert(this->N > fromIdx);            // make sure there is something to move
-    assert(to->N + this->N - fromIdx <= BUCKET_SIZE);    // make sure the receiver has enough space
+    assert(to->N + this->N - fromIdx <= LARGE_SIZE);    // make sure the receiver has enough space
     memmove(to->D + to->N, D+fromIdx, (this->N - fromIdx) * sizeof(int));
     to->N += this->N - fromIdx;
     this->N = fromIdx;
@@ -376,17 +455,21 @@ inline uintptr_t getData(uintptr_t v) {
   return v >> 1;
 }
 
+int data(Bucket *b) {
+  return b->large_type ? ((LargeBucket*) b)->data(0) : ((SmallBucket*) b)->data(0);
+}
+
 inline uintptr_t getLeafValue(Node* node) {
   // The the value stored in the pseudo-leaf
   uintptr_t v = getData((uintptr_t) node);
-  return isPointer(v) ? ((CrackBucket*) v)->data(0) : getData(v);
+  return isPointer(v) ? data((Bucket*) v) : getData(v);
 }
 
 class Comb {
   Random rng;  // The random number generator.
   Node* tree = NULL;
 
-  // add a CrackBucket (bidx) to the root chain 'ridx'
+  // add a LargeBucket (bidx) to the root chain 'ridx'
   template <typename B>
   bool add_to_chain(B *&chain, B *b) {
     if (!b->size()) {
@@ -486,7 +569,7 @@ class Comb {
     B *left_chain = nullptr;
     B *right_chain = nullptr;
     B *Lb = nullptr, *Rb = nullptr;
-    int hi[BUCKET_SIZE], lo[BUCKET_SIZE];
+    int hi[LARGE_SIZE], lo[LARGE_SIZE];
     int nhi = 0, nlo = 0;
 
     while (true) {
@@ -552,12 +635,13 @@ class Comb {
 public:
 
 
-  void insert_root(CrackBucket *b) {
+  void insert_root(Bucket *b) {
     uint8_t key[8];
-    assert(b->data(0) >= 0);
-    loadKey(b->data(0), key);
+    uint64_t value = data(b);
+    assert(value >= 0);
+    loadKey(value, key);
     n_buckets++;
-    // fprintf(stderr, "add root %d\n", b->data(0));
+    // fprintf(stderr, "add root %d\n", data(b));
     ::insert(tree, &tree, key, 0, (uintptr_t) b, 8);
   }
 
@@ -571,19 +655,19 @@ public:
   }
 
   void load(int const *arr, int n) {
-    CrackBucket *root = new CrackBucket();
+    LargeBucket *root = new LargeBucket();
     root->append(0); // Dummy leftmost bucket.
     assert(root);
     assert(!( ((uintptr_t) root) & 3));
     insert_root(root);
 
     int i = 0;
-    while (i + BUCKET_SIZE <= n) {
-      CrackBucket *b = new CrackBucket();
-      b->bulk_insert(arr + i, BUCKET_SIZE);
-      i += BUCKET_SIZE;
+    while (i + LARGE_SIZE <= n) {
+      LargeBucket *b = new LargeBucket();
+      b->bulk_insert(arr + i, LARGE_SIZE);
+      i += LARGE_SIZE;
       if (root) {
-        ((CrackBucket*) root)->add_chain(b);
+        ((LargeBucket*) root)->add_chain(b);
       } else {
         root = b;
       }
@@ -609,55 +693,50 @@ public:
     return ::lower_bound(tree,key,8,0,8);
   }
 
-  void insert(int const &value) {
+  void insert(int value) {
     // fprintf(stderr, "ins %d\n", value);
     Node *n = find_bucket(value);
     assert(isLeaf(n));
     uintptr_t v = getData((uintptr_t) n);
     if (isPointer(v)) {
-      ((CrackBucket*) v)->insert(value);
+      Bucket *b = (Bucket*) v;
+      if (b->large_type) {
+        ((LargeBucket*) v)->insert(value);
+      } else if (!((SmallBucket*) b)->insert(value)) {
+        insert_root_value(value);
+      }
     } else {
       insert_root_value(value);
     }
   }
 
-  void transition_to_art(CrackBucket *b) {
-    // fprintf(stderr, "a");
-
-    // fprintf(stderr, "transdel\n");
+  bool transition_to_art(SmallBucket *b) {
     bool ok = erase_root(b->data(0));
     assert(ok);
-    // fprintf(stderr, "completing %d\n", b->size());
-    // fprintf(stderr, "b");
 
-    b->sort();
     for (int i = 0; i < b->size(); i++) {
+      // assert(b->data(i) != 888859321);
+      // fprintf(stderr, "%d ", b->data(i));
       insert_root_value(b->data(i));
     }
-    // fprintf(stderr, "c");
-
-    // fprintf(stderr, "completing2 %d\n", b->size());
     delete b;
     n_buckets--;
     assert(n_buckets >= 0);
-    if (!n_buckets) fprintf(stderr, "YAY!\n");
-    // fprintf(stderr, "d");
+    return !n_buckets;
   }
 
   bool erase_root(uint64_t value64) {
     uint8_t key[8];
     loadKey(value64, key);
-    // assert(lookup(&tree,key,8,0,8));
     // fprintf(stderr, "erase root %llu\n", value64);
     ::erase(tree,&tree,key,8,0,8);
-    // fprintf(stderr, "erase root done %llu\n", value64);
     return true;
   }
 
-  CrackBucket* make_standalone(CrackBucket *lb, int value) {
+  LargeBucket* make_standalone(LargeBucket *lb, int value) {
     while (lb->next()) {
-      CrackBucket *rb = stochastic_split_chain(lb, rng);
-      // fprintf(stderr, "stochastic_split_chain %d %d\n", lb->size(), rb->size());
+      LargeBucket *rb = stochastic_split_chain(lb, rng);
+      // fprintf(stderr, "stochastic_split_chain %d\n", rb->data(0));
       insert_root(rb);
       lb = (value < rb->data(0)) ? lb : rb;
     }
@@ -672,19 +751,45 @@ public:
       assert(isLeaf(n));
       uintptr_t v = getData((uintptr_t) n);
       if (isPointer(v)) {
-        CrackBucket *lb = (CrackBucket*) v;
-        lb = make_standalone(lb, value);
-        if (value == lb->data(0) || lb->n_erased() > 10) {
-          // fprintf(stderr, "x");
-          transition_to_art(lb);
+        SmallBucket *sb = to_small_bucket((Bucket*) v, value);
+        // fprintf(stderr, "smallize\n");
+        if (!sb) return false;
+        // fprintf(stderr, "trans\n");
+        if (sb->data(0) == value || sb->size() < 20) {
+          // fprintf(stderr, ".");
+          transition_to_art(sb);
         } else {
-          return lb->erase(value, rng);
+          int idx = sb->erase(value);
+          assert(idx > 0);
+          return true;
         }
       } else {
+        // fprintf(stderr, "%llu %d\n", (unsigned long long) getData(v), value);
         assert(getData(v) == (uintptr_t) value);
       }
     }
+    // fprintf(stderr, "err %d\n", value);
     return erase_root(value);
+  }
+
+  SmallBucket* to_small_bucket(Bucket *b, int value) {
+    assert(b);
+    if (b->large_type) {
+      LargeBucket *lb = make_standalone((LargeBucket*) b, value);
+      erase_root(lb->data(0));
+      SmallBucket *target = nullptr;
+      lb->split(rng, [&](int *D, int n) {
+        SmallBucket *sb = new SmallBucket(D, n);
+        assert(sb->size());
+        insert_root(sb);
+        if (sb->data(0) <= value && (!target || sb->data(0) > target->data(0))) {
+          target = sb;
+        }
+      });
+      delete lb;
+      b = target;
+    }
+    return (SmallBucket*) b;
   }
 
   /* TODO: lazy lower_bound */
@@ -699,13 +804,14 @@ public:
       uintptr_t v = getData((uintptr_t) n);
       assert(v);
       if (isPointer(v)) {
-        CrackBucket *lb = make_standalone((CrackBucket*) v, value);
-        assert(lb);
-        int pos = lb->lower_pos(value, rng);
-        if (pos < lb->size()) {
-          int ret = lb->data(pos);
-          // if (lb->n_touched() > BUCKET_SIZE) transition_to_art(lb);
-          return ret;
+        SmallBucket *sb = to_small_bucket((Bucket*) v, value);
+        if (sb) {
+          int pos = sb->lower_pos(value);
+          if (pos < sb->size()) {
+            int ret = sb->data(pos);
+            // if (lb->n_touched() > LARGE_SIZE) transition_to_art(lb);
+            return ret;
+          }
         }
       }
     }

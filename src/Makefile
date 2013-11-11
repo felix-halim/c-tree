@@ -1,10 +1,18 @@
 CXX      = g++
-# CXX      = clang++-mp-3.4
 ODIR     = ../bin
 DEPFILE  = .depends
 CXXFLAGS = -O3 -g -DNDEBUGx -std=c++0x# -stdlib=libc++
 # CXXFLAGS = -O0 -g -pg -std=c++0x# -stdlib=libc++
 FLAGS    = -I.
+
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Linux)
+
+endif
+ifeq ($(UNAME_S),Darwin)
+    # CXX      = clang++-mp-3.4
+    # CXXFLAGS = -DNDEBUGx -std=c++11 -stdlib=libc++ -O1 -g -fsanitize=address -fno-omit-frame-pointer
+endif
 
 all: \
 	$(ODIR)/art \
