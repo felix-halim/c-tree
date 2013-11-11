@@ -139,7 +139,7 @@ I will implement the transitive indexing soon.
     'comb' : { x: 170, y: 110 },
     'comb_art' : { x: 170, y: 130 },
   },
-  base: 'sort',
+  base: 'art_best_eager',
   data: group(filter([
     { attr: 'update_workload',   values: ['NOUP'] },
     { attr: 'query_workload',    values: ['Random'] },
@@ -156,11 +156,11 @@ I will implement the transitive indexing soon.
     'ctree_32_64' : { x: 30, y: 85 },
     'ctree_32_1024' : { x: 120, y: 110 },
   },
-  base: 'sort',
+  base: 'art_best_eager',
   data: group(filter([
     { attr: 'update_workload',   values: ['NOUP'] },
     { attr: 'query_workload',    values: ['Random'] },
-    { attr: 'algorithm',         values: ['sort', 'mdd1r', 'ctree_32_64', 'ctree_32_4096'] },
+    { attr: 'algorithm',         values: ['sort', 'mdd1r', 'ctree_32_64', 'ctree_32_4096', 'art_best_eager'] },
   ]), 'algorithm'),
 }</div>
 
@@ -173,7 +173,7 @@ I will implement the transitive indexing soon.
     'art_best_eager' : { x: 250, y: 100 },
     'ctree_32_64' : { x: 30, y: 85 },
   },
-  base: 'sort',
+  base: 'art_best_eager',
   data: group(filter([
     { attr: 'update_workload',   values: ['NOUP'] },
     { attr: 'query_workload',    values: ['Random'] },
@@ -249,7 +249,7 @@ ARTC is 48x, 8x, 2x faster than ART on 1, 1K, 1M queries respectively and compar
 <div class="chart" style="display: inline-block">{
   xAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'log', domain: [0.5, 2e9], format: ticksPow10, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9 ], margin: 40 },
   yAxis: { label: 'LFHV: Ratio to CTree', attr: 'total_time', scale: 'log', domain: [0.3, 10], format: 'pow10', ticks: [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], margin: 30 },
-  base: 'ctree_32_64',
+  base: 'art_best_eager',
   legend: {
     'ctree_32_1024':  { x: 120, y: 20 },
     'crack':          { x: 120, y: 40 },
@@ -260,14 +260,14 @@ ARTC is 48x, 8x, 2x faster than ART on 1, 1K, 1M queries respectively and compar
     { attr: 'update_workload',   values: ['LFHV'] },
     { attr: 'query_workload',    values: ['Random'] },
     { attr: 'Q',                 values: [1,10,1e2,1e3,1e4,1e5,1e6,1e7,1e8,1e9] },
-    { attr: 'algorithm',         values: ['crack', 'comb', 'ctree_32_64', 'ctree_32_1024'] },
+    { attr: 'algorithm',         values: ['crack', 'comb', 'ctree_32_64', 'ctree_32_1024', 'art_best_eager'] },
   ]), 'algorithm'),
 }</div>
 
 <div class="chart" style="display: inline-block">{
   xAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'log', domain: [0.5, 2e9], format: ticksPow10, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9 ], margin: 40 },
   yAxis: { label: 'LFHV: Ratio to CTree', attr: 'total_time', scale: 'log', domain: [0.3, 10], format: 'pow10', ticks: [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 2, 3, 4, 5, 10], margin: 30 },
-  base: 'ctree_32_64',
+  base: 'art_best_eager',
   legend: {
     'comb':           { x: 240, y: 40 },
     'art_best':    { x: 40, y: 80 },
@@ -285,7 +285,7 @@ ARTC is 48x, 8x, 2x faster than ART on 1, 1K, 1M queries respectively and compar
 <div class="chart" style="display: inline-block">{
   xAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'log', domain: [0.5, 2e9], format: ticksPow10, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9 ], margin: 40 },
   yAxis: { label: 'LFHV: Ratio to CTree', attr: 'total_time', scale: 'log', domain: [0.3, 10], format: 'pow10', ticks: [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], margin: 30 },
-  base: 'ctree_32_64',
+  base: 'art_best_eager',
   legend: {
     'comb':           { x: 95, y: 20 },
     'comb1600':       { x: 95, y: 60 },
@@ -296,14 +296,14 @@ ARTC is 48x, 8x, 2x faster than ART on 1, 1K, 1M queries respectively and compar
     { attr: 'update_workload',   values: ['LFHV'] },
     { attr: 'query_workload',    values: ['Random'] },
     { attr: 'Q',                 values: [1,10,1e2,1e3,1e4,1e5,1e6,1e7,1e8,1e9] },
-    { attr: 'algorithm',         values: ['comb', 'ctree_32_64', 'comb800', 'comb1600'] },
+    { attr: 'algorithm',         values: ['comb', 'ctree_32_64', 'comb800', 'comb1600', 'art_best_eager'] },
   ]), 'algorithm'),
 }</div>
 
 <div class="chart" style="display: inline-block">{
   xAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'log', domain: [0.5, 2e9], format: ticksPow10, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9 ], margin: 40 },
   yAxis: { label: 'LFHV: Ratio to CTree', attr: 'total_time', scale: 'log', domain: [0.3, 10], format: 'pow10', ticks: [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], margin: 30 },
-  base: 'ctree_32_64',
+  base: 'art_best_eager',
   legend: {
     'combt8192':       { x: 95, y: 20 },
     'combt2048':       { x: 95, y: 40 },
@@ -314,7 +314,7 @@ ARTC is 48x, 8x, 2x faster than ART on 1, 1K, 1M queries respectively and compar
     { attr: 'update_workload',   values: ['LFHV'] },
     { attr: 'query_workload',    values: ['Random'] },
     { attr: 'Q',                 values: [1,10,1e2,1e3,1e4,1e5,1e6,1e7,1e8,1e9] },
-    { attr: 'algorithm',         values: ['ctree_32_64', 'combt512', 'combt2048', 'combt8192'] },
+    { attr: 'algorithm',         values: ['ctree_32_64', 'combt512', 'combt2048', 'combt8192', 'art_best_eager'] },
   ]), 'algorithm'),
 }</div>
 
@@ -334,8 +334,8 @@ but worse in the long run because of the high cost in updating large Bucket with
 
 <div class="chart" style="display: inline-block">{
   xAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'log', domain: [0.5, 2e9], format: ticksPow10, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9 ], margin: 40 },
-  yAxis: { label: 'LFHV: Ratio to CTree', attr: 'total_time', scale: 'logx', domain: [0.3, 1.5], format: 'pow10', ticks: [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4, 1.5, 6, 7, 8, 9, 10], margin: 30 },
-  base: 'ctree_32_64',
+  yAxis: { label: 'LFHV: Ratio to CTree', attr: 'total_time', scale: 'logx', domain: [0.1, 2.0], format: 'pow10', ticks: [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4, 1.5, 6, 7, 8, 9, 10], margin: 30 },
+  base: 'art_best_eager',
   legend: {
     'comb':            { x: 30, y: 15 },
     'comb800':         { x: 30, y: 30 },
@@ -347,14 +347,14 @@ but worse in the long run because of the high cost in updating large Bucket with
     { attr: 'update_workload',   values: ['LFHV'] },
     { attr: 'query_workload',    values: ['Random'] },
     { attr: 'Q',                 values: [1,10,1e2,1e3,1e4,1e5,1e6,1e7,1e8,1e9] },
-    { attr: 'algorithm',         values: ['comb', 'ctree_32_64', 'comb800', 'comb_art', 'combt512'] },
+    { attr: 'algorithm',         values: ['comb', 'ctree_32_64', 'comb800', 'comb_art', 'combt512', 'art_best_eager'] },
   ]), 'algorithm'),
 }</div>
 
 <div class="chart" style="display: inline-block">{
   xAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'log', domain: [0.5, 2e9], format: ticksPow10, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9 ], margin: 40 },
-  yAxis: { label: 'LFHV: Ratio to CTree', attr: 'total_time', scale: 'logx', domain: [0.3, 1.5], format: 'pow10', ticks: [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4, 1.5, 6, 7, 8, 9, 10], margin: 30 },
-  base: 'ctree_32_64',
+  yAxis: { label: 'LFHV: Ratio to CTree', attr: 'total_time', scale: 'logx', domain: [0.1, 2.0], format: 'pow10', ticks: [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4, 1.5, 6, 7, 8, 9, 10], margin: 30 },
+  base: 'art_best_eager',
   legend: {
     'comb_art':        { x: 75, y: 30 },
     'ctree_32_64':     { x: 75, y: 45 },
@@ -372,8 +372,8 @@ but worse in the long run because of the high cost in updating large Bucket with
 <!-- <div class="chart" style="display: inline-block">{
   width: 600, height: 400,
   xAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'log', domain: [0.5, 2e9], format: ticksPow10, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9 ], margin: 40 },
-  yAxis: { label: 'LFHV: Ratio to CTree', attr: 'total_time', scale: 'logx', domain: [0.3, 1.5], format: 'pow10', ticks: [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4, 1.5, 6, 7, 8, 9, 10], margin: 30 },
-  base: 'ctree_32_64',
+  yAxis: { label: 'LFHV: Ratio to CTree', attr: 'total_time', scale: 'logx', domain: [0.1, 2.0], format: 'pow10', ticks: [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4, 1.5, 6, 7, 8, 9, 10], margin: 30 },
+  base: 'art_best_eager',
   legend: {
     'comb800':         { x: 90, y: 20 },
     'ctree_32_64':     { x: 90, y: 40 },
@@ -393,8 +393,8 @@ but worse in the long run because of the high cost in updating large Bucket with
  -->
 <div class="chart" style="display: inline-block">{
   xAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'log', domain: [0.5, 2e10], format: ticksPow10, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10 ], margin: 40 },
-  yAxis: { label: 'LFHV: Ratio to CTree', attr: 'total_time', scale: 'logx', domain: [0.3, 1.5], format: 'pow10', ticks: [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4, 1.5, 6, 7, 8, 9, 10], margin: 30 },
-  base: 'ctree_32_64',
+  yAxis: { label: 'LFHV: Ratio to CTree', attr: 'total_time', scale: 'logx', domain: [0.1, 2.0], format: 'pow10', ticks: [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4, 1.5, 6, 7, 8, 9, 10], margin: 30 },
+  base: 'art_best_eager',
   legend: {
     'ctree_32_64':     { x: 40, y: 45 },
     'art_best_eager':  { x: 40, y: 75 },
@@ -404,7 +404,7 @@ but worse in the long run because of the high cost in updating large Bucket with
     { attr: 'update_workload',   values: ['LFHV'] },
     { attr: 'query_workload',    values: ['Random'] },
     { attr: 'Q',                 values: [1,10,1e2,1e3,1e4,1e5,1e6,1e7,1e8,1e9,1e10] },
-    { attr: 'algorithm',         values: ['comb_art', 'ctree_32_64', 'art_best_eager'] },
+    { attr: 'algorithm',         values: ['comb_art', 'comb_art_10', 'ctree_32_64', 'art_best_eager'] },
   ]), 'algorithm'),
 }</div>
 
@@ -489,7 +489,7 @@ Each count query requires the algo to iterate for each pieces to acquire it's si
 <!-- <div class="chart">{
   xAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'log', domain: [0.5, 2e9], format: ticksPow10, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9], margin: 40 },
   yAxis: { label: 'Ratio to Sort', attr: 'total_time', scale: 'logx', domain: [0, 4], format: noFormat, ticks: [0, 1, 2, 3, 4], margin: 40 },
-  base: 'sort',
+  base: 'art_best_eager',
   legend: {
     'sort' : { x: 100, y: 10 },
     'crack' : { x: 100, y: 30 },
@@ -512,7 +512,7 @@ Each count query requires the algo to iterate for each pieces to acquire it's si
 <div class="chart">{
   xAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'log', domain: [0.5, 1e9], format: ticksPow10, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9], margin: 40 },
   yAxis: { label: 'Cumulative Runtime', attr: 'total_time', scale: 'logx', domain: [0.1, 7], format: d3.format('s'), ticks: [0, 1, 2, 3, 4, 5, 6, 7], margin: 40 },
-  base: 'ctree_32_64',
+  base: 'art_best_eager',
   legend: {
     'ctree_32_64' : { x: 100, y: 10 },
     'crack' : { x: 100, y: 30 },
@@ -532,7 +532,7 @@ Each count query requires the algo to iterate for each pieces to acquire it's si
 <div class="chart">{
   xAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'log', domain: [0.5, 1e9], format: ticksPow10, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9], margin: 40 },
   yAxis: { label: 'Cumulative Runtime', attr: 'total_time', scale: 'logx', domain: [0.1, 7], format: d3.format('s'), ticks: [0, 1, 2, 3, 4, 5, 6, 7], margin: 40 },
-  base: 'ctree_32_64',
+  base: 'art_best_eager',
   legend: {
     'ctree_32_64' : { x: 100, y: 10 },
     'crack' : { x: 100, y: 30 },

@@ -1,3 +1,5 @@
+#todo: measure transition time.
+
 mkdir bin 2> /dev/null
 N=data/100000000.data
 Q=10000000000
