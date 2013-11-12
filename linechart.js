@@ -3,9 +3,9 @@ function renderLinecharts() {
   Array.prototype.forEach.call(charts, linechart);
 }
 
-function linechart(div) {
-  eval('var opts = ' + div.innerText);
-  div.innerHTML = '';
+function linechart(div, ith_div) {
+  eval('var opts = ' + div.innerHTML);
+  div.innerHTML = '<center>Figure ' + (ith_div + 1) + '</center>';
 
   opts.width = opts.width || 400;
   opts.height = opts.height || 210;
@@ -119,6 +119,9 @@ function linechart(div) {
       .style({"shape-rendering": "crispEdges", "font-size": opts.fontSize})
       .call(xAxis);
   xAxisG.selectAll("text").attr("y", 7);
+  xAxisG.selectAll("path").attr({"fill": "none", "stroke":"black"});
+  xAxisG.selectAll("line").attr({"fill": "none", "stroke":"black"});
+
   if (opts.xAxis.scale == 'log')
     toPower10(xAxisG, opts.fontSize);
 
@@ -127,13 +130,14 @@ function linechart(div) {
       .attr("y", opts.xAxis.margin)
       .style({"text-anchor": "middle", "font-size": opts.fontSize })
       .text(opts.xAxis.label);
-  svg.append("g")
+  var xTopAxisG = svg.append("g")
       .attr("class", "x axis top")
       .attr("transform", "translate(0,0)")
       .style({"shape-rendering": "crispEdges", "font-size": opts.fontSize})
-      .call(xAxisTop)
-      .selectAll("text")
-      .text(null);
+      .call(xAxisTop);
+  xTopAxisG.selectAll("text").text(null);
+  xTopAxisG.selectAll("path").attr({"fill": "none", "stroke":"black"});
+  xTopAxisG.selectAll("line").attr({"fill": "none", "stroke":"black"});
 
 
 
@@ -142,6 +146,9 @@ function linechart(div) {
       .style({"shape-rendering": "crispEdges", "font-size": opts.fontSize})
       .call(yAxis);
   yAxisG.selectAll("text").attr("x", -5);
+  yAxisG.selectAll("path").attr({"fill": "none", "stroke":"black"});
+  yAxisG.selectAll("line").attr({"fill": "none", "stroke":"black"});
+
   if (opts.yAxis.scale == 'log' && opts.yAxis.format == 'pow10')
     toPower10(yAxisG, opts.fontSize);
 
@@ -150,19 +157,26 @@ function linechart(div) {
       .attr("y", -opts.yAxis.margin)
       .style({"text-anchor": "middle", "font-size": opts.fontSize })
       .text(opts.yAxis.label);
-  svg.append("g")
+  var yRightAxisG = svg.append("g")
       .attr("class", "y axis right")
       .attr("transform", "translate(" + width + ",0)")
       .style({"shape-rendering": "crispEdges", "font-size": opts.fontSize})
-      .call(yAxisRight)
-      .selectAll("text")
-      .text(null);
+      .call(yAxisRight);
+  yRightAxisG.selectAll("text").text(null);
+  yRightAxisG.selectAll("path").attr({"fill": "none", "stroke":"black"});
+  yRightAxisG.selectAll("line").attr({"fill": "none", "stroke":"black"});
 
   var lines = svg.selectAll(".lines").data(algo_arr).enter().append("g").attr("class", "lines");
   lines.append("path")
       .attr("class", "line")
       .attr("d", function(d) { return line(d.values); })
       .style("stroke", function(d) { return color(d.key); });
+
+  svg.selectAll(".line").attr({
+    "fill": "none",
+    "stroke": "steelblue",
+    "stroke-width": "1.5px",
+  });
 
   // lines.append("text")
   //     .datum(function(d) { return { key: d.key, value: d.values[d.values.length - 1] }; })
