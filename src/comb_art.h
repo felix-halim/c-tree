@@ -484,7 +484,7 @@ inline uintptr_t getLeafValue(Node* node) {
 
 class Comb {
   Random rng;  // The random number generator.
-  Node* tree = NULL;
+  Node* tree;
 
   // add a LargeBucket (bidx) to the root chain 'ridx'
   template <typename B>
@@ -651,6 +651,7 @@ class Comb {
 
 public:
 
+  Comb() { tree = NULL; }
 
   void insert_root(Bucket *b) {
     uint8_t key[8];
@@ -728,10 +729,10 @@ public:
     }
   }
 
-  bool transition_to_art(SmallBucket *b) {
+  template <typename B>
+  bool transition_to_art(B *b) {
     bool ok = erase_root(b->data(0));
     assert(ok);
-
     for (int i = 0; i < b->size(); i++) {
       // assert(b->data(i) != 888859321);
       // fprintf(stderr, "%d ", b->data(i));
@@ -771,7 +772,10 @@ public:
         Bucket *b = (Bucket*) v;
         if (b->large_type) {
           LargeBucket *lb = make_standalone((LargeBucket*) b, value);
-          if (lb->data(0) == value || lb->n_touched() + lb->n_erased() > LARGE_TOUCH) {
+          if (LARGE_TOUCH == 0) {
+            transition_to_art(lb);
+            return erase_root(value);
+          } else if (lb->data(0) == value || lb->n_touched() + lb->n_erased() > LARGE_TOUCH) {
             b = to_small_bucket(lb, value);
           } else {
             return lb->erase(value, rng);
@@ -836,7 +840,8 @@ public:
           int pos = lb->lower_pos(value, rng);
           if (pos < lb->size()) {
             int ret = lb->data(pos);
-            if (lb->n_touched() > LARGE_TOUCH) to_small_bucket(lb, value);
+            if (LARGE_TOUCH == 0) transition_to_art(lb);
+            else if (lb->n_touched() > LARGE_TOUCH) to_small_bucket(lb, value);
             return ret;
           }
         } else {
