@@ -1,4 +1,4 @@
-#todo: measure transition time.
+#todo: measure transition time, skew workload.
 
 mkdir bin 2> /dev/null
 N=data/100000000.data
