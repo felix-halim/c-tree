@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8">
 <script src="d3.v3.min.js"></script>
-<script src="data.js?9"></script>
+<script src="data.js?10"></script>
 <script>
 data = d3.csv.parse(data);
 </script>
-<script src="linechart.js?11"></script>
+<script src="linechart.js?12"></script>
 <style>
 .axis path,
 .axis line {
@@ -397,15 +397,16 @@ but worse in the long run because of the high cost in updating large Bucket with
   yAxis: { label: 'LFHV: Ratio to ARTB', attr: 'total_time', scale: 'logx', domain: [0.01, 2.5], format: 'pow10', ticks: [0.01, 0.1, 0.5, 1, 1.5, 2, 2.5], margin: 30 },
   base: 'art_best_eager',
   legend: {
-    'art_best_eager':  { x: 40, y: 20 },
-    'comb_art':        { x: 40, y: 40 },
-    'comb_art_ns':     { x: 40, y: 60 },
+    'art_best_eager':  { x: 40, y: 15 },
+    'comb_art':        { x: 40, y: 30 },
+    'comb_art_ns':     { x: 40, y: 45 },
+    'comb_art_1':     { x: 40, y: 60 },
   },
   data: group(filter([
     { attr: 'update_workload',   values: ['LFHV'] },
     { attr: 'query_workload',    values: ['Random'] },
     { attr: 'Q',                 values: [1,10,1e2,1e3,1e4,1e5,1e6,1e7,1e8,1e9,1e10] },
-    { attr: 'algorithm',         values: ['comb_art', 'comb_art_ns', 'art_best_eager'] },
+    { attr: 'algorithm',         values: ['comb_art', 'comb_art_ns', 'art_best_eager', 'comb_art_1'] },
   ]), 'algorithm'),
 }</div>
 
