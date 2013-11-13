@@ -837,7 +837,9 @@ public:
       if (isPointer(v)) {
         Bucket *b = (Bucket*) v;
         if (b->large_type) {
-          LargeBucket *lb = make_standalone((LargeBucket*) b, value);
+          LargeBucket *lb = (LargeBucket*) b;
+          bool has_next = lb->next();
+          lb = make_standalone(lb, value);
           int pos = lb->lower_pos(value, rng);
           if (pos < lb->size()) {
             int ret = lb->data(pos);
@@ -845,8 +847,14 @@ public:
             else if (lb->n_touched() > LARGE_TOUCH) to_small_bucket(lb, value);
             return ret;
           }
+          if (has_next) {
+            // the root array may have changed.
+            uint8_t key[8];
+            loadKey(value, key);
+            next = ::lower_bound(tree,key,8,0,8);
+          }
         } else {
-          SmallBucket *sb = to_small_bucket(b, value);
+          SmallBucket *sb = (SmallBucket*) b;
           if (sb) {
             int pos = sb->lower_pos(value);
             if (pos < sb->size()) {
@@ -856,10 +864,6 @@ public:
             }
           }
         }
-        uint8_t key[8];
-        loadKey(value, key);
-        next = ::lower_bound(tree,key,8,0,8);
-        fprintf(stderr, ".");
       } else if ((int) getData(v) == value) {
         return value;
       }
