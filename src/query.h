@@ -4,6 +4,7 @@
 #include <cstring>
 
 #include <algorithm>
+#include <vector>
 #include <random>
 
 using namespace std;
@@ -16,6 +17,8 @@ class Workload {
   int a, b; // The last query range [a,b].
   int seq_jump;
   double selectivity;
+  vector<int> skyq;
+  int skyqi;
 
   mt19937 gen;
   uniform_int_distribution<> dis;
@@ -24,21 +27,27 @@ class Workload {
     return dis(gen) % modulo;
   }
 
+  void init_skyq() {
+    FILE *in = fopen("data/skyserver.queries", "r");
+    if (!in) {
+      fprintf(stderr, "Fail loading file data/skyserver.queries\n");
+    } else {
+      double x, y;
+      while (fscanf(in, "%lf %lf", &x, &y) != EOF) {
+        skyq.push_back(int(y * 1000000));
+      }
+      fclose(in);
+    }
+  }
+
   // Query workload based on the predefined queries from file.
   bool skyserver_w() {
-    static FILE *in = NULL;
-    if (I ==0 ) {
-      in = fopen("data/skyserver.queries", "r");
-      if (!in) fprintf(stderr, "Fail loading file data/skyserver.queries\n");
-    }
-    if (!in) return false;
-    double x, y;
-    if (fscanf(in, "%lf %lf", &x, &y) == EOF) {
-      if (in) { fclose(in); in = NULL; }
+    a = skyq[skyqi++];
+    b = a + S;
+    if (skyqi >= (int) skyq.size()) {
+      skyqi -= skyq.size();
       return false;
     }
-    a = int(y * 1000000);
-    b = a + S;
     return true;
   }
 
@@ -263,6 +272,7 @@ public :
       fprintf(stderr,"Workload number %d is not found!\n", W);
       exit(1);
     }
+    if (W == 0) init_skyq();
   }
   
   void set_max(int mx) {

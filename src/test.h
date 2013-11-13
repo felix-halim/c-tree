@@ -189,7 +189,7 @@ int main(int argc, char *argv[]) {
         //   a = update.get_next_smallest();
         // } else {
           bool ok = query_w.query(a,b); // get query endpoints based on the workload
-          if (!ok){ s.Q = i; MAXQ = -1; break; }
+          if (!ok && W) { s.Q = i; MAXQ = -1; break; }
         // }
 
         #if defined(COUNT_QUERY)
