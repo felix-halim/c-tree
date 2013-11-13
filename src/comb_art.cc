@@ -4,8 +4,8 @@
 #define LARGE_SIZE 4096
 #define SMALL_SIZE 64
 
-#define LARGE_TOUCH 1
-#define SMALL_TOUCH 1
+#define LARGE_TOUCH 100
+#define SMALL_TOUCH 100
 
 #include "comb_art.h"
 #include "test.h"
