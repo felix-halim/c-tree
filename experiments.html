@@ -499,6 +499,36 @@ Each count query requires the algo to iterate for each pieces to acquire it's si
 </ul>
 </p>
 
+<h2>SkyServer Data and Query Workload</h2>
+<div class="chart">{
+xAxis: { label: 'Query Sequence', attr: 'Q', scale: 'log', domain: [0.5, 2e9], format: ticksPow10, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9], margin: 40 },
+yAxis: { label: 'Cumulative Runtime', attr: 'total_time', scale: 'log', domain: [0.6, 500], format: 'pow10', ticks: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 200, 300, 400, 500], margin: 40 },
+legend: {
+'art_best_eager' : { x: 50, y: 30 },
+'comb_art' : { x: 50, y: 50 },
+},
+data: group(filter([
+{ attr: 'update_workload', values: ['NOUP'] },
+{ attr: 'query_workload', values: ['SkyServer'] },
+{ attr: 'selectivity', values: ['0.100000'] },
+{ attr: 'algorithm', values: ['art_best_eager', 'comb_art'] },
+]), 'algorithm'),
+}</div>
+
+<p>Insert 100K random tuples before each random COUNT(*) query with 0.1% selectivity.<br>
+After 1000 inserts, the total number of tuples is 100M.<br>
+Each count query requires the algo to iterate for each pieces to acquire it's size (including COMB).
+<ul>
+<li>Crack needs to shuffle in the pending insert for each query in range [a, b).
+<li>If there is not enough room to shuffle in, then some elements is swapped with the pending insert (see MRI algorithm).
+<li>This causes "trashing" effect where tuples constantly go back and forth to and from the array and the pending insert structure (AVL tree).
+<li>COMB lazy insert appends or chain inserts to the correct bucket, no trashing.
+<li>The result is that Crack gets worse rapidly as the size of the pending insert grows, and
+<li>COMB stays resilient. It completes all 1000 inserts interleaved with a random count query in ~8 seconds while Crack in 445 seconds.
+<li><b>Replacing AVL to ART</b> in Crack will not help Crack to become resilient in this case.
+</ul>
+</p>
+
 <h2>Transition Statistics</h2>
 
 <p>Currently the transitions are determined manually:
