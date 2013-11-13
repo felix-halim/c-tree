@@ -697,10 +697,10 @@ public:
     }
   }
 
-  Node* find_bucket(uint64_t value64) {
+  Node* find_bucket(uint64_t value64, Node **next) {
     uint8_t key[8];
     loadKey(value64, key);
-    Node* ret = lower_bound_prev(tree,key,8,0,8);
+    Node *ret = lower_bound_prev(tree, key, 8, 0, 8, next);
     assert(ret);
     assert(isLeaf(ret));
     return ret;
@@ -714,7 +714,7 @@ public:
 
   void insert(int value) {
     // fprintf(stderr, "ins %d\n", value);
-    Node *n = find_bucket(value);
+    Node *n = find_bucket(value, nullptr);
     assert(isLeaf(n));
     uintptr_t v = getData((uintptr_t) n);
     if (isPointer(v)) {
@@ -765,7 +765,7 @@ public:
     // fprintf(stderr, "ERASE %d\n", value);
     // art_debug = 1;
     if (n_large + n_small) {
-      Node *n = find_bucket(value);
+      Node *n = find_bucket(value, nullptr);
       assert(isLeaf(n));
       uintptr_t v = getData((uintptr_t) n);
       if (isPointer(v)) {
@@ -828,8 +828,9 @@ public:
     // art_debug = 1;
     // fprintf(stderr, "lower_bound %d\n", value);
 
+    Node *next = nullptr;
     if (n_large + n_small) {
-      Node *n = find_bucket(value);
+      Node *n = find_bucket(value, &next);
       assert(isLeaf(n));
       uintptr_t v = getData((uintptr_t) n);
       assert(v);
@@ -855,18 +856,15 @@ public:
             }
           }
         }
+        uint8_t key[8];
+        loadKey(value, key);
+        next = ::lower_bound(tree,key,8,0,8);
       } else if ((int) getData(v) == value) {
         return value;
       }
     }
 
-    uint64_t value64 = value;
-    uint8_t key[8];
-    loadKey(value64, key);
-    // fprintf(stderr, "a");
-    Node* leaf = ::lower_bound(tree,key,8,0,8);
-    // fprintf(stderr, "b %p", leaf);
-    return isLeaf(leaf) ? getLeafValue(leaf) : 0;
+    return isLeaf(next) ? getLeafValue(next) : 0;
   }
 
   int n_chains() {

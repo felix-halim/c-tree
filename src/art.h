@@ -434,7 +434,62 @@ Node* lower_bound(Node* node, uint8_t key[], unsigned keyLength, unsigned depth,
    return NULL;
 }
 
-Node* lower_bound_prev(Node* node, uint8_t key[], unsigned keyLength, unsigned depth, unsigned maxKeyLength, bool skippedPrefix=false, bool is_less = false) {
+Node* lower_bound_next(Node* node, unsigned depth) {
+   assert(node);
+
+   if (isLeaf(node)) return node;
+   if (node->prefixLength) depth+=node->prefixLength;
+
+   Node *n = node;
+   depth++;
+
+   switch (n->type) {
+      case NodeType4: {
+            Node4* node = static_cast<Node4*>(n);
+            for (int i = 0; i < node->count; i++) {
+               Node *ret = lower_bound_next(node->child[i], depth);
+               if (ret) return ret;
+            }
+         }
+         break;
+
+      case NodeType16: {
+            Node16* node = static_cast<Node16*>(n);
+            for (int pos = 0; pos < node->count; pos++) {
+               Node *ret = lower_bound_next(node->child[pos], depth);
+               if (ret) return ret;
+            }
+         }
+         break;
+
+      case NodeType48: {
+            Node48* node=static_cast<Node48*>(n);
+            for (int keyByte = 0; keyByte < 256; keyByte++) {
+               if (node->childIndex[keyByte] != emptyMarker) {
+                  Node *ret = lower_bound_next(node->child[node->childIndex[keyByte]], depth);
+                  if (ret) return ret;
+               }
+            }
+         }
+         break;
+
+      case NodeType256: {
+            Node256* node=static_cast<Node256*>(n);
+            for (int keyByte = 0; keyByte < 256; keyByte++) {
+               if (node->child[keyByte]) {
+                  Node *ret = lower_bound_next(node->child[keyByte], depth);
+                  if (ret) return ret;
+               }
+            }
+         }
+         break;
+
+      default: assert(0);
+   }
+   return nullptr;
+}
+
+Node* lower_bound_prev(Node* node, uint8_t key[], unsigned keyLength, unsigned depth, unsigned maxKeyLength, Node **next, bool skippedPrefix = false, bool is_less = false) {
    // ART_DEBUG("lower_prev1 %u, leaf = %d\n", depth, isLeaf(node));
    assert(node);
 
@@ -494,8 +549,13 @@ Node* lower_bound_prev(Node* node, uint8_t key[], unsigned keyLength, unsigned d
                ART_DEBUG("i = %d, key4 = %d <= %d, %lu, c = %p\n", i, node->key[i], keyByte, isLeaf(c) ? getLeafValue(c) : 0, c);
                if (node->key[i] <= keyByte || is_less) {
                   // ART_DEBUG("got it, %d\n", isLeaf(node->child[i]));
-                  Node *ret = lower_bound_prev(c, key, keyLength, depth, maxKeyLength, skippedPrefix, is_less || node->key[i] < keyByte);
-                  if (ret) return ret;
+                  Node *ret = lower_bound_prev(c, key, keyLength, depth, maxKeyLength, next, skippedPrefix, is_less || node->key[i] < keyByte);
+                  if (ret) {
+                     for (i++; i < node->count && !(*next); i++) {
+                        *next = lower_bound_next(node->child[i], depth);
+                     }
+                     return ret;
+                  }
                }
             }
          }
@@ -519,8 +579,13 @@ Node* lower_bound_prev(Node* node, uint8_t key[], unsigned keyLength, unsigned d
             while (pos >= 0) {
                // ART_DEBUG("Node16 pos %d, %p, %u %u\n", pos, node->child[pos], flipSign(node->key[pos]), keyByte);
                if (is_less || flipSign(node->key[pos]) <= keyByte) {
-                  Node *ret = lower_bound_prev(node->child[pos], key, keyLength, depth, maxKeyLength, skippedPrefix, is_less || flipSign(node->key[pos]) < keyByte);
-                  if (ret) return ret;
+                  Node *ret = lower_bound_prev(node->child[pos], key, keyLength, depth, maxKeyLength, next, skippedPrefix, is_less || flipSign(node->key[pos]) < keyByte);
+                  if (ret) {
+                     for (pos++; pos < node->count && !(*next); pos++) {
+                        *next = lower_bound_next(node->child[pos], depth);
+                     }
+                     return ret;
+                  }
                } else {
                   // ART_DEBUG("FAIL\n");
                }
@@ -537,8 +602,16 @@ Node* lower_bound_prev(Node* node, uint8_t key[], unsigned keyLength, unsigned d
                if (node->childIndex[keyByte] != emptyMarker) {
                   Node *c = node->child[node->childIndex[keyByte]];
                   ART_DEBUG("N48C %d = %lld\n", keyByte, isLeaf(c) ? getLeafValue(c) >> 30 : -1LL);
-                  Node *ret = lower_bound_prev(c, key, keyLength, depth, maxKeyLength, skippedPrefix, is_less);
-                  if (ret) return ret;
+                  Node *ret = lower_bound_prev(c, key, keyLength, depth, maxKeyLength, next, skippedPrefix, is_less);
+                  if (ret) {
+                     for (keyByte++; keyByte < 256 && !(*next); keyByte++) {
+                        if (node->childIndex[keyByte] != emptyMarker) {
+                           c = node->child[node->childIndex[keyByte]];
+                           *next = lower_bound_next(c, depth);
+                        }
+                     }
+                     return ret;
+                  }
                }
                keyByte--;
                is_less = 1;
@@ -552,8 +625,15 @@ Node* lower_bound_prev(Node* node, uint8_t key[], unsigned keyLength, unsigned d
             if (is_less) keyByte = 255;
             while (keyByte >= 0) {
                if (node->child[keyByte]) {
-                  Node *ret = lower_bound_prev(node->child[keyByte], key, keyLength, depth, maxKeyLength, skippedPrefix, is_less);
-                  if (ret) return ret;
+                  Node *ret = lower_bound_prev(node->child[keyByte], key, keyLength, depth, maxKeyLength, next, skippedPrefix, is_less);
+                  if (ret) {
+                     for (keyByte++; keyByte < 256 && !(*next); keyByte++) {
+                        if (node->child[keyByte]) {
+                           *next = lower_bound_next(node->child[keyByte], depth);
+                        }
+                     }
+                     return ret;
+                  }
                }
                keyByte--;
                is_less = 1;
