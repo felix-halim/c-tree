@@ -859,6 +859,7 @@ public:
         uint8_t key[8];
         loadKey(value, key);
         next = ::lower_bound(tree,key,8,0,8);
+        fprintf(stderr, ".");
       } else if ((int) getData(v) == value) {
         return value;
       }
