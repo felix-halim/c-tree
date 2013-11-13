@@ -16,6 +16,10 @@ algo)         ./run.sh compile $2 || exit;
               bin/$2 $N $Q 0.1 1 $3;;
               # valgrind --leak-check=yes bin/$2 $N $Q 0.1 1 $3;;
 
+sky)          ./run.sh compile $2 || exit;
+              bin/$2 ../scrack/data/skyserver.data $Q 0.1 0 $3;;
+              # valgrind --leak-check=yes bin/$2 $N $Q 0.1 1 $3;;
+
 custom)       ./run.sh algo ctree_32_64 1
               ./run.sh algo art 1
               ./run.sh algo art_best_eager 1
