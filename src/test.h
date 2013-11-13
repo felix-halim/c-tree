@@ -164,6 +164,8 @@ int main(int argc, char *argv[]) {
     int j = query_w.get_max() / 100 / MAXQ;
     fprintf(stderr, "j = %d\n", j);
     query_w.set_seq_jump(max(1, j));
+  } else if (W == 17) {
+    query_w.set_max(10);
   }
 
   fprintf(stderr, "N = %d, ", s.N);
@@ -191,7 +193,7 @@ int main(int argc, char *argv[]) {
         //   a = update.get_next_smallest();
         // } else {
           bool ok = query_w.query(a,b); // get query endpoints based on the workload
-          if (!ok && W) { s.Q = i; MAXQ = -1; break; }
+          if (!ok && W) { s.Q = s.Q / qm + i; MAXQ = -1; break; }
         // }
 
         #if defined(COUNT_QUERY)
@@ -206,7 +208,7 @@ int main(int argc, char *argv[]) {
 
         switch (U) {
           // NOUP.
-          case 0: break;
+          case 0: if (W == 17) query_w.inc_max(); break;
 
           // LFHV.
           case 1: if (i % 1000 == 0) update_time += time_it([&] {

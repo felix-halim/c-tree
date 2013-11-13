@@ -268,7 +268,7 @@ class Workload {
 public : 
 
   Workload(int w, double selectivity_): N(0), W(w), S(0), I(0), a(0), b(0), seq_jump(20), selectivity(selectivity_), gen(140384) {
-    if (W < 0 || W >= 17) {
+    if (W < 0 || W >= 18) {
       fprintf(stderr,"Workload number %d is not found!\n", W);
       exit(1);
     }
@@ -279,6 +279,8 @@ public :
     N = mx;
     S = mx * selectivity;
   }
+
+  void inc_max() { N++; }
 
   int get_max() {
     return N;
@@ -308,6 +310,7 @@ public :
       case 14 : if (!skew_zoom_out_alt_w()) return false; break;
       case 15 : if (!periodic_w()) return false; break;
       case 16 : if (!mixed_w()) return false; break;
+      case 17 : if (!random_w()) return false; break;
       default : fprintf(stderr, "Invalid W = %d\n", W); abort();
     }
     na = a; nb = b; I++;
@@ -315,7 +318,7 @@ public :
   }
 };
 
-static const char *workload_name[17] = {
+static const char *workload_name[18] = {
   "SkyServer",     // 0
   "Random",        // 1
   "SeqOver",       // 2
@@ -332,5 +335,6 @@ static const char *workload_name[17] = {
   "ZoomOutAlt",    // 13
   "SkewZoomOutAlt",// 14
   "Periodic",      // 15
-  "Mixed"          // 16
+  "Mixed",         // 16
+  "Domain"         // 17
 };
