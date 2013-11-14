@@ -149,7 +149,7 @@ int main(int argc, char *argv[]) {
     update.load();
     s.N = update.size();
     if (!(W == 0 && U == 0)) s.N /= 2;
-    s.N = min(s.N, 200000000);
+    //s.N = min(s.N, 200000000);
     query_w.set_max(update.max_element() + 1);
     if (U == 3) update.prepare_queue(s.N);
     else if (U == 7) s.N = 100000;
