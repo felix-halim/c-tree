@@ -784,6 +784,7 @@ void insert(Node* node,Node** nodeRef,uint8_t key[],unsigned depth,uintptr_t val
       unsigned newPrefixLength=0;
       while (existingKey[depth+newPrefixLength]==key[depth+newPrefixLength])
          newPrefixLength++;
+      assert(newPrefixLength < maxKeyLength);
 
       Node4* newNode=new Node4();
       newNode->prefixLength=newPrefixLength;

@@ -22,8 +22,10 @@ void init(int *arr, int N) {
 }
 
 void insert(int value) {
+  static int nth = 0; nth++;
   uint8_t key[8];
   uint64_t value64 = value;
+  value64 = (value64 << 30) | nth;
   loadKey(value64, key);
   insert(tree,&tree,key,0,value64,8);
 }
@@ -39,6 +41,7 @@ void erase(int value) {
 
 int lower_bound(int value) {
   uint64_t value64 = value;
+  value64 = (value64 << 30);
   uint8_t key[8];
   loadKey(value64, key);
    
