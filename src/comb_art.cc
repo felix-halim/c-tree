@@ -58,7 +58,7 @@ void results(Statistics &s) {
   s.n_internals = n_index;//c.n_internals();
   s.max_depth = c.n_chains();
   s.slack = 0;//c.slack();
-  s.in_size = 0;//INTERNAL_BSIZE;
-  s.ln_size = 0;//c.size();
+  s.in_size = SMALL_TOUCH;
+  s.ln_size = LARGE_TOUCH;
   // c.alloc_sizes(s.ia_free, s.ia_size, s.la_free, s.la_size);
 }
