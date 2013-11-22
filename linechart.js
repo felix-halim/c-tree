@@ -1,12 +1,15 @@
 function renderLinecharts() {
   var charts = document.getElementsByClassName('chart');
-  Array.prototype.forEach.call(charts, linechart);
+  Array.prototype.forEach.call(charts, parse_div);
 }
 
-function linechart(div, ith_div) {
+function parse_div(div, ith_div) {
   eval('var opts = ' + div.innerHTML);
   div.innerHTML = '<center>Figure ' + (ith_div + 1) + '</center>';
+  linechart(div, opts);
+}
 
+function linechart(div, opts) {
   opts.width = opts.width || 400;
   opts.height = opts.height || 210;
   opts.fontSize = opts.fontSize || 14;
@@ -19,7 +22,7 @@ function linechart(div, ith_div) {
   function formatPower(d) { return (d + "").split("").map(function(c) { return superscript[c]; }).join(""); };
   function ticksPow10(d) { return 10 + formatPower(Math.round(Math.log(d) / Math.LN10)); }
 
-  var algos = opts.data;
+  var algos = opts.data = group(filter(opts.filters), opts.group_by);
   if (opts.base) {
     var base = algos[opts.base];
     if (!base) alert('base not found: ' + opts.base);
@@ -50,6 +53,8 @@ function linechart(div, ith_div) {
   var x = ((opts.xAxis.scale == 'log') ? d3.scale.log() : d3.scale.linear()).range([0, width]);
   var y = ((opts.yAxis.scale == 'log') ? d3.scale.log() : d3.scale.linear()).range([height, 0]);
 
+  if (opts.xAxis.format == 'pow10') opts.xAxis.format = ticksPow10;
+  if (opts.yAxis.format == 'pow10') opts.yAxis.format = ticksPow10;
   var xAxis = d3.svg.axis().scale(x).orient("bottom").ticks(20, opts.xAxis.format).tickValues(opts.xAxis.ticks).tickSize(-5);
   var xAxisTop = d3.svg.axis().scale(x).orient("top").ticks(20, noFormat).tickValues(opts.xAxis.ticks).tickSize(-5);
   var yFormat = (opts.yAxis.scale == 'log') ? opts.yAxis.format : noFormat;
@@ -365,6 +370,9 @@ function barchart(id, xcap, ylabel, data, update_w, Q, algo_name) {
       .attr("class", "x axis")
       .attr("transform", "translate(0," + height + ")")
       .call(xAxis);
+  xx.selectAll("path").attr({"fill": "none", "stroke":"black"});
+  xx.selectAll("line").attr({"fill": "none", "stroke":"black"});
+
   xx.selectAll("text").attr({
     "font-size": 12,
     "transform": "rotate(-25) translate(-7,0)",
@@ -380,6 +388,8 @@ function barchart(id, xcap, ylabel, data, update_w, Q, algo_name) {
   var yy = svg.append("g")
       .attr("class", "y axis")
       .call(yAxis);
+  yy.selectAll("path").attr({"fill": "none", "stroke":"black"});
+  yy.selectAll("line").attr({"fill": "none", "stroke":"black"});
   if (ylabel) yy.append("text")
       .attr("transform", "rotate(-90) translate(-" + height/2 + ",0)")
       .attr("y", -45)
