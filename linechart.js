@@ -245,7 +245,7 @@ var algo_name = {
   ctree_32_64:     { name: "CT64", symbol: "square", color: "brown", },
   ctree_32_1024:   { name: "CT1024", symbol: "triangle-up", color: "magenta", },
   ctree_32_4096:   { name: "CT4096", symbol: "diamond", color: "blue", },
-  ctree_eager:     { name: "BTE", symbol: "triangle-up", color: "magenta", },
+  ctree_eager:     { name: "BTree", symbol: "square", color: "black", },
   btree_google:    { name: "BTree", symbol: "square", color: "black", },
 };
 

@@ -42,7 +42,7 @@ The setup is: insert 10^8 random integers and perform 10^9 point queries.
   legend: {
     'sort' : { x: 250, y: 120 },
     'art_best_eager' : { x: 250, y: 80 },
-    'btree_google' : { x: 250, y: 100 },
+    'ctree_eager' : { x: 250, y: 100 },
     'mdd1r' : { x: 70, y: 150 },
     'crack' : { x: 30, y: 70 },
     'comb' : { x: 30, y: 90 },
@@ -51,7 +51,7 @@ The setup is: insert 10^8 random integers and perform 10^9 point queries.
     { attr: 'update_workload',   values: ['NOUP'] },
     { attr: 'query_workload',   values: ['Random'] },
     { attr: 'Q',   values: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9 ] },
-    { attr: 'algorithm',         values: ['sort', 'crack', 'comb', 'mdd1r', 'art_best_eager', 'btree_google'] },
+    { attr: 'algorithm',         values: ['sort', 'crack', 'comb', 'mdd1r', 'art_best_eager', 'ctree_eager'] },
   ]), 'algorithm'),
 }</div>
 
@@ -62,7 +62,7 @@ The setup is: insert 10^8 random integers and perform 10^9 point queries.
   legend: {
     'sort' : { x: 185, y: 95 },
     'art_best_eager' : { x: 110, y: 140 },
-    'btree_google' : { x: 275, y: 80 },
+    'ctree_eager' : { x: 275, y: 80 },
     'mdd1r' : { x: 90, y: 70 },
     'comb' : { x: 30, y: 30 },
     'comb_art' : { x: 30, y: 30 },
@@ -71,7 +71,7 @@ The setup is: insert 10^8 random integers and perform 10^9 point queries.
     { attr: 'update_workload',   values: ['NOUP'] },
     { attr: 'query_workload',   values: ['SeqOver'] },
     { attr: 'Q',   values: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9 ] },
-    { attr: 'algorithm',         values: ['sort', 'comb', 'mdd1r', 'art_best_eager', 'btree_google', 'comb_art'] },
+    { attr: 'algorithm',         values: ['sort', 'comb', 'mdd1r', 'art_best_eager', 'ctree_eager', 'comb_art'] },
   ]), 'algorithm'),
 }</div>
 
@@ -517,7 +517,25 @@ data: group(filter([
 
 <p>Insert 560M tuples of SkyServer data, run 150K SkyServer queries repeated until 1B queries.
 <ul>
-<li>ART gets took too much memory > 20GB.
+<li>ART consumes 15 GB memory indexing all the tuples.
+<li>COMB_ART consumes 6 GB memory, indexing 7.7M tuples (1.3% domain), while 67K large buckets are untouched by the queries.
+<li>COMB_ART never croses ART on this repeated read-only workload.
+</ul>
+</p>
+
+<p>With LFHV updates uniformly at random.
+<ul>
+<li>ART consumes 15 GB memory indexing all the tuples.
+<li>COMB_ART consumes 6 GB memory, indexing 7.7M tuples (1.3% domain), while 67K large buckets are untouched by the queries.
+<li>COMB_ART never croses ART on this repeated read-only workload.
+</ul>
+</p>
+
+<p>With LFHV updates focused on 10% of domain.
+<ul>
+<li>ART consumes 15 GB memory indexing all the tuples.
+<li>COMB_ART consumes 6 GB memory, indexing 7.7M tuples (1.3% domain), while 67K large buckets are untouched by the queries.
+<li>COMB_ART never croses ART on this repeated read-only workload.
 </ul>
 </p>
 
@@ -655,53 +673,53 @@ After 10^8th query no more bucket left, all has transitioned to ART.<br>
 
 <script>
 barchart("#fig1", '(a) 1 Query', 'Total Time (s)', data, 'NOUP', '1', {
-  art_best_eager: 'ARTB', art_best: 'ARTC', btree_google: 'BT', ctree_eager: 'CTE', ctree_32_1024: 'CT', crack: 'CRK',
+  art_best_eager: 'ARTB', art_best: 'ARTC', ctree_eager: 'BT', ctree_eager: 'CTE', ctree_32_1024: 'CT', crack: 'CRK',
   comb: 'COMB',
   sort: 'SORT',
 });
 
 barchart("#fig2", '(b) 1K Queries', null, data, 'NOUP', '1000', {
-  art_best_eager: 'ARTB', art_best: 'ARTC', btree_google: 'BT', ctree_eager: 'CTE', ctree_32_1024: 'CT', crack: 'CRK',
+  art_best_eager: 'ARTB', art_best: 'ARTC', ctree_eager: 'BT', ctree_eager: 'CTE', ctree_32_1024: 'CT', crack: 'CRK',
   comb: 'COMB',
   sort: 'SORT',
 });
 
 barchart("#fig3", '(c) 1M Queries', null, data, 'NOUP', '1000000', {
-  art_best_eager: 'ARTB', art_best: 'ARTC', btree_google: 'BT', ctree_eager: 'CTE', ctree_32_1024: 'CT', crack: 'CRK',
+  art_best_eager: 'ARTB', art_best: 'ARTC', ctree_eager: 'BT', ctree_eager: 'CTE', ctree_32_1024: 'CT', crack: 'CRK',
   comb: 'COMB',
   sort: 'SORT',
 });
 
 barchart("#fig4", '(d) 100M Queries', null, data, 'NOUP', '100000000', {
-  art_best_eager: 'ARTB', art_best: 'ARTC', btree_google: 'BT', ctree_eager: 'CTE', ctree_32_1024: 'CT', crack: 'CRK',
+  art_best_eager: 'ARTB', art_best: 'ARTC', ctree_eager: 'BT', ctree_eager: 'CTE', ctree_32_1024: 'CT', crack: 'CRK',
   comb: 'COMB',
   sort: 'SORT',
 });
 
 barchart("#fig41", '(e) 1B Queries', null, data, 'NOUP', '1000000000', {
-  art_best_eager: 'ARTB', art_best: 'ARTC', btree_google: 'BT', ctree_eager: 'CTE', ctree_32_1024: 'CT', crack: 'CRK',
+  art_best_eager: 'ARTB', art_best: 'ARTC', ctree_eager: 'BT', ctree_eager: 'CTE', ctree_32_1024: 'CT', crack: 'CRK',
   comb: 'COMB',
   sort: 'SORT',
 });
 
 barchart("#fig5", '(a) 1 Query', 'Total Time (s)', data, 'LFHV', '1', {
-  art_best_eager: 'ARTB', art_best: 'ARTC', btree_google: 'BT', ctree_eager: 'CTE', ctree_32_64: 'CT', crack: 'CRK', comb800: 'COMB',
+  art_best_eager: 'ARTB', art_best: 'ARTC', ctree_eager: 'BT', ctree_eager: 'CTE', ctree_32_64: 'CT', crack: 'CRK', comb800: 'COMB',
 });
 
 barchart("#fig6", '(b) 1K Queries', null, data, 'LFHV', '1000', {
-  art_best_eager: 'ARTB', art_best: 'ARTC', btree_google: 'BT', ctree_eager: 'CTE', ctree_32_64: 'CT', crack: 'CRK', comb800: 'COMB',
+  art_best_eager: 'ARTB', art_best: 'ARTC', ctree_eager: 'BT', ctree_eager: 'CTE', ctree_32_64: 'CT', crack: 'CRK', comb800: 'COMB',
 });
 
 barchart("#fig7", '(c) 1M Queries', null, data, 'LFHV', '1000000', {
-  art_best_eager: 'ARTB', art_best: 'ARTC', btree_google: 'BT', ctree_eager: 'CTE', ctree_32_64: 'CT', crack: 'CRK', comb800: 'COMB',
+  art_best_eager: 'ARTB', art_best: 'ARTC', ctree_eager: 'BT', ctree_eager: 'CTE', ctree_32_64: 'CT', crack: 'CRK', comb800: 'COMB',
 });
 
 barchart("#fig8a", '(d) 100M Queries', null, data, 'LFHV', '100000000', {
-  art_best_eager: 'ARTB', art_best: 'ARTC', btree_google: 'BT', ctree_eager: 'CTE', ctree_32_64: 'CT', crack: 'CRK', comb800: 'COMB',
+  art_best_eager: 'ARTB', art_best: 'ARTC', ctree_eager: 'BT', ctree_eager: 'CTE', ctree_32_64: 'CT', crack: 'CRK', comb800: 'COMB',
 });
 
 barchart("#fig8b", '(e) 1B Queries', null, data, 'LFHV', '1000000000', {
-  art_best_eager: 'ARTB', art_best: 'ARTC', btree_google: 'BT', ctree_eager: 'CTE', ctree_32_64: 'CT', crack: 'CRK', comb800: 'COMB',
+  art_best_eager: 'ARTB', art_best: 'ARTC', ctree_eager: 'BT', ctree_eager: 'CTE', ctree_32_64: 'CT', crack: 'CRK', comb800: 'COMB',
 });
 </script>
 </body>
