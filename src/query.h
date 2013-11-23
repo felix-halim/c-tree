@@ -267,12 +267,20 @@ class Workload {
 
 public : 
 
-  Workload(int w, double selectivity_): N(0), W(w), S(0), I(0), a(0), b(0), seq_jump(20), selectivity(selectivity_), gen(140384) {
+  Workload(int w, double selectivity_, long long MAXQ): N(0), W(w), S(0), I(0), a(0), b(0), seq_jump(20), selectivity(selectivity_), gen(140384) {
     if (W < 0 || W >= 18) {
       fprintf(stderr,"Workload number %d is not found!\n", W);
       exit(1);
     }
     if (W == 0) init_skyq();
+
+    if (W == 2) {
+      int j = get_max() / 100 / MAXQ;
+      fprintf(stderr, "j = %d\n", j);
+      set_seq_jump(max(1, j));
+    } else if (W == 17) {
+      set_max(10);
+    }
   }
   
   void set_max(int mx) {

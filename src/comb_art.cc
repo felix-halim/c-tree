@@ -52,13 +52,13 @@ int count(int a, int b) {
 
 void results(Statistics &s) {
   // assert(c.check());
-  s.note = "Lazy";
-  s.n_leaves = n_large;//c.num_of_buckets();
-  s.n_capacity = n_small;//c.capacity();
-  s.n_internals = n_index;//c.n_internals();
-  s.max_depth = c.n_chains();
-  s.slack = 0;//c.slack();
-  s.in_size = SMALL_TOUCH;
-  s.ln_size = LARGE_TOUCH;
-  // c.alloc_sizes(s.ia_free, s.ia_size, s.la_free, s.la_size);
+  s.n_index = n_index;
+  s.n_bytes = 0;
+  s.n_slack = 0;
+  s.n_internal = n_small;
+  s.n_leaf = n_large;
+  s.bt_int_sz = 0;
+  s.bt_leaf_sz = 0;
+  s.large_touch = LARGE_TOUCH;
+  s.small_touch = SMALL_TOUCH;
 }

@@ -13,17 +13,35 @@ class Update {
   FILE *in;
   int next_smallest;
   int max_value;
+  int U, N;
   mt19937 gen;
   uniform_int_distribution<> dis;
 
  public:
 
-  Update(char *fn): max_value(0), gen(81188) {
+  Update(char *fn, int u): max_value(0), U(u), gen(81188) {
     next_smallest = 1080000000;
     in = fopen(fn, "rb");
     if (!in) { fprintf(stderr,"Error opening file %s\n", fn); exit(1); }
+
+    if (U != 6) {
+      load();
+      N = size();
+      if (U == 3) prepare_queue();
+      else if (U == 7) N = 100000;
+      else if (U == 8) N = 10;
+    } else {
+      load(100000);
+      N = size();
+    }
+
+    if (U == 5) {
+      prepare_deletion(N);
+      // MAXQ = min((long long) MAXQ);
+    }
   }
 
+  int the_N() { return N; }
   void prepare_deletion(int N) { shuffle(arr.begin(), arr.begin() + N, gen); }
   int max_element() { return max_value; }
   int* get_arr() { return &arr[0]; }
@@ -47,8 +65,8 @@ class Update {
     return true;
   }
 
-  void prepare_queue(int N) {
-    assert(size() >= N);
+  void prepare_queue() {
+    int N = size();
     sort(arr.begin(), arr.end());
     for (int i = 0; i < N; i++) {
       if (arr[i] > next_smallest)
@@ -60,7 +78,7 @@ class Update {
     }
   }
 
-  void update_queue(int N, int &to_del, int &to_add) {
+  void update_queue(int &to_del, int &to_add) {
     static int qidx = -1;
     if (qidx < 0) qidx = N - 1;
   // if ((i + 1) % 1000000 == 0)
@@ -71,19 +89,138 @@ class Update {
     assert(next_smallest >= 0);
   }
 
-  int update_delete(int N) {
+  int update_delete() {
     static int lastN = N;
     assert(lastN > 0);
     return arr[--lastN];
   }
 
-  void update(int N, int &to_del, int &to_add) {
+  void update(int &to_del, int &to_add) {
     int k = dis(gen) % N;
     to_del = arr[k];
     int l = N + dis(gen) % N;
     assert(l < size());
     swap(arr[k], arr[l]);
     to_add = arr[k];
+  }
+
+  double execute(long long i) {
+    switch (U) {
+      // NOUP.
+      case 0: return 0;
+
+      // LFHV.
+      case 1: return (i % 1000) ? 0 :
+        time_it([&] {
+          int a, b;
+          REP(j, 1000) {
+            update(a, b);
+            erase(a);
+            insert(b);
+          }
+        });
+
+      // HFHV.
+      case 2: return (i % 10) ? 0 :
+        time_it([&] {
+          int a, b;
+          REP(j, 1000) {
+            update(a, b);
+            erase(a);
+            insert(b);
+          }
+        });
+
+      // QUEUE.
+      case 3: return (i % 10) ? 0 :
+        time_it([&] {
+          int a, b;
+          REP(j, 10) {
+            update_queue(a, b);
+            erase(a);
+            insert(b);
+          }
+        });
+
+      // TRASH.
+      case 4: return (i != 10000) ? 0 :
+        time_it([&] {
+          int *arr = get_arr();
+          REP(j, 1000000) {
+            insert(arr[N + j]);
+            // fprintf(stderr, "%d \n", arr[N + j]);
+          }
+        });
+
+      // DELETE.
+      case 5: return (i % 1000) ? 0 :
+        time_it([&] {
+          REP(j, 1000) {
+            erase(update_delete());
+          }
+        });
+
+      // APPEND SKY SERVER.
+      case 6: return
+        time_it([&] {
+          // if (MAXQ != -1) {
+            clear();
+            bool loaded = false;
+            // load_time += time_it([&] {
+              loaded = load(100000);
+              // query_w.set_max(max_element());
+              N += size();
+            // });
+            if (loaded) {
+              int *arr = get_arr();
+              REP(j, size()) insert(arr[j]);
+            } else {
+              // MAXQ = -1;
+            }
+          // }
+        });
+
+      // APPEND.
+      case 7: return
+        time_it([&] {
+          // if (MAXQ != -1) {
+            int add = size() / 2 - N;
+            if (add > 0) {
+              int *arr = get_arr();
+              REP(j, min(add, 100000)) insert(arr[N++]);
+            } else {
+              // MAXQ = -1;
+            }
+          // }
+        });
+
+      // APPEND.
+      case 8: return (i % 10) ? 0 :
+        time_it([&] {
+          // if (MAXQ != -1) {
+            int add = size() / 2 - N;
+            if (add > 0) {
+              int *arr = get_arr();
+              REP(j, min(add, 10)) insert(arr[N++]);
+            } else {
+              // MAXQ = -1;
+            }
+          // }
+        });
+
+      // SKEW.
+      case 9: return (i % 1000) ? 0 :
+        time_it([&] {
+          int a, b;
+          REP(j, 1000) {
+            update(a, b);
+            erase(a);
+            insert(b);
+          }
+        });
+
+      default: return 0;
+    }
   }
 };
 
@@ -97,4 +234,5 @@ static const char *update_workload[] = {
   "APPENDSKY", // 6. Insert 100K tuples every query. 
   "APPEND", // 7. Insert 100K tuples every query. 
   "APPEND", // 8. Insert 10 tuples every 10 query. 
+  "SKEW",   // 9. LFHV but on 20% domain only.
 };

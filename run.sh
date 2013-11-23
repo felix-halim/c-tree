@@ -2,7 +2,7 @@
 
 mkdir bin 2> /dev/null
 N=data/100000000.data
-Q=10000000000
+Q=100000000
 out=results.js
 
 case $1 in
@@ -207,6 +207,7 @@ batch_ctree)  ./run.sh noup ctree_32_32 | tee -a $out
               ;;
 
 fhnet)        scp experiments.html felixhalim@felix-halim.net:~/public_html/research/ctree/
+              scp illustration.js felixhalim@felix-halim.net:~/public_html/research/ctree/
               scp data.js felixhalim@felix-halim.net:~/public_html/research/ctree/
               scp demo.html felixhalim@felix-halim.net:~/public_html/research/ctree/
               scp linechart.js felixhalim@felix-halim.net:~/public_html/research/ctree/

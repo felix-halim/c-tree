@@ -225,7 +225,7 @@ var algo_name = {
   comb:            { name: "COMB", symbol: "diamond", color: "orange" },
   combtr:          { name: "COMB-TR", symbol: "diamond", color: "green" },
   combtr2:         { name: "COMB-TR2", symbol: "diamond", color: "black" },
-  comb_art:        { name: "COMB-ART", symbol: "circle", color: "magenta" },
+  comb_art:        { name: "TRIMMER", symbol: "circle", color: "magenta" },
   comb_art_ns:     { name: "COMB-ART-NS", symbol: "circle", color: "lime" },
   comb_art_1:     { name: "COMB-ART-1", symbol: "cross", color: "brown" },
   combt8192:       { name: "COMB-Tree8192", symbol: "square", color: "red" },

@@ -24,6 +24,26 @@ data = d3.csv.parse(data);
 
 <body onload="renderLinecharts()">
 
+<h1>TRIMMER</h1>
+
+<svg height="250" id="trimmer"></svg>
+<script type="text/javascript" src="illustration.js"></script>
+
+<p>
+Left Figure: Initial bulk insert, all tuples are inserted unordered (gray color) in a chained buckets.<br>
+<p>
+Middle Figure: The first query breaks the chain using DDR, it splits into at most log(N) chains.<br>
+In the SCrack paper, DDR is slower than Crack on the first query, but TRIMMER is faster! due to Fusion technique.<br>
+Optionally, it transits to smaller-sized buckets for the standalone bucket containing the query.<br>
+A small bucket fits into L1 cache. It can be sorted (blue color) or unsorted (gray color).<br>
+The cracker index (can be implemented using AVL, BTree, or ART) expands.<br>
+<p>
+Right Figure: After a lot of queries, some of the small buckets transit its tuples to the cracker index.<br>
+Some bucket chains are never touched by any query, and thus left unsplit.<br>
+Some large buckets are cracked (i.e., it decides not to transit to small buckets) denoted by cyan color.
+
+<h2>Experimental Results</h2>
+
 <p>All experiments uses N = 10^8 random sparse 32 bit integer.<br>
 The queries are random point queries.<br>
 The updates are random point updates in the same 32 bit integer domain.<br>
@@ -36,36 +56,37 @@ The setup is: insert 10^8 random integers and perform 10^9 point queries.
 </p>
 
 <div class="chart" style="float:left; display: inline-block">{
-  width: 400, height: 400,
-  yAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'log', domain: [0.5, 2e9], format: ticksPow10, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9], margin: 40 },
-  xAxis: { label: 'Timeline (seconds)', attr: 'total_time', scale: 'log', domain: [0.4, 3000], format: 'd', ticks: [0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20, 30, 40, 50, 60, 70, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 2000, 3000], margin: 40 },
+  width: 500, height: 300,
+  xAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'log', domain: [0.5, 2e9], format: ticksPow10, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9], margin: 40 },
+  yAxis: { label: 'Timeline (seconds)', attr: 'total_time', scale: 'log', domain: [0.4, 3000], format: 'pow10', ticks: [0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20, 30, 40, 50, 60, 70, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 2000, 3000], margin: 40 },
   legend: {
-    'sort' : { x: 250, y: 120 },
-    'art_best_eager' : { x: 250, y: 80 },
-    'ctree_eager' : { x: 250, y: 100 },
-    'mdd1r' : { x: 70, y: 150 },
-    'crack' : { x: 30, y: 70 },
-    'comb' : { x: 30, y: 90 },
+    'sort' :           { x:  50, y: 20 },
+    'art_best_eager' : { x:  50, y: 35 },
+    'ctree_eager' :    { x:  50, y: 50 },
+    'mdd1r' :          { x:  50, y: 65 },
+    'crack' :          { x:  50, y: 80 },
+    'comb' :           { x:  50, y: 95 },
   },
   data: group(filter([
     { attr: 'update_workload',   values: ['NOUP'] },
     { attr: 'query_workload',   values: ['Random'] },
     { attr: 'Q',   values: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9 ] },
-    { attr: 'algorithm',         values: ['sort', 'crack', 'comb', 'mdd1r', 'art_best_eager', 'ctree_eager'] },
+    { attr: 'algorithm',         values: ['sort', 'crack', 'comb', 'mdd1r', 'art_best_eager', 'ctree_eager', 'comb_art'] },
   ]), 'algorithm'),
 }</div>
 
 <div class="chart" style="float:left; display: inline-block">{
-  width: 400, height: 400,
-  yAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'log', domain: [0.5, 2e9], format: ticksPow10, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9], margin: 40 },
-  xAxis: { label: 'Timeline (seconds)', attr: 'total_time', scale: 'log', domain: [0.4, 400], format: 'd', ticks: [0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20, 30, 40, 50, 60, 70, 100, 200, 300, 400], margin: 40 },
+  width: 500, height: 300,
+  xAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'log', domain: [0.5, 2e9], format: ticksPow10, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9], margin: 40 },
+  yAxis: { label: 'Timeline (seconds)', attr: 'total_time', scale: 'log', domain: [0.4, 3000], format: 'pow10', ticks: [0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20, 30, 40, 50, 60, 70, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000], margin: 40 },
   legend: {
-    'sort' : { x: 185, y: 95 },
-    'art_best_eager' : { x: 110, y: 140 },
-    'ctree_eager' : { x: 275, y: 80 },
-    'mdd1r' : { x: 90, y: 70 },
-    'comb' : { x: 30, y: 30 },
-    'comb_art' : { x: 30, y: 30 },
+    'sort' :           { x:  50, y: 20 },
+    'art_best_eager' : { x:  50, y: 35 },
+    'ctree_eager' :    { x:  50, y: 50 },
+    'mdd1r' :          { x:  50, y: 65 },
+    'crack' :          { x:  50, y: 80 },
+    'comb' :           { x:  50, y: 95 },
+    'comb_art' :       { x:  50, y:110 },
   },
   data: group(filter([
     { attr: 'update_workload',   values: ['NOUP'] },
@@ -503,15 +524,16 @@ Each count query requires the algo to iterate for each pieces to acquire it's si
 <h2>SkyServer Data and Query Workload</h2>
 <div class="chart">{
 xAxis: { label: 'Query Sequence', attr: 'Q', scale: 'log', domain: [0.5, 2e9], format: ticksPow10, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9], margin: 40 },
-yAxis: { label: 'Cumulative Runtime', attr: 'total_time', scale: 'log', domain: [0.6, 500], format: 'pow10', ticks: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 200, 300, 400, 500], margin: 40 },
+yAxis: { label: 'Cumulative Runtime', attr: 'total_time', scale: 'log', domain: [0.6, 1000], format: 'pow10', ticks: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000], margin: 40 },
 legend: {
-'comb_art' : { x: 50, y: 50 },
+'comb_art' : { x: 30, y: 105 },
+'art' :      { x: 30, y: 25 },
 },
 data: group(filter([
 { attr: 'update_workload', values: ['NOUP'] },
 { attr: 'query_workload', values: ['SkyServer'] },
 { attr: 'selectivity', values: ['0.100000'] },
-{ attr: 'algorithm', values: ['comb_art'] },
+{ attr: 'algorithm', values: ['comb_art', 'art'] },
 ]), 'algorithm'),
 }</div>
 
@@ -523,7 +545,7 @@ data: group(filter([
 </ul>
 </p>
 
-<p>With LFHV updates uniformly at random.
+<!-- <p>With LFHV updates uniformly at random.
 <ul>
 <li>ART consumes 15 GB memory indexing all the tuples.
 <li>COMB_ART consumes 6 GB memory, indexing 7.7M tuples (1.3% domain), while 67K large buckets are untouched by the queries.
@@ -538,7 +560,7 @@ data: group(filter([
 <li>COMB_ART never croses ART on this repeated read-only workload.
 </ul>
 </p>
-
+ -->
 <h2>Transition Statistics</h2>
 
 <p>Currently the transitions are determined manually:
