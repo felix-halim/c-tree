@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style type="text/css">
+text.cell {
+  text-anchor: middle;
+  alignment-baseline: central;
+  font-size: 18px;
+}
+
+.axis path,
+.axis line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+
+/*.x.axis path {
+  display: none;
+}
+*/
+.line {
+  fill: none;
+  stroke: steelblue;
+  stroke-width: 1.5px;
+}
+</style>
+<script src="d3.v3.min.js"></script>
+<script>
+function x(arr) {
+  data = [];
+  var rows = arr.rows;
+  var cols = arr.columns;
+  for (var i = 0; i < rows.length; i++) {
+    var r = rows[i];
+    var t = {};
+    for (var j = 0; j < cols.length; j++) {
+      t[cols[j]] = r[j];
+    }
+    data.push(t);
+  }
+}
+</script>
+<script src="https://www.googleapis.com/fusiontables/v1/query?sql=SELECT%20*%20FROM%201frrX7TlnApvKKbkMs2OtKYwFbKO-d1BHRZ_CwZg&key=AIzaSyBU3FDcY69XJkNYSOkmGL9un55_lPDf73Q&callback=x"></script>
+<script src="linechart.js?7"></script>
+<script src="ctree.js"></script>
+</head>
+
+<body onload="renderLinecharts()">
+
+<div class="chart" style="display: inline-block">{
+  xAxis: { label: 'Query Sequence',  attr: 'Q', scale: 'log', domain: [0.5, 2e9], format: ticksPow10, ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9], margin: 40 },
+  yAxis: { label: 'NOUP: Ratio to Sort', attr: 'total_time', scale: 'log', domain: [0.05, 10], format: 'pow10', ticks: [0.05, 0.06, 0.07, 0.08, 0.09, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], margin: 40 },
+  legend: {
+    'sort' : { x: 50, y: 50 },
+    'mdd1r' : { x: 250, y: 20 },
+    'comb' : { x: 130, y: 120 },
+  },
+  base: 'sort',
+  data: group(filter([
+    { attr: 'update_workload',   values: ['NOUP'] },
+    { attr: 'query_workload',    values: ['Random'] },
+    { attr: 'algorithm',         values: ['sort', 'comb', 'mdd1r'] },
+  ]), 'algorithm'),
+}</div>
+
+
+<h3>Cracking BTree Demo</h3>
+
+<form onsubmit="return true;" style="display:inline">
+<input type="submit" value="Reset">
+</form>
+&nbsp; &nbsp;
+<form onsubmit="lower_bound(parseInt(document.getElementById('lower_bound_text').value, 10)); return false;" style="display:inline">
+Lower Bound: <input type="text" value="14" size="3" id="lower_bound_text">
+<input type="submit" value="Find">
+</form>
+<svg id="ctree" width="1200" height="500"></svg>
+
+<br>
+Space saving trick using integer bucket id instead of pointer
+<br><br><br>
+
+<script>
+var c = NewCTree();
+var n = 0;
+var cdata = [];
+
+for (var i = 1; i < 100; i++) {
+  cdata[i - 1] = i;
+}
+var seed = 1;
+for (var i = 0; i < cdata.length; i++) {
+  seed = seed * 13 + i * 7 + 5;
+  var j = seed % cdata.length;
+  var t = cdata[j];
+  cdata[j] = cdata[i];
+  cdata[i] = t;
+}
+
+cdata.length = 60;
+
+function lower_bound(v) {
+  setTimeout(function () {
+    c.lower_bound(v);
+    render(c.snapshot());
+  }, 100);
+}
+
+function add(data) {
+  if (n >= data.length) {
+    return render(c.snapshot());
+  }
+  c.add(data[n]);
+  n++;
+  // add();
+  setTimeout(function () { add(data); }, 1);
+}
+
+add(cdata);
+
+var DURATION = 1000;
+
+function render(s) {
+  var svg = d3.select("#ctree");
+
+  draw_leaf_buckets(svg, s.leaves);
+  draw_leaf_connectors(svg, s.leaf_connectors);
+  draw_cell_values(svg, s.cell_values);
+
+  draw_internal_buckets(svg, s.internals);
+  draw_internal_children_links(svg, s.children_links);
+}
+
+function x(d) { return d.x; }
+function y(d) { return d.y; }
+
+function draw_leaf_buckets(svg, data) {
+  var rects = svg.selectAll("rect.leaf").data(data, function (d) { return d.id; });
+  var attr = { class: "leaf", width: CELL_W, height: CELL_H * LEAF_CAPACITY, x: x, y: y, 'stroke-width': 1, stroke: 'black', fill: 'none', };
+  rects.transition().duration(DURATION).attr(attr);
+  rects.enter().append("rect").attr(attr);
+  rects.transition().duration(DURATION).attr(attr);
+  rects.exit().remove();
+}
+
+function draw_leaf_connectors(svg, data) {
+  function lineDataNext(d) {
+    return d3.svg.line().x(x).y(y).interpolate("basis")([
+      { "x": d.x + CELL_W * 0.5,  "y": d.y + CELL_H * LEAF_CAPACITY },
+      { "x": d.x + CELL_W * 0.5,  "y": d.y + CELL_H * (LEAF_CAPACITY + 0.5) },
+      { "x": d.x + CELL_W * 1.5,  "y": d.y + CELL_H * (LEAF_CAPACITY + 0.5) },
+      { "x": d.x + CELL_W * 1.5,  "y": d.y + -CELL_H * 0.5 },
+      { "x": d.x + CELL_W * 2.0,  "y": d.y + -CELL_H * 0.5 },
+      { "x": d.x + CELL_W * 2.5,  "y": d.y + -CELL_H * 0.5 },
+      { "x": d.x + CELL_W * 2.5,  "y": d.y },
+    ]);
+  }
+  var paths = svg.selectAll("path.leaf").data(data, function (d) { return d.id; });
+  var attr = { class: "leaf", d: lineDataNext, stroke: 'black', 'stroke-width': 0, fill: 'none', };
+  paths.enter().append("path").attr(attr);
+  paths.transition().duration(DURATION).attr(attr).attr('stroke-width', 1);
+  paths.exit().remove();
+}
+
+function draw_cell_values(svg, data) {
+  var rects = svg.selectAll("rect.cell").data(data, function (d) { return d.value; });
+  var attr = { class: "cell", width: CELL_W, height: CELL_H, x: x, y: y, 'stroke-width': 0, stroke: 'black', fill: 'none', };
+  rects.enter().append("rect").attr(attr);
+  rects.transition().duration(DURATION).attr(attr).attr('stroke-width', 1);
+  rects.exit().remove();
+
+  var texts = svg.selectAll("text.cell").data(data, function (d) { return d.value; });
+  var attr = {
+    class : 'cell',
+    x : function (d) { return d.x + CELL_W * 0.5; },
+    y : function (d) { return d.y + CELL_H * 0.5; },
+    fill: 'white',
+    style: function (d) { return d.sorted ? 'font-weight:bold' : ''; },
+  };
+  texts.enter().append("text").attr(attr);
+  texts.transition().duration(DURATION).text(function (d) { return d.value; }).attr(attr)
+    .attr('fill', function (d) { return d.sorted ? 'blue' : 'black'; });
+  texts.exit().remove();
+}
+
+function draw_internal_buckets(svg, data) {
+  if (!data) return;
+  var rects = svg.selectAll("rect.internal").data(data, function (d) { return d.id; });
+  var attr = { class: "internal", width: CELL_W * INTERNAL_CAPACITY, height: CELL_H, x: x, y: y, 'stroke-width': 0, stroke: 'black', fill: 'none', };
+  rects.enter().append("rect").attr(attr);
+  rects.transition().duration(DURATION).attr(attr).attr('stroke-width', 1);
+  rects.exit().remove();
+}
+
+function draw_internal_children_links(svg, data) {
+  if (!data) return;
+
+  function childLine(d) {
+    return d3.svg.line().x(x).y(y).interpolate("linear")([ {x:d.x1, y:d.y1}, {x:d.x2, y:d.y2} ]);
+  }
+
+  var circles = svg.selectAll('circle.children').data(data, function (d) { return d.child_id; });
+  var attr = {
+    class: 'children',
+    cx: function (d) { return d.x1; },
+    cy: function (d) { return d.y1; },
+    r: 2,
+    fill: 'none',
+  };
+  circles.enter().append("circle").attr(attr);
+  circles.transition().duration(DURATION).attr(attr).attr('fill', 'black');
+  circles.exit().remove();
+
+  var paths = svg.selectAll('path.children').data(data, function (d) { return d.child_id; });
+  var attr = { class: 'children', d: childLine, 'stroke-width': 0, stroke: 'black', fill: 'black' };
+  paths.enter().append("path").attr(attr);
+  paths.transition().duration(DURATION).attr(attr).attr('stroke-width', 1);
+  paths.exit().remove();
+}
+</script>
+</body>
+</html>

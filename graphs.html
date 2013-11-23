@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<script src="d3.v3.min.js"></script>
+<script src="data.js?11"></script>
+<script>
+data = d3.csv.parse(data);
+</script>
+<script src="linechart.js?13"></script>
+<script src="jquery-2.0.3.min.js"></script>
+</head>
+
+<body onload="render()">
+
+<form id="svg2pdf" method="post" action="http://uhunt2.felix-halim.net:8000/svg2pdf">
+  <input type="text" id="p" name="p" value="" hidden>
+</form>
+
+<div id="chart" style="width:500px; height:300px; display:inline-block"></div>
+
+<textarea id="config" rows="20" cols="80" onchange="alert('ee')">
+{
+  width: 500, height: 300,
+  xAxis: {
+    label: 'Query Sequence',
+    attr: 'Q',
+    scale: 'log',
+    domain: [0.5, 2e9],
+    format: 'pow10',
+    ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9],
+    margin: 40,
+  },
+  yAxis: {
+    label: 'Timeline (seconds)',
+    attr: 'total_time',
+    scale: 'log',
+    domain: [0.3, 3000],
+    format: 'pow10',
+    ticks: [1, 10, 100, 1000, 10000],
+    margin: 40
+  },
+  lines: {
+    fields : ['algorithm', 'query_workload', 'update_workload'],
+    values : [
+      { label: ['COMB_ART', '#f00', '-^', 30, 20],
+        value:[      'comb_art', 'Random', 'NOUP'] },
+
+      { label: [    'ARTB', '#0f0', '-^', 30, 40],
+        value:['art_best_eager', 'Random', 'NOUP'] },
+    ],
+    group_by: 'algorithm',
+  },
+}
+</textarea>
+
+<br>
+
+<button onclick="dl()">Save as PDF</button>
+
+<br>
+
+<table style="clear:both">
+<script>
+var fields = ['algorithm', 'query_workload', 'update_workload'];
+document.write('<tr>');
+for (var i = 0; i < fields.length; i++) {
+  var name = fields[i];
+  document.write('<th align="left" width="160">' + name + '</th>');
+}
+document.write('</tr>');
+
+var distinct_values = {};
+for (var i = 0; i < data.length; i++) {
+  for (var j = 0; j < fields.length; j++) {
+    var v = data[i][fields[j]];
+    if (!distinct_values[fields[j]]) distinct_values[fields[j]] = {};
+    distinct_values[fields[j]][v] = 1;
+  }
+}
+
+document.write('<tr>');
+for (var i = 0; i < fields.length; i++) {
+  var values = distinct_values[fields[i]];
+  document.write('<td><select size="20" style="width:150px">');
+  for (var v in values) if (values.hasOwnProperty(v)) {
+    document.write('<option>' + v + '</option>');
+  }
+  document.write('</select></td>');
+}
+document.write('</tr>');
+</script>
+</table>
+
+<script type="text/javascript">
+function render() {
+  var ta = document.getElementById('config');
+  eval('var opts = ' + ta.value);
+  var svg = document.getElementById('chart');
+  while (svg.firstChild) svg.removeChild(svg.firstChild);
+  linechart(svg, opts);
+}
+document.getElementById('config').addEventListener('input', render, false);
+
+function dl() {
+  var svg = document.getElementById('chart');
+  $('#p').val(svg.innerHTML);
+  $('#svg2pdf').submit();
+}
+</script>
+</body>
+</html>
