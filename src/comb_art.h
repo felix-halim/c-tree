@@ -672,7 +672,11 @@ public:
     // fprintf(stderr, "insert root value %llu\n", (unsigned long long) value);
     n_index++;
     loadKey(value, key);
-    ::insert(tree, &tree, key, 0, (value << 1) | 1, 8);
+    if (!::lookup(tree, key, 8, 0, 8)) {
+      ::insert(tree, &tree, key, 0, (value << 1) | 1, 8);
+    } else {
+      fprintf(stderr, "D"); // Duplicate.
+    }
   }
 
   void load(int const *arr, int n) {
