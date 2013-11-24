@@ -17,10 +17,11 @@ int main() {
   assert(in);
   assert(out);
   int ndup = 0;
-  while (!feof(in)) {
+  for (int nth = 0; !feof(in); ) {
     int N = fread(tmp, sizeof(int), BATCH, in);
     int nt = 0;
-    for (int i = 0; i < N; i++) {
+    for (int i = 0; i < N; i++, nth++) {
+      printf("%d ", tmp[i]);
       if (s.count(tmp[i])) {
         ndup++;
       } else {
@@ -31,7 +32,7 @@ int main() {
     if (nt > 0) {
       fwrite(wtmp, sizeof(int), nt, out);
     }
-    fprintf(stderr, "ndup = %d\n", ndup);
+    fprintf(stderr, "%d. ndup = %d\n", nth, ndup);
   }
   fclose(out);
   if (ferror(in)) { fprintf(stderr,"Error reading file!\n"); }
