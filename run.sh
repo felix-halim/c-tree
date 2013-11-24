@@ -81,6 +81,7 @@ batch_slb)
               ./run.sh algo comb_art_1000_10 0.000001 0 | tee -a $out
               ./run.sh algo comb_art_1000_100 0.000001 0 | tee -a $out
               ./run.sh algo comb_art_1000_1000 0.000001 0 | tee -a $out
+              ;;
 
 batch_sel) 
               ./run.sh algo comb_art 0.000001 0 | tee -a $out
