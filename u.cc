@@ -12,8 +12,8 @@ int wtmp[BATCH];
 set<int> s;
 
 int main() {
-  FILE *in = fopen("rb", "data/skyserver.data");
-  FILE *out = fopen("wb", "data/skyserver.udata");
+  FILE *in = fopen("data/skyserver.data", "rb");
+  FILE *out = fopen("data/skyserver.udata", "wb");
   assert(in);
   assert(out);
   int ndup = 0;
