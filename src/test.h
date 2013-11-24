@@ -61,7 +61,7 @@ int main(int argc, char *argv[]) {
 
       for (int a, b; nQ--; i++) {
         bool ok = query_w.query(a,b); // get query endpoints based on the workload
-        // assert(ok);
+        assert(ok || W == 0);
 
         checksum = checksum * 13 + 
           #if defined(COUNT_QUERY)
