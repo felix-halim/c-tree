@@ -886,6 +886,7 @@ public:
         if (isPointer(v)) {
           Bucket *b = (Bucket*) v;
           if (b->large_type) {
+            n_bytes += sizeof(LargeBucket);
             LargeBucket *lb = (LargeBucket*) b;
             n_slack_leaves += lb->slack();
             n_chain--;
@@ -894,6 +895,7 @@ public:
               n_chain++;
             }
           } else {
+            n_bytes += sizeof(SmallBucket);
             SmallBucket *sb = (SmallBucket*) b;
             n_slack_leaves += sb->slack();
           }
@@ -905,24 +907,28 @@ public:
              Node4* node = static_cast<Node4*>(n);
              n_slack_art += 4 - node->count;
              art_n4++;
+             n_bytes += sizeof(NodeType4);
              break;
           }
           case NodeType16: {
              Node16* node=static_cast<Node16*>(n);
              n_slack_art += 16 - node->count;
              art_n16++;
+             n_bytes += sizeof(NodeType16);
              break;
           }
           case NodeType48: {
              Node48* node=static_cast<Node48*>(n);
              n_slack_art += 48 - node->count;
              art_n48++;
+             n_bytes += sizeof(NodeType48);
              break;
           }
           case NodeType256: {
              Node256* node=static_cast<Node256*>(n);
              n_slack_art += 256 - node->count;
              art_n256++;
+             n_bytes += sizeof(NodeType256);
              break;
           }
         }
