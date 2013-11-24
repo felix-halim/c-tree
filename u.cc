@@ -21,7 +21,7 @@ int main() {
     int N = fread(tmp, sizeof(int), BATCH, in);
     int nt = 0;
     for (int i = 0; i < N; i++, nth++) {
-      printf("%d ", tmp[i]);
+      // printf("%d ", tmp[i]);
       if (s.count(tmp[i])) {
         ndup++;
       } else {
@@ -32,7 +32,7 @@ int main() {
     if (nt > 0) {
       fwrite(wtmp, sizeof(int), nt, out);
     }
-    fprintf(stderr, "%d. ndup = %d\n", nth, ndup);
+    fprintf(stderr, "%d. ndup = %d, size = %lu\n", nth, ndup, s.size());
   }
   fclose(out);
   if (ferror(in)) { fprintf(stderr,"Error reading file!\n"); }
