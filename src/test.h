@@ -34,9 +34,14 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
 
-  Workload query_w(argv[2], atof(argv[3]), atoi(argv[4]));
+  long long MAXQ;
+  sscanf(argv[2], "%lld", &MAXQ);
+  double sel = atof(argv[3]);
+  int W = atoi(argv[4]);
+  int U = atoi(argv[5]);
+  Workload query_w(MAXQ, sel, W);
   fprintf(stderr, "Loading ... ");
-  Update update(argv[1], atoi(argv[5]), [&](int mx) { query_w.set_max(mx + 1); });
+  Update update(argv[1], U, W, [&](int mx) { query_w.set_max(mx + 1); });
   fprintf(stderr, "done. ");
   Statistics s(parse_algorithm_name(argv[0]), query_w.name(), update.name());
 
