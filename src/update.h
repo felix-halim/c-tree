@@ -61,7 +61,9 @@ class Update {
   void prepare_deletion(int N) { shuffle(arr.begin(), arr.begin() + N, gen); }
   int max_element() { return max_value; }
   int* get_arr() { return &arr[0]; }
-  int get_n() { return (W == 0) ? N : (N / 2); }
+  int get_n() {
+    fprintf(stderr, "W = %d\n", W);
+   return (W == 0) ? N : (N / 2); }
   int size() { return arr.size(); }
   void clear() { arr.clear(); }
 
