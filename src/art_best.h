@@ -881,6 +881,7 @@ static void rec_insert(Node *&node, int depth, int maxKeyLength, uintptr_t *tmp,
       uint8_t *key = (uint8_t*) &tmp[i];
       tmp2[cnt[key[depth]]++] = tmp[i];
    }
+   delete[] tmp;
 
    sidx = 0;
    for (int i = 0; i < 256; i++) {
@@ -910,7 +911,6 @@ void bulk_insert(Node *&node, int *arr, int N) {
    }
    rec_insert(node, 0, 8, tmp, N);
    fprintf(stderr, "ccc = %d\n", ccc);
-   delete[] tmp;
 }
 
 static void insert(Node **node,uint8_t key[],unsigned depth,uintptr_t value,unsigned maxKeyLength) {
