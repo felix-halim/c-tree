@@ -13,6 +13,8 @@ set<int> s;
 int main() {
   FILE *in = fopen("rb", "data/skyserver.data");
   FILE *out = fopen("wb", "data/skyserver.udata");
+  assert(in);
+  assert(out);
   int ndup = 0;
   while (!feof(in)) {
     int N = fread(tmp, sizeof(int), BATCH, in);
