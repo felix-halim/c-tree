@@ -17,7 +17,7 @@ algo)         ./run.sh compile $2 || exit;
               S=$3
               QW=1
               UW=$4
-              bin/$2 $N $Q $S $QW $UW > res/$2_${S}_${QW}_${UW}.csv;;
+              bin/$2 $N $Q $S $QW $UW | tee res/$2_${S}_${QW}_${UW}.csv;;
               # valgrind --leak-check=yes bin/$2 $N $Q 0.1 1 $3;;
 
 domain)       ./run.sh compile $2 || exit;

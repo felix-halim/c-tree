@@ -22,10 +22,10 @@ static vector<long long> generate_samples(long long MAXQ) {
   vector<long long> samples;
   samples.push_back(0);
   samples.push_back(MAXQ);
-  // for (long long i = 1; i <= MAXQ; i *= 2) samples.push_back(i);
+  for (long long i = 1; i <= MAXQ; i *= 2) samples.push_back(i);
   for (long long i = 1; i <= MAXQ; i *= 10) {
     samples.push_back(i);
-    // for (long long j = 0; j < 100; j += 5) samples.push_back(i * j / 100);
+    for (long long j = 0; j < 100; j += 5) samples.push_back(i * j / 100);
   }
   sort(samples.begin(), samples.end());
   samples.erase(unique(samples.begin(), samples.end()), samples.end());
@@ -90,7 +90,7 @@ struct Statistics {
     printf(",%d", N);
     printf(",%lld", Q);
     printf(",%lf", selectivity);
-    printf(",%d", verified);
+    printf(",\"%c\"", verified ? 'Y' : 'N');
     printf(",%.6lf", insert_time);
     printf(",%.6lf", update_time);
     printf(",%.6lf", query_time);
