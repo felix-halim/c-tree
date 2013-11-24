@@ -27,7 +27,8 @@ void insert(int value64) {
   // uint64_t value64 = value;
   // value64 = (value64 << 30) | nth;
   loadKey(value64, key);
-  insert(tree,&tree,key,0,value64,8);
+  if (!lookup(tree,key,8,0,8))
+    insert(tree,&tree,key,0,value64,8);
 }
 
 void erase(int value) {
