@@ -48,6 +48,7 @@ int main() {
     }
     if (nt > 0) {
       fwrite(wtmp, sizeof(int), nt, out);
+      fflush(out);
     }
     fprintf(stderr, "%d. ndup = %d, size = %lu, dup_max = %d.\n", nth, ndup, s.size(), dup_max);
   }
