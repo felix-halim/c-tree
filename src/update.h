@@ -13,7 +13,7 @@ class Update {
   FILE *in;
   int next_smallest;
   int max_value;
-  int U, N;
+  int U, W, N;
   std::function<void(int)> update_max_cb;
 
   mt19937 gen;
@@ -34,8 +34,8 @@ class Update {
 
  public:
 
-  Update(char *fn, int u, std::function<void(int)> on_update_max):
-      max_value(0), U(u), update_max_cb(on_update_max), gen(81188) {
+  Update(char *fn, int u, int w, std::function<void(int)> on_update_max):
+      max_value(0), U(u), W(w), update_max_cb(on_update_max), gen(81188) {
 
     next_smallest = 1080000000;
     in = fopen(fn, "rb");
@@ -61,7 +61,7 @@ class Update {
   void prepare_deletion(int N) { shuffle(arr.begin(), arr.begin() + N, gen); }
   int max_element() { return max_value; }
   int* get_arr() { return &arr[0]; }
-  int get_n() { return N / 2; }
+  int get_n() { return (W == 0) ? N : (N / 2); }
   int size() { return arr.size(); }
   void clear() { arr.clear(); }
 
@@ -76,10 +76,10 @@ class Update {
       int N = fread(tmp, sizeof(int), need, in);
       for (int i = 0; i < N; i++) arr.push_back(tmp[i]);
       max_value = max(max_value, *std::max_element(tmp, tmp + N));
-      update_max_cb(max_value);
     }
     if (ferror(in)) { fprintf(stderr,"Error reading file!\n"); exit(1); }
     if (feof(in)) { fclose(in); in = NULL; }
+    update_max_cb(max_value);
     return true;
   }
 

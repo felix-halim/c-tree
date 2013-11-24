@@ -289,9 +289,7 @@ class Workload {
 
 public : 
 
-  Workload(char *nQ, double sel, int w): N(0), W(w), S(0), I(0), a(0), b(0), seq_jump(20), s(sel), gen(140384) {
-    sscanf(nQ, "%lld", &MAXQ);
-
+  Workload(long long nQ, double sel, int w): N(0), W(w), S(0), I(0), a(0), b(0), seq_jump(20), MAXQ(nQ), s(sel), gen(140384) {
     if (W < 0 || W >= 18) {
       fprintf(stderr,"Workload number %d is not found!\n", W);
       exit(1);

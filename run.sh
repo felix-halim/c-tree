@@ -25,7 +25,7 @@ domain)       ./run.sh compile $2 || exit;
               # valgrind --leak-check=yes bin/$2 $N $Q 0.1 1 $3;;
 
 sky)          ./run.sh compile $2 || exit;
-              bin/$2 data/skyserver.data $Q 0.1 0 $3;;
+              bin/$2 data/skyserver.data $Q 0.000001 0 $3;;
               # valgrind --leak-check=yes bin/$2 $N $Q 0.1 1 $3;;
 
 custom)       ./run.sh algo ctree_32_64 1
