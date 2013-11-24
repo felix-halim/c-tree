@@ -21,7 +21,7 @@ void init(int *arr, int N) {
   // art_debug = 1;
 }
 
-void insert(uintptr_t value64) {
+void insert(int value64) {
   // static int nth = 0; nth++;
   uint8_t key[8];
   // uint64_t value64 = value;
