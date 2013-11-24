@@ -52,11 +52,21 @@ int count(int a, int b) {
 
 void results(Statistics &s) {
   // assert(c.check());
-  s.n_index = n_index;
-  s.n_bytes = 0;
-  s.n_slack = 0;
-  s.n_internal = n_small;
-  s.n_leaf = n_large;
+  c.statistics([&](int n_index, int n_bytes, int n_slack_art, int n_slack_leaves,
+      int n_small, int n_large, int n_chain, int art_n4, int art_n16, int art_n48, int art_n256) {
+    s.n_index = n_index;
+    s.n_bytes = n_bytes;
+    s.n_slack_int = n_slack_art;
+    s.n_slack_leaf = n_slack_leaves;
+    s.n_internal = n_small;
+    s.n_leaf = n_large;
+    s.n_chained = n_chain;
+    s.art_n4 = art_n4;
+    s.art_n16 = art_n16;
+    s.art_n48 = art_n48;
+    s.art_n256 = art_n256;
+  });
+
   s.bt_int_sz = 0;
   s.bt_leaf_sz = 0;
   s.large_touch = LARGE_TOUCH;

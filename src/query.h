@@ -16,12 +16,34 @@ class Workload {
   int I;    // The I'th query (internal use only).
   int a, b; // The last query range [a,b].
   int seq_jump;
-  double selectivity;
+  long long MAXQ;
+  double s;
   vector<int> skyq;
   int skyqi;
 
   mt19937 gen;
   uniform_int_distribution<> dis;
+
+  string workload_name[18] {
+    "SkyServer",     // 0
+    "Random",        // 1
+    "SeqOver",       // 2
+    "SeqInv",        // 3
+    "SeqRand",       // 4
+    "SeqNoOver",     // 5
+    "SeqAlt",        // 6
+    "ConsRandom",    // 7
+    "ZoomIn",        // 8
+    "ZoomOut",       // 9
+    "SeqZoomIn",     // 10
+    "SeqZoomOut",    // 11
+    "Skew",          // 12
+    "ZoomOutAlt",    // 13
+    "SkewZoomOutAlt",// 14
+    "Periodic",      // 15
+    "Mixed",         // 16
+    "Domain"         // 17
+  };
 
   int nextInt(int modulo) {
     return dis(gen) % modulo;
@@ -267,7 +289,9 @@ class Workload {
 
 public : 
 
-  Workload(int w, double selectivity_, long long MAXQ): N(0), W(w), S(0), I(0), a(0), b(0), seq_jump(20), selectivity(selectivity_), gen(140384) {
+  Workload(char *nQ, double sel, int w): N(0), W(w), S(0), I(0), a(0), b(0), seq_jump(20), s(sel), gen(140384) {
+    sscanf(nQ, "%lld", &MAXQ);
+
     if (W < 0 || W >= 18) {
       fprintf(stderr,"Workload number %d is not found!\n", W);
       exit(1);
@@ -282,10 +306,12 @@ public :
       set_max(10);
     }
   }
-  
+
+  long long maxq() { return MAXQ; }
+
   void set_max(int mx) {
     N = mx;
-    S = mx * selectivity;
+    S = mx * s;
   }
 
   void inc_max() { N++; }
@@ -324,25 +350,8 @@ public :
     na = a; nb = b; I++;
     return true;
   }
-};
 
-static const char *workload_name[18] = {
-  "SkyServer",     // 0
-  "Random",        // 1
-  "SeqOver",       // 2
-  "SeqInv",        // 3
-  "SeqRand",       // 4
-  "SeqNoOver",     // 5
-  "SeqAlt",        // 6
-  "ConsRandom",    // 7
-  "ZoomIn",        // 8
-  "ZoomOut",       // 9
-  "SeqZoomIn",     // 10
-  "SeqZoomOut",    // 11
-  "Skew",          // 12
-  "ZoomOutAlt",    // 13
-  "SkewZoomOutAlt",// 14
-  "Periodic",      // 15
-  "Mixed",         // 16
-  "Domain"         // 17
+  string name() { return workload_name[W]; }
+
+  double selectivity() { return s; }
 };

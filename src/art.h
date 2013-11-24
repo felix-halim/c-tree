@@ -730,39 +730,36 @@ uintptr_t hash_tree(Node *n) {
    return ret;
 }
 
-void visit_leaves(Node *n, std::function<void(Node*)> callback) {
+void art_visit(Node *n, std::function<void(Node*)> callback) {
    assert(n);
-
-   if (isLeaf(n)) {
-      callback(n);
-   } else {
-      switch (n->type) {
-         case NodeType4: {
-            Node4* node = static_cast<Node4*>(n);
-            for (int i=0;i<node->count;i++)
-               visit_leaves(node->child[i], callback);
-            break;
-         }
-         case NodeType16: {
-            Node16* node=static_cast<Node16*>(n);
-            for (int i=0;i<node->count;i++)
-               visit_leaves(node->child[i], callback);
-            break;
-         }
-         case NodeType48: {
-            Node48* node=static_cast<Node48*>(n);
-            for (int i = 0; i<= 255; i++)
-               if (node->childIndex[i]!=emptyMarker)
-                  visit_leaves(node->child[node->childIndex[i]], callback);
-            break;
-         }
-         case NodeType256: {
-            Node256* node=static_cast<Node256*>(n);
-            for (int i = 0; i < 256; i++)
-               if (node->child[i])
-                  visit_leaves(node->child[i], callback);
-            break;
-         }
+   callback(n);
+   if (isLeaf(n)) return;
+   switch (n->type) {
+      case NodeType4: {
+         Node4* node = static_cast<Node4*>(n);
+         for (int i=0;i<node->count;i++)
+            art_visit(node->child[i], callback);
+         break;
+      }
+      case NodeType16: {
+         Node16* node=static_cast<Node16*>(n);
+         for (int i=0;i<node->count;i++)
+            art_visit(node->child[i], callback);
+         break;
+      }
+      case NodeType48: {
+         Node48* node=static_cast<Node48*>(n);
+         for (int i = 0; i<= 255; i++)
+            if (node->childIndex[i]!=emptyMarker)
+               art_visit(node->child[node->childIndex[i]], callback);
+         break;
+      }
+      case NodeType256: {
+         Node256* node=static_cast<Node256*>(n);
+         for (int i = 0; i < 256; i++)
+            if (node->child[i])
+               art_visit(node->child[i], callback);
+         break;
       }
    }
 }

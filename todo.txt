@@ -1,0 +1,44 @@
+- CTree evolves from database cracking, in the quest of finding efficient data structure to support incremental indexing as side effects of query processing.
+- CTree is immune to selectivity.
+- Compare with ART.
+- Index Space consumption.
+- CrackInTwo/Tree are obsolete, enter Fusion.
+
+- Indexing signatures?
+- BufferedSwapping?
+- Coarse Granular Indexing better than scrack? it pre-crack into X coarse partitions. further cracks are inside each partitions.
+this destroys the lightweightness of database cracking, it only shifts the work to earlier part of the queries.
+if you race, the coarse granular indexing will lose.
+
+- ART 3.6x faster on domain size? It should be slower on diverse size.
+
+- Data Access dominates index lookup -> depends whether the query is a select all? or count queries.
+
+Graph:
+Index Lookup
+Data Shuffle
+Index Update
+Data Access
+
+- How quick is the convergence of CTree? it is at most log(N) indexes per compared to 2 in cracking.
+
+- I think the latency comparison is unfair since sort assumes idle time, while cracking is not. if given idle time, cracking won't be worse than sort.
+At 1000 th query, sort hasn't even finished indexing while cracking already answer 1000th query.
+
+Race For Answering Queries
+X axis: timeline.
+Y axis: number of queries answered.
+
+Plot number of swaps.
+
+Fusion experiments.
+
+Payload (for covered cracking).
+
+
+Here is the SLA of database cracking: It will never worse than full index.
+
+CTree: the best indexing strategy when no workload knowledge and idle time.
+We demonstrate this on any number of queries and any workload we can think of.
+
+

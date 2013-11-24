@@ -14,12 +14,29 @@ class Update {
   int next_smallest;
   int max_value;
   int U, N;
+  std::function<void(int)> update_max_cb;
+
   mt19937 gen;
   uniform_int_distribution<> dis;
 
+  string update_workload[10] {
+    "NOUP",   // 0. Read only queries.
+    "LFHV",   // 1. Update 1000 tuples every 1000 queries.
+    "HFLV",   // 2. Update 10 tuples every 10 queries.
+    "QUEUE",  // 3. Remove the largest value, insert new smaller value than any existing value.
+    "TRASH",  // 4. Insert values in the middle of the domain.
+    "DELETE", // 5. Delete 1000 tuples every 1000 queries.
+    "APPENDSKY", // 6. Insert 100K tuples every query. 
+    "APPEND", // 7. Insert 100K tuples every query. 
+    "APPEND", // 8. Insert 10 tuples every 10 query. 
+    "SKEW",   // 9. LFHV but on 20% domain only.
+  };
+
  public:
 
-  Update(char *fn, int u): max_value(0), U(u), gen(81188) {
+  Update(char *fn, int u, std::function<void(int)> on_update_max):
+      max_value(0), U(u), update_max_cb(on_update_max), gen(81188) {
+
     next_smallest = 1080000000;
     in = fopen(fn, "rb");
     if (!in) { fprintf(stderr,"Error opening file %s\n", fn); exit(1); }
@@ -41,10 +58,10 @@ class Update {
     }
   }
 
-  int the_N() { return N; }
   void prepare_deletion(int N) { shuffle(arr.begin(), arr.begin() + N, gen); }
   int max_element() { return max_value; }
   int* get_arr() { return &arr[0]; }
+  int get_n() { return N / 2; }
   int size() { return arr.size(); }
   void clear() { arr.clear(); }
 
@@ -59,6 +76,7 @@ class Update {
       int N = fread(tmp, sizeof(int), need, in);
       for (int i = 0; i < N; i++) arr.push_back(tmp[i]);
       max_value = max(max_value, *std::max_element(tmp, tmp + N));
+      update_max_cb(max_value);
     }
     if (ferror(in)) { fprintf(stderr,"Error reading file!\n"); exit(1); }
     if (feof(in)) { fclose(in); in = NULL; }
@@ -104,7 +122,13 @@ class Update {
     to_add = arr[k];
   }
 
-  double execute(long long i) {
+  string name() {
+    return update_workload[U];
+  }
+
+  int code() { return U; }
+
+  double execute(long long i, std::function<void(int)> insert, std::function<void(int)> erase) {
     switch (U) {
       // NOUP.
       case 0: return 0;
@@ -222,17 +246,4 @@ class Update {
       default: return 0;
     }
   }
-};
-
-static const char *update_workload[] = {
-  "NOUP",   // 0. Read only queries.
-  "LFHV",   // 1. Update 1000 tuples every 1000 queries.
-  "HFLV",   // 2. Update 10 tuples every 10 queries.
-  "QUEUE",  // 3. Remove the largest value, insert new smaller value than any existing value.
-  "TRASH",  // 4. Insert values in the middle of the domain.
-  "DELETE", // 5. Delete 1000 tuples every 1000 queries.
-  "APPENDSKY", // 6. Insert 100K tuples every query. 
-  "APPEND", // 7. Insert 100K tuples every query. 
-  "APPEND", // 8. Insert 10 tuples every 10 query. 
-  "SKEW",   // 9. LFHV but on 20% domain only.
 };

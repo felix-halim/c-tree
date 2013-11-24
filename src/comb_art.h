@@ -29,9 +29,9 @@ class Random {
 #define CRACK_AT (LARGE_SIZE >> 5)
 #define DECRACK_AT (LARGE_SIZE >> 6)
 
-int n_large; // Number of leaf buckets.
-int n_small; // Number of leaf buckets.
-int n_index; // Number of leaf buckets.
+int n_large; // Number of leaf large buckets.
+int n_small; // Number of leaf small buckets.
+int n_index; // Number of buckets chains.
 
 class Bucket {
  protected:
@@ -57,6 +57,8 @@ class SmallBucket : public Bucket {
   ~SmallBucket() {
     n_small--;
   }
+
+  int slack() { return SMALL_SIZE - N; }
 
   int n_touched() { return ++n_touch; }
 
@@ -872,25 +874,57 @@ public:
     return isLeaf(next) ? getLeafValue(next) : 0;
   }
 
-  int n_chains() {
-    int ret = 0;
-    visit_leaves(tree, [&](Node *n) {
-      assert(isLeaf(n));
-      uintptr_t v = getData((uintptr_t) n);
-      assert(v);
-      if (isPointer(v)) {
-        Bucket *b = (Bucket*) v;
-        if (b->large_type) {
-          LargeBucket *lb = (LargeBucket*) b;
-          ret--;
-          while (lb) {
-            lb = lb->next();
-            ret++;
+  void statistics(std::function<void(int, int, int, int, int, int, int, int, int, int, int)> cb) {
+    int n_bytes = 0, n_slack_art = 0, n_slack_leaves = 0, n_chain = 0, art_n4 = 0, art_n16 = 0, art_n48 = 0, art_n256 = 0;
+    art_visit(tree, [&](Node *n) {
+      if (isLeaf(n)) {
+        uintptr_t v = getData((uintptr_t) n);
+        assert(v);
+        if (isPointer(v)) {
+          Bucket *b = (Bucket*) v;
+          if (b->large_type) {
+            LargeBucket *lb = (LargeBucket*) b;
+            n_slack_leaves += lb->slack();
+            n_chain--;
+            while (lb) {
+              lb = lb->next();
+              n_chain++;
+            }
+          } else {
+            SmallBucket *sb = (SmallBucket*) b;
+            n_slack_leaves += sb->slack();
+          }
+        }
+      } else {
+        switch (n->type) {
+          case NodeType4: {
+             Node4* node = static_cast<Node4*>(n);
+             n_slack_art += 4 - node->count;
+             art_n4++;
+             break;
+          }
+          case NodeType16: {
+             Node16* node=static_cast<Node16*>(n);
+             n_slack_art += 16 - node->count;
+             art_n16++;
+             break;
+          }
+          case NodeType48: {
+             Node48* node=static_cast<Node48*>(n);
+             n_slack_art += 48 - node->count;
+             art_n48++;
+             break;
+          }
+          case NodeType256: {
+             Node256* node=static_cast<Node256*>(n);
+             n_slack_art += 256 - node->count;
+             art_n256++;
+             break;
           }
         }
       }
     });
-    return ret;
+    cb(n_index, n_bytes, n_slack_art, n_slack_leaves, n_small, n_large, n_chain, art_n4, art_n16, art_n48, art_n256);
   }
 };
 

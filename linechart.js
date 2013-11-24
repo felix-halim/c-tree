@@ -1,12 +1,40 @@
 function renderLinecharts() {
   var charts = document.getElementsByClassName('chart');
-  Array.prototype.forEach.call(charts, linechart);
+  Array.prototype.forEach.call(charts, parse_div);
 }
 
-function linechart(div, ith_div) {
+function parse_div(div, ith_div) {
   eval('var opts = ' + div.innerHTML);
   div.innerHTML = '<center>Figure ' + (ith_div + 1) + '</center>';
+  linechart(div, opts);
+}
 
+function to_data(lines) {
+  var ret = [], field = lines.fields;
+  for (var i = 0; i < data.length; i++) {
+    var d = data[i];
+    var values = lines.values;
+    for (var j = 0; j < values.length; j++) {
+      var value = values[j].value, ok = true;
+      for (var k = 0; ok && k < field.length; k++) {
+        if (d[field[k]] != value[k]) ok = false;
+      }
+      if (ok) { ret.push(d); break; }
+    }
+  }
+  return ret;
+}
+
+function group(arr, by) {
+  var keys = {}, groups = [];
+  arr.forEach(function (d) {
+    if (!keys[d[by]]) keys[d[by]] = [];
+    keys[d[by]].push(d);
+  });
+  return keys;
+}
+
+function linechart(div, opts) {
   opts.width = opts.width || 400;
   opts.height = opts.height || 210;
   opts.fontSize = opts.fontSize || 14;
@@ -19,7 +47,7 @@ function linechart(div, ith_div) {
   function formatPower(d) { return (d + "").split("").map(function(c) { return superscript[c]; }).join(""); };
   function ticksPow10(d) { return 10 + formatPower(Math.round(Math.log(d) / Math.LN10)); }
 
-  var algos = opts.data;
+  var algos = opts.data = group(to_data(opts.lines), opts.lines.group_by);
   if (opts.base) {
     var base = algos[opts.base];
     if (!base) alert('base not found: ' + opts.base);
@@ -50,6 +78,8 @@ function linechart(div, ith_div) {
   var x = ((opts.xAxis.scale == 'log') ? d3.scale.log() : d3.scale.linear()).range([0, width]);
   var y = ((opts.yAxis.scale == 'log') ? d3.scale.log() : d3.scale.linear()).range([height, 0]);
 
+  if (opts.xAxis.format == 'pow10') opts.xAxis.format = ticksPow10;
+  if (opts.yAxis.format == 'pow10') opts.yAxis.format = ticksPow10;
   var xAxis = d3.svg.axis().scale(x).orient("bottom").ticks(20, opts.xAxis.format).tickValues(opts.xAxis.ticks).tickSize(-5);
   var xAxisTop = d3.svg.axis().scale(x).orient("top").ticks(20, noFormat).tickValues(opts.xAxis.ticks).tickSize(-5);
   var yFormat = (opts.yAxis.scale == 'log') ? opts.yAxis.format : noFormat;
@@ -78,7 +108,7 @@ function linechart(div, ith_div) {
   div.style.height = opts.height+'px';
   svg = svg.append("g").attr("transform", "translate(" + opts.margin.left + "," + opts.margin.top + ")");
 
-  function symbol(algo) { return d3.svg.symbol().size(30).type(algo_name[algo].symbol); }
+  function symbol(s) { return d3.svg.symbol().size(30).type(symbols[s]); }
 
   var arr = [];
   color.domain().map(function(key) { arr = arr.concat(algos[key]); });
@@ -91,24 +121,12 @@ function linechart(div, ith_div) {
      .attr("fill", function (d) { return color(d.algorithm); })
      .attr("stroke", function (d) { return color(d.algorithm); });
 
-  if (opts.legend) {
-    var legendG = svg.append("g");
-    d3.keys(opts.legend).forEach(function (key) {
-      var attr = opts.legend[key];
-      attr.fill = color(key);
-      attr.style = "font-size:14px";
-      attr["alignment-baseline"] = 'middle';
-      legendG.append("text").attr(attr).text(algo_name[key].name);
-      legendG.append("path").attr({
-        "d": "M" + (attr.x - 20) + " " + attr.y + " L" + (attr.x - 1) + " " + attr.y,
-        "stroke": color(key),
-      });
-      legendG.append("path").attr({
-        transform: "translate(" + (attr.x - 10) + ", " + attr.y + ")",
-        fill: color(key),
-        d: symbol(key),
-      });
-    });
+  for (var i = 0; i < opts.lines.values.length; i++) {
+    var label = opts.lines.values[i].label;
+    var legendG = svg.append("g").attr('transform', "translate(" + label[3] + ", " + label[4] + ")");
+    legendG.append("text").attr({ fill : label[1], style : "font-size:14px", "alignment-baseline": 'middle' }).text(label[0]);
+    legendG.append("path").attr({ stroke: label[1], d: "M" + (-20) + " " + 0 + " L" + (-1) + " " + 0, });
+    legendG.append("path").attr({ fill: label[1], transform: "translate(" + (-10) + ", " + 0 + ")", d: symbol(label[2]), });
   }
 
   opts.fontSize = opts.fontSize || "15px";
@@ -221,6 +239,10 @@ data.forEach(function (d) {
   d.qps = d.Q / d.total_time;
 });
 
+var symbols = {
+  '-^' : 'triangle-up',
+};
+
 var algo_name = {
   comb:            { name: "COMB", symbol: "diamond", color: "orange" },
   combtr:          { name: "COMB-TR", symbol: "diamond", color: "green" },
@@ -248,30 +270,6 @@ var algo_name = {
   ctree_eager:     { name: "BTree", symbol: "square", color: "black", },
   btree_google:    { name: "BTree", symbol: "square", color: "black", },
 };
-
-function filter(filters) {
-  var ret = data;
-  filters.forEach(function (filter) {
-    ret = ret.filter(function (d) {
-      return filter.values.indexOf(d[filter.attr]) != -1;
-    });
-  });
-  return ret;
-}
-
-function group(arr, by) {
-  var keys = {}, groups = [];
-  arr.forEach(function (d) {
-    if (!keys[d[by]]) keys[d[by]] = [];
-    keys[d[by]].push(d);
-  });
-  return keys;
-  // for (var i in keys) if (keys.hasOwnProperty(i)) {
-  //   var a = keys[i];
-  //   keys[i] = [];
-  //   groups.push({ group: i, label: a.label, x: a.x, y: a.y });
-  // }
-}
 
 function expTime(t) {
   function f(x) {
@@ -365,6 +363,9 @@ function barchart(id, xcap, ylabel, data, update_w, Q, algo_name) {
       .attr("class", "x axis")
       .attr("transform", "translate(0," + height + ")")
       .call(xAxis);
+  xx.selectAll("path").attr({"fill": "none", "stroke":"black"});
+  xx.selectAll("line").attr({"fill": "none", "stroke":"black"});
+
   xx.selectAll("text").attr({
     "font-size": 12,
     "transform": "rotate(-25) translate(-7,0)",
@@ -380,6 +381,8 @@ function barchart(id, xcap, ylabel, data, update_w, Q, algo_name) {
   var yy = svg.append("g")
       .attr("class", "y axis")
       .call(yAxis);
+  yy.selectAll("path").attr({"fill": "none", "stroke":"black"});
+  yy.selectAll("line").attr({"fill": "none", "stroke":"black"});
   if (ylabel) yy.append("text")
       .attr("transform", "rotate(-90) translate(-" + height/2 + ",0)")
       .attr("y", -45)
