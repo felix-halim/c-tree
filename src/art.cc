@@ -39,9 +39,9 @@ void erase(int value) {
   // assert(!lookup(tree,key,8,0,8));
 }
 
-int lower_bound(int value) {
-  uint64_t value64 = value;
-  value64 = (value64 << 30);
+int lower_bound(int value64) {
+  // uint64_t value64 = value;
+  // value64 = (value64 << 30);
   uint8_t key[8];
   loadKey(value64, key);
    
