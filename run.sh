@@ -1,8 +1,9 @@
 #todo: measure transition time, skew workload.
 
 mkdir bin 2> /dev/null
+mkdir res 2> /dev/null
 N=data/100000000.data
-Q=100000000
+Q=1000000000
 out=results.js
 
 case $1 in
@@ -13,7 +14,10 @@ compile)      make -s -C src "../bin/$2" || exit;
               make -s -C src "../$N" || exit;;
 
 algo)         ./run.sh compile $2 || exit;
-              bin/$2 $N $Q 0.1 1 $3;;
+              S=$3
+              QW=1
+              UW=$4
+              bin/$2 $N $Q $S $QW $UW > res/$2_${S}_${QW}_${UW}.csv;;
               # valgrind --leak-check=yes bin/$2 $N $Q 0.1 1 $3;;
 
 domain)       ./run.sh compile $2 || exit;
@@ -58,15 +62,15 @@ n_leaves,n_capacity,n_internals,max_depth,slack,in_size,ln_size,ia_free,ia_size,
               echo "';" >> data.js
               ;;
 
-batch_append) 
-              # ./run.sh append comb_count 0.000001 | tee -a $out
-              # ./run.sh append comb_count 0.00001 | tee -a $out
-              # ./run.sh append comb_count 0.0001 | tee -a $out
-              # ./run.sh append comb_count 0.001 | tee -a $out
-              # ./run.sh append comb_count 0.01 | tee -a $out
-              # ./run.sh append comb_count 0.1 | tee -a $out
-              # ./run.sh append comb_count 0.5 | tee -a $out
-              # ./run.sh append comb_count 0.9 | tee -a $out
+batch_sel) 
+              ./run.sh algo comb_art 0.000001 0 | tee -a $out
+              ./run.sh algo comb_art 0.00001 0 | tee -a $out
+              ./run.sh algo comb_art 0.0001 0 | tee -a $out
+              ./run.sh algo comb_art 0.001 0 | tee -a $out
+              ./run.sh algo comb_art 0.01 0 | tee -a $out
+              ./run.sh algo comb_art 0.1 0 | tee -a $out
+              ./run.sh algo comb_art 0.5 0 | tee -a $out
+              ./run.sh algo comb_art 0.9 0 | tee -a $out
               # ./run.sh append crack_count 0.000001 | tee -a $out
               # ./run.sh append crack_count 0.00001 | tee -a $out
               # ./run.sh append crack_count 0.0001 | tee -a $out

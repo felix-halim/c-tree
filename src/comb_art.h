@@ -874,10 +874,13 @@ public:
     return isLeaf(next) ? getLeafValue(next) : 0;
   }
 
-  void statistics(std::function<void(int, int, int, int, int, int, int, int, int, int, int)> cb) {
-    int n_bytes = 0, n_slack_art = 0, n_slack_leaves = 0, n_chain = 0, art_n4 = 0, art_n16 = 0, art_n48 = 0, art_n256 = 0;
+  void statistics(std::function<void(int, int, int, int, int, int, int, int, int, int, int, int, int)> cb) {
+    int n_bytes = 0, n_slack_art = 0, n_slack_leaves = 0, n_chain = 0, n_internal = 0,
+        n_leaf = 0, art_n4 = 0, art_n16 = 0, art_n48 = 0, art_n256 = 0;
+
     art_visit(tree, [&](Node *n) {
       if (isLeaf(n)) {
+        n_leaf++;
         uintptr_t v = getData((uintptr_t) n);
         assert(v);
         if (isPointer(v)) {
@@ -896,6 +899,7 @@ public:
           }
         }
       } else {
+        n_internal++;
         switch (n->type) {
           case NodeType4: {
              Node4* node = static_cast<Node4*>(n);
@@ -924,7 +928,7 @@ public:
         }
       }
     });
-    cb(n_index, n_bytes, n_slack_art, n_slack_leaves, n_small, n_large, n_chain, art_n4, art_n16, art_n48, art_n256);
+    cb(n_index, n_bytes, n_slack_art, n_slack_leaves, n_internal, n_leaf, n_small, n_large, n_chain, art_n4, art_n16, art_n48, art_n256);
   }
 };
 
