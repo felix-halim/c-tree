@@ -61,7 +61,7 @@ class Update {
   void prepare_deletion(int N) { shuffle(arr.begin(), arr.begin() + N, gen); }
   int max_element() { return max_value; }
   int* get_arr() { return &arr[0]; }
-  int get_n() { return (W == 0 && 0) ? N : (N / 2); }
+  int get_n() { return min(200000000, (W == 0 && 0) ? N : (N / 2)); }
   int size() { return arr.size(); }
   void clear() { arr.clear(); }
 
