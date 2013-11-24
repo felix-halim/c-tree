@@ -24,16 +24,13 @@ int lower_bound(int value) {
 }
 
 int select(int a, int b) {
-  auto it1 = lower_bound(arr, arr + N, a);
-  auto it2 = lower_bound(arr, arr + N, b);
-  return it2 - it1;
+  int i1 = lower_bound(arr, arr + N, a) - arr;
+  int i2 = lower_bound(arr, arr + N, b) - arr;
+  return ((i1 == N) ? 0 : arr[i1]) + ((i2 == N) ? 0 : arr[i2]);
 }
 
 void results(Statistics &s) {
   // assert(c.check());
-  char runtime[100];
-  sprintf(runtime, "%.6lf", t);
-  s.note = string("insert = ") + runtime;
   // s.n_leaves = c.num_of_buckets();
   // s.n_capacity = c.num_of_buckets() * c.bucket_size();
   // s.n_internals = 1;
