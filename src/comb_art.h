@@ -675,7 +675,7 @@ public:
     if (!::lookup(tree, key, 8, 0, 8)) {
       ::insert(tree, &tree, key, 0, (value << 1) | 1, 8);
     } else {
-      fprintf(stderr, "D"); // Duplicate.
+      // fprintf(stderr, "D"); // Duplicate.
     }
   }
 
