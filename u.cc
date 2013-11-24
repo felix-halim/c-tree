@@ -6,12 +6,13 @@ using namespace std;
 
 #define BATCH 1000000
 
+int tmp[BATCH] = { 0 };
+int wtmp[BATCH];
+set<int> s;
+
 int main() {
   FILE *in = fopen("rb", "data/skyserver.data");
   FILE *out = fopen("wb", "data/skyserver.udata");
-  int tmp[BATCH] = { 0 };
-  int wtmp[BATCH];
-  set<int> s;
   int ndup = 0;
   while (!feof(in)) {
     int N = fread(tmp, sizeof(int), BATCH, in);
