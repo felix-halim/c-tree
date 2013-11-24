@@ -7,7 +7,7 @@
 
 using namespace std;
 
-#define BATCH 1000000
+#define BATCH 10000000
 
 int tmp[BATCH] = { 0 };
 long long wtmp[BATCH];
