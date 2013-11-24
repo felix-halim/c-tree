@@ -30,7 +30,7 @@ int main() {
         dup_max = max(dup_max, s[t]);
         ndup++;
       } else {
-        s.insert(t);
+        s[t] = 1;
         wtmp[nt++] = t;
       }
     }
