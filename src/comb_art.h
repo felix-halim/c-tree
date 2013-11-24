@@ -899,6 +899,8 @@ public:
             SmallBucket *sb = (SmallBucket*) b;
             n_slack_leaves += sb->slack();
           }
+        } else {
+          n_bytes += sizeof(uintptr_t);
         }
       } else {
         n_internal++;
