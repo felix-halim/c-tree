@@ -2,37 +2,41 @@
 #include <cstdio>
 
 #include <set>
+#include <algorithm>
 
 using namespace std;
 
 #define BATCH 1000000
 
 int tmp[BATCH] = { 0 };
-int wtmp[BATCH];
-set<int> s;
+long long wtmp[BATCH];
+map<int, int> s;
 
 int main() {
   FILE *in = fopen("data/skyserver.data", "rb");
   FILE *out = fopen("data/skyserver.udata", "wb");
   assert(in);
   assert(out);
-  int ndup = 0;
+  int ndup = 0, dup_max = 0;
   for (int nth = 0; !feof(in); ) {
     int N = fread(tmp, sizeof(int), BATCH, in);
     int nt = 0;
     for (int i = 0; i < N; i++, nth++) {
+      int t = tmp[i];
       // printf("%d ", tmp[i]);
-      if (s.count(tmp[i])) {
+      if (s.count(t)) {
+        s[t]++;
+        dup_max = max(dup_max, s[t]);
         ndup++;
       } else {
-        s.insert(tmp[i]);
-        wtmp[nt++] = tmp[i];
+        s.insert(t);
+        wtmp[nt++] = t;
       }
     }
     if (nt > 0) {
       fwrite(wtmp, sizeof(int), nt, out);
     }
-    fprintf(stderr, "%d. ndup = %d, size = %lu\n", nth, ndup, s.size());
+    fprintf(stderr, "%d. ndup = %d, size = %lu, dup_max = %d\n", nth, ndup, s.size(), dup_max);
   }
   fclose(out);
   if (ferror(in)) { fprintf(stderr,"Error reading file!\n"); }
