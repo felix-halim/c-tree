@@ -29,6 +29,17 @@ int main() {
         s[t]++;
         dup_max = max(dup_max, s[t]);
         ndup++;
+
+        int ninc = 0;
+        while (s.count(t)) t++, ninc++;
+        if (ninc > 100) {
+          fprintf(stderr, ".");
+        } else if (ninc > 1000) {
+          fprintf(stderr, "x");
+        } else if (ninc > 10000) {
+          fprintf(stderr, "z");
+        }
+        wtmp[nt++] = t;
       } else {
         s[t] = 1;
         wtmp[nt++] = t;
