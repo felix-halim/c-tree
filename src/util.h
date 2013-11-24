@@ -22,7 +22,7 @@ static vector<long long> generate_samples(long long MAXQ) {
   vector<long long> samples;
   samples.push_back(0);
   samples.push_back(MAXQ);
-  // for (long long i = 1; i <= MAXQ; i *= 2) samples.push_back(i);
+  for (long long i = 1; i <= MAXQ; i *= 2) samples.push_back(i);
   for (long long i = 1; i <= MAXQ; i *= 10) {
     samples.push_back(i);
     // for (long long j = 0; j < 100; j += 5) samples.push_back(i * j / 100);

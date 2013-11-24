@@ -56,8 +56,68 @@ $(ODIR)/comb: comb.cc comb.h test.h update.h query.h util.h
 $(ODIR)/comb3: comb3.cc comb3.h test.h update.h query.h util.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DCOMB6400 -Wall -o $@ $<
 
-$(ODIR)/comb_art: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
-	$(CXX) $(CXXFLAGS) $(FLAGS) -DCOMB6400 -Wall -o $@ $<
+$(ODIR)/comb_art_0_0: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DLARGE_TOUCH=0 -DSMALL_TOUCH=0 -Wall -o $@ $<
+
+$(ODIR)/comb_art_1_0: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DLARGE_TOUCH=1 -DSMALL_TOUCH=0 -Wall -o $@ $<
+
+$(ODIR)/comb_art_1_1: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DLARGE_TOUCH=1 -DSMALL_TOUCH=1 -Wall -o $@ $<
+
+$(ODIR)/comb_art_1_10: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DLARGE_TOUCH=1 -DSMALL_TOUCH=10 -Wall -o $@ $<
+
+$(ODIR)/comb_art_1_100: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DLARGE_TOUCH=1 -DSMALL_TOUCH=100 -Wall -o $@ $<
+
+$(ODIR)/comb_art_1_1000: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DLARGE_TOUCH=1 -DSMALL_TOUCH=1000 -Wall -o $@ $<
+
+$(ODIR)/comb_art_10_0: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DLARGE_TOUCH=10 -DSMALL_TOUCH=0 -Wall -o $@ $<
+
+$(ODIR)/comb_art_10_1: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DLARGE_TOUCH=10 -DSMALL_TOUCH=1 -Wall -o $@ $<
+
+$(ODIR)/comb_art_10_10: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DLARGE_TOUCH=10 -DSMALL_TOUCH=10 -Wall -o $@ $<
+
+$(ODIR)/comb_art_10_100: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DLARGE_TOUCH=10 -DSMALL_TOUCH=100 -Wall -o $@ $<
+
+$(ODIR)/comb_art_10_1000: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DLARGE_TOUCH=10 -DSMALL_TOUCH=1000 -Wall -o $@ $<
+
+$(ODIR)/comb_art_100_0: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DLARGE_TOUCH=100 -DSMALL_TOUCH=0 -Wall -o $@ $<
+
+$(ODIR)/comb_art_100_1: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DLARGE_TOUCH=100 -DSMALL_TOUCH=1 -Wall -o $@ $<
+
+$(ODIR)/comb_art_100_10: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DLARGE_TOUCH=100 -DSMALL_TOUCH=10 -Wall -o $@ $<
+
+$(ODIR)/comb_art_100_100: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DLARGE_TOUCH=100 -DSMALL_TOUCH=100 -Wall -o $@ $<
+
+$(ODIR)/comb_art_100_1000: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DLARGE_TOUCH=100 -DSMALL_TOUCH=1000 -Wall -o $@ $<
+
+$(ODIR)/comb_art_1000_0: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DLARGE_TOUCH=1000 -DSMALL_TOUCH=0 -Wall -o $@ $<
+
+$(ODIR)/comb_art_1000_1: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DLARGE_TOUCH=1000 -DSMALL_TOUCH=1 -Wall -o $@ $<
+
+$(ODIR)/comb_art_1000_10: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DLARGE_TOUCH=1000 -DSMALL_TOUCH=10 -Wall -o $@ $<
+
+$(ODIR)/comb_art_1000_100: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DLARGE_TOUCH=1000 -DSMALL_TOUCH=100 -Wall -o $@ $<
+
+$(ODIR)/comb_art_1000_1000: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DLARGE_TOUCH=1000 -DSMALL_TOUCH=1000 -Wall -o $@ $<
 
 $(ODIR)/comb800: comb.cc comb.h test.h update.h query.h util.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DCOMB800 -Wall -o $@ $<
