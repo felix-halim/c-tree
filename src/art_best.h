@@ -881,7 +881,8 @@ static void rec_insert(Node *&node, int depth, int maxKeyLength, uintptr_t *tmp,
       uint8_t *key = (uint8_t*) &tmp[i];
       tmp2[cnt[key[depth]]++] = tmp[i];
    }
-   delete[] tmp;
+   memcpy(tmp, tmp2, sizeof(uintptr_t) * N);
+   delete[] tmp2;
 
    sidx = 0;
    for (int i = 0; i < 256; i++) {
@@ -895,11 +896,10 @@ static void rec_insert(Node *&node, int depth, int maxKeyLength, uintptr_t *tmp,
          // fprintf(stderr, "nchild = %d\n", nchild);
          Node **child = findChild(node, i);
          assert(child);
-         rec_insert(*child, ndepth, maxKeyLength, tmp2 + sidx, cnt[i] - sidx);
+         rec_insert(*child, ndepth, maxKeyLength, tmp + sidx, cnt[i] - sidx);
       }
       sidx = cnt[i];
    }
-   delete[] tmp2;
 }
 
 void bulk_insert(Node *&node, int *arr, int N) {
@@ -911,6 +911,7 @@ void bulk_insert(Node *&node, int *arr, int N) {
    }
    rec_insert(node, 0, 8, tmp, N);
    fprintf(stderr, "ccc = %d\n", ccc);
+   delete[] tmp;
 }
 
 static void insert(Node **node,uint8_t key[],unsigned depth,uintptr_t value,unsigned maxKeyLength) {
