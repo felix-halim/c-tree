@@ -35,7 +35,9 @@ int main(int argc, char *argv[]) {
   }
 
   Workload query_w(argv[2], atof(argv[3]), atoi(argv[4]));
+  fprintf(stderr, "Loading ... ");
   Update update(argv[1], atoi(argv[5]), [&](int mx) { query_w.set_max(mx + 1); });
+  fprintf(stderr, "done. ");
   Statistics s(parse_algorithm_name(argv[0]), query_w.name(), update.name());
 
   fprintf(stderr, "N = %d, ", update.get_n());

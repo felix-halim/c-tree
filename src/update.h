@@ -76,10 +76,10 @@ class Update {
       int N = fread(tmp, sizeof(int), need, in);
       for (int i = 0; i < N; i++) arr.push_back(tmp[i]);
       max_value = max(max_value, *std::max_element(tmp, tmp + N));
-      update_max_cb(max_value);
     }
     if (ferror(in)) { fprintf(stderr,"Error reading file!\n"); exit(1); }
     if (feof(in)) { fclose(in); in = NULL; }
+    update_max_cb(max_value);
     return true;
   }
 
