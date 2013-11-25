@@ -12,37 +12,30 @@ using namespace std;
 int tmp[BATCH] = { 0 };
 int wtmp[BATCH];
 map<int, int> next;
+map<int, int> root;
+
+int get_root(int t) { return root[t] = root.count(t) ? get_root(root[t]) : t; }
 
 int main() {
   FILE *in = fopen("data/skyserver.data", "rb");
-  FILE *out = fopen("data/skyserver.udata", "wb");
+  FILE *out = fopen("data/skyserver.udata2", "wb");
   assert(in);
   assert(out);
   int ndup = 0;
   for (int nth = 0; !feof(in); ) {
     int N = fread(tmp, sizeof(int), BATCH, in);
-    int nt = 0;
+    int ntmp = 0;
     for (int i = 0; i < N; i++, nth++) {
-      int t = tmp[i];
-      if (next.count(t)) {
-        t = next[t];
-        ndup++;
-
-        int ninc = 0;
-        while (next.count(t)) t = next[t], ninc++;
-        if (ninc > 10) {
-          fprintf(stderr, ".");
-        } else if (ninc > 100) {
-          fprintf(stderr, "x");
-        } else if (ninc > 1000) {
-          fprintf(stderr, "z");
-        }
-      }
-      assert(!next.count(t) && t >= 0);
-      next[tmp[i]] = t + 1;
-      wtmp[nt++] = t;
+      int r = get_root(tmp[i]);
+      int t = next.count(r) ? next[r] : r;
+      assert(t >= 0);
+      int nr = get_root(t + 1);
+      int nt = next.count(nr) ? next[nr] : nr;
+      root[nr] = r;
+      next[r] = nt;
+      wtmp[ntmp++] = t;
     }
-    fwrite(wtmp, sizeof(int), nt, out);
+    fwrite(wtmp, sizeof(int), ntmp, out);
     fflush(out);
     fprintf(stderr, "%d. ndup = %d, size = %lu.\n", nth, ndup, next.size());
   }
