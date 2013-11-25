@@ -48,6 +48,7 @@ function linechart(div, opts) {
   function ticksPow10(d) { return 10 + formatPower(Math.round(Math.log(d) / Math.LN10)); }
 
   var algos = opts.data = group(to_data(opts.lines), opts.lines.group_by);
+  console.log(algos);
   if (opts.base) {
     var base = algos[opts.base];
     if (!base) alert('base not found: ' + opts.base);
@@ -93,7 +94,7 @@ function linechart(div, opts) {
   // var color = d3.scale.category10();
   var color = d3.scale.ordinal();
   color.domain(d3.keys(algos));
-  color.range(color.domain().map(function (key) { return algo_name[key].color; }));
+  color.range(color.domain().map(function (key) { return algo_name[key] ? algo_name[key].color : 'black'; }));
 
   var algo_arr = color.domain().map(function(key) { return { key: key, values: algos[key] }; });
   function extreme(f, arr, attr) { return f(arr, function (a) { return f(a.values, function (d) { return d[attr]; }); }); }
@@ -117,7 +118,7 @@ function linechart(div, opts) {
      .enter().append("path")
      .attr("class", "dot")
      .attr("transform", function (d) { return "translate(" + fx(d) + ", " + fy(d) + ")"; })
-     .attr("d", function (d) { return symbol(d.algorithm)(); })
+     // .attr("d", function (d) { return symbol(d.algorithm)(); })
      .attr("fill", function (d) { return color(d.algorithm); })
      .attr("stroke", function (d) { return color(d.algorithm); });
 
@@ -229,16 +230,6 @@ function isOneOrTen(d) {
 
 
 
-data.forEach(function (d) {
-  d.Q = parseInt(d.Q);
-  d.insert_time = parseFloat(d.insert_time);
-  d.query_time = parseFloat(d.query_time) + 1e-9;
-  d.update_time = parseFloat(d.update_time) + 1e-9;
-  d.total_time = d.insert_time + d.query_time + d.update_time;
-  d.avg_time = d.total_time / d.Q;
-  d.qps = d.Q / d.total_time;
-});
-
 var symbols = {
   '-^' : 'triangle-up',
 };
@@ -247,7 +238,7 @@ var algo_name = {
   comb:            { name: "COMB", symbol: "diamond", color: "orange" },
   combtr:          { name: "COMB-TR", symbol: "diamond", color: "green" },
   combtr2:         { name: "COMB-TR2", symbol: "diamond", color: "black" },
-  comb_art:        { name: "TRIMMER", symbol: "circle", color: "magenta" },
+  comb_art_0_0:    { name: "TRIMMER", symbol: "circle", color: "magenta" },
   comb_art_ns:     { name: "COMB-ART-NS", symbol: "circle", color: "lime" },
   comb_art_1:     { name: "COMB-ART-1", symbol: "cross", color: "brown" },
   combt8192:       { name: "COMB-Tree8192", symbol: "square", color: "red" },

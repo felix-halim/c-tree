@@ -813,14 +813,16 @@ public:
       LargeBucket<T> *lb = (LargeBucket<T>*) b;
       erase_root(lb->data(0));
       SmallBucket<T> *target = nullptr;
+      vector<Bucket<T>*> arr;
       lb->split(rng, [&](T *D, int n) {
         SmallBucket<T> *sb = new SmallBucket<T>(D, n);
         assert(sb->size());
-        insert_root(sb);
+        arr.push_back(sb);
         if (sb->data(0) <= value && (!target || sb->data(0) > target->data(0))) {
           target = sb;
         }
       });
+      for (Bucket<T>* sb : arr) insert_root(sb);
       delete lb;
       b = target;
     }
@@ -872,6 +874,10 @@ public:
       } else if ((T) getData(v) == value) {
         return value;
       }
+    } else {
+      uint8_t key[8];
+      loadKey(value, key);
+      next = ::lower_bound(tree,key,8,0,8);
     }
 
     return isLeaf(next) ? getLeafValue(next) : 0;

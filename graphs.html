@@ -3,15 +3,75 @@
 <head>
 <meta charset="utf-8">
 <script src="d3.v3.min.js"></script>
-<script src="data.js?11"></script>
 <script>
-data = d3.csv.parse(data);
+d3.csv('http://localhost:8080/results.csv')
+
+.row(function (d) {
+  d.Q = +d.Q;
+  d.insert_time = +d.insert_time;
+  d.query_time = +d.query_time + 1e-9;
+  d.update_time = +d.update_time + 1e-9;
+  d.total_time = d.insert_time + d.query_time + d.update_time;
+  d.avg_time = d.total_time / d.Q;
+  d.qps = d.Q / d.total_time;
+  return d;
+})
+
+.get(function (error, rows) {
+  data = rows;
+  var fields = ['algorithm', 'query_workload', 'update_workload'];
+  var s = '<tr>';
+  for (var i = 0; i < fields.length; i++) {
+    var name = fields[i];
+    s += '<th align="left" width="160">' + name + '</th>';
+  }
+  s += '</tr>';
+
+  var distinct_values = {};
+  for (var i = 0; i < data.length; i++) {
+    for (var j = 0; j < fields.length; j++) {
+      var v = data[i][fields[j]];
+      if (!distinct_values[fields[j]]) distinct_values[fields[j]] = {};
+      distinct_values[fields[j]][v] = 1;
+    }
+  }
+
+  s += '<tr>';
+  for (var i = 0; i < fields.length; i++) {
+    var values = distinct_values[fields[i]];
+    s += '<td><select size="20" style="width:150px">';
+    for (var v in values) if (values.hasOwnProperty(v)) {
+      s += '<option>' + v + '</option>';
+    }
+    s += '</select></td>';
+  }
+  s += '</tr>';
+
+  document.getElementById('dimensions').innerHTML = s;
+  document.getElementById('config').addEventListener('input', render, false);
+  render();
+
+  function render() {
+    var ta = document.getElementById('config');
+    eval('var opts = ' + ta.value);
+    var svg = document.getElementById('chart');
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+    linechart(svg, opts);
+  }
+});
+
+function dl() {
+  var svg = document.getElementById('chart');
+  $('#p').val(svg.innerHTML);
+  $('#svg2pdf').submit();
+}
 </script>
 <script src="linechart.js?13"></script>
 <script src="jquery-2.0.3.min.js"></script>
 </head>
 
-<body onload="render()">
+
+<body>
 
 <form id="svg2pdf" method="post" action="http://uhunt2.felix-halim.net:8000/svg2pdf">
   <input type="text" id="p" name="p" value="" hidden>
@@ -43,11 +103,10 @@ data = d3.csv.parse(data);
   lines: {
     fields : ['algorithm', 'query_workload', 'update_workload'],
     values : [
-      { label: ['COMB_ART', '#f00', '-^', 30, 20],
-        value:[      'comb_art', 'Random', 'NOUP'] },
+      { label: ['COMB_ART', '#f00', '-^', 30, 20], value:[      'comb_art_0_0', 'Random', 'NOUP'] },
+      { label: ['COMB_ART', '#f00', '-^', 30, 20], value:[      'comb_art_100_1', 'Random', 'NOUP'] },
 
-      { label: [    'ARTB', '#0f0', '-^', 30, 40],
-        value:['art_best_eager', 'Random', 'NOUP'] },
+      { label: [    'ARTB', '#0f0', '-^', 30, 40], value:['art_best_eager', 'Random', 'NOUP'] },
     ],
     group_by: 'algorithm',
   },
@@ -60,53 +119,7 @@ data = d3.csv.parse(data);
 
 <br>
 
-<table style="clear:both">
-<script>
-var fields = ['algorithm', 'query_workload', 'update_workload'];
-document.write('<tr>');
-for (var i = 0; i < fields.length; i++) {
-  var name = fields[i];
-  document.write('<th align="left" width="160">' + name + '</th>');
-}
-document.write('</tr>');
+<table id="dimensions" style="clear:both"></table>
 
-var distinct_values = {};
-for (var i = 0; i < data.length; i++) {
-  for (var j = 0; j < fields.length; j++) {
-    var v = data[i][fields[j]];
-    if (!distinct_values[fields[j]]) distinct_values[fields[j]] = {};
-    distinct_values[fields[j]][v] = 1;
-  }
-}
-
-document.write('<tr>');
-for (var i = 0; i < fields.length; i++) {
-  var values = distinct_values[fields[i]];
-  document.write('<td><select size="20" style="width:150px">');
-  for (var v in values) if (values.hasOwnProperty(v)) {
-    document.write('<option>' + v + '</option>');
-  }
-  document.write('</select></td>');
-}
-document.write('</tr>');
-</script>
-</table>
-
-<script type="text/javascript">
-function render() {
-  var ta = document.getElementById('config');
-  eval('var opts = ' + ta.value);
-  var svg = document.getElementById('chart');
-  while (svg.firstChild) svg.removeChild(svg.firstChild);
-  linechart(svg, opts);
-}
-document.getElementById('config').addEventListener('input', render, false);
-
-function dl() {
-  var svg = document.getElementById('chart');
-  $('#p').val(svg.innerHTML);
-  $('#svg2pdf').submit();
-}
-</script>
 </body>
 </html>
