@@ -26,7 +26,7 @@ class Update {
   FILE *in;
   unsigned next_smallest;
   unsigned max_value;
-  int U, W, N;
+  int U, W;
   std::function<void(unsigned)> update_max_cb;
 
   mt19937 gen;
@@ -43,17 +43,15 @@ class Update {
 
     if (U != 6) {
       load();
-      N = size();
       if (U == 3) prepare_queue();
       else if (U == 7) N = 100000;
       else if (U == 8) N = 10;
     } else {
       load(100000);
-      N = size();
     }
 
     if (U == 5) {
-      prepare_deletion(N);
+      prepare_deletion(0);
       // MAXQ = min((long long) MAXQ);
     }
   }
@@ -83,7 +81,7 @@ class Update {
   }
 
   void prepare_queue() {
-    int N = size();
+    int N = get_n();
     sort(arr.begin(), arr.end());
     for (int i = 0; i < N; i++) {
       if (arr[i] > next_smallest)
@@ -97,7 +95,7 @@ class Update {
 
   void update_queue(unsigned &to_del, unsigned &to_add) {
     static int qidx = -1;
-    if (qidx < 0) qidx = N - 1;
+    if (qidx < 0) qidx = get_n() - 1;
   // if ((i + 1) % 1000000 == 0)
   //   fprintf(stderr, "arr[%d] = %d, next = %d\n", qidx,arr[qidx],next_smallest);
     to_del = arr[qidx];
@@ -107,12 +105,13 @@ class Update {
   }
 
   int update_delete() {
-    static int lastN = N;
+    static int lastN = get_n();
     assert(lastN > 0);
     return arr[--lastN];
   }
 
   void update(unsigned &to_del, unsigned &to_add) {
+    int N = get_n();
     int k = dis(gen) % N;
     to_del = arr[k];
     int l = N + dis(gen) % N;
@@ -169,6 +168,7 @@ class Update {
       case 4: return (i != 10000) ? 0 :
         time_it([&] {
           unsigned *arr = get_arr();
+          int N = get_n();
           REP(j, 1000000) {
             insert(arr[N + j]);
             // fprintf(stderr, "%d \n", arr[N + j]);
@@ -192,7 +192,7 @@ class Update {
             // load_time += time_it([&] {
               loaded = load(100000);
               // query_w.set_max(max_element());
-              N += size();
+              // N += size();
             // });
             if (loaded) {
               unsigned *arr = get_arr();
@@ -207,6 +207,7 @@ class Update {
       case 7: return
         time_it([&] {
           // if (MAXQ != -1) {
+            int N = get_n();
             int add = size() / 2 - N;
             if (add > 0) {
               unsigned *arr = get_arr();
@@ -220,6 +221,7 @@ class Update {
       // APPEND.
       case 8: return (i % 10) ? 0 :
         time_it([&] {
+          int N = get_n();
           // if (MAXQ != -1) {
             int add = size() / 2 - N;
             if (add > 0) {
