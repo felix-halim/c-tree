@@ -13,7 +13,7 @@ using namespace std;
 
 Node* tree = NULL;
 
-void init(int *arr, int N) {
+void init(unsigned *arr, unsigned N) {
   for (int i = 0; i < N; i++) {
     insert(arr[i]);
   }
@@ -21,11 +21,8 @@ void init(int *arr, int N) {
   // art_debug = 1;
 }
 
-void insert(int value64) {
-  // static int nth = 0; nth++;
+void insert(unsigned value64) {
   uint8_t key[8];
-  // uint64_t value64 = value;
-  // value64 = (value64 << 30) | nth;
   loadKey(value64, key);
   if (!lookup(tree,key,8,0,8)) {
     insert(tree,&tree,key,0,value64,8);
@@ -34,7 +31,7 @@ void insert(int value64) {
   }
 }
 
-void erase(int value) {
+void erase(unsigned value) {
   uint8_t key[8];
   uint64_t value64 = value;
   loadKey(value64, key);
@@ -43,14 +40,12 @@ void erase(int value) {
   // assert(!lookup(tree,key,8,0,8));
 }
 
-int lower_bound(int value64) {
-  // uint64_t value64 = value;
-  // value64 = (value64 << 30);
+unsigned lower_bound(unsigned value64) {
   uint8_t key[8];
   loadKey(value64, key);
    
   Node* leaf=lower_bound(tree,key,8,0,8);
-  int ret = 0;
+  unsigned ret = 0;
   if (isLeaf(leaf)) {
     ret = getLeafValue(leaf);
     // fprintf(stdout, "%lld (%lld)\n", ret, value);
@@ -58,9 +53,59 @@ int lower_bound(int value64) {
   return ret;
 }
 
-int select(int a, int b) {
+unsigned select(unsigned a, unsigned b) {
   return lower_bound(a) + lower_bound(b);
 }
 
 void results(Statistics &s) {
+  s.n_bytes = 0;
+  s.n_slack_art = 0;
+  s.n_internal = 0,
+  s.n_leaf = 0;
+  s.art_n4 = 0;
+  s.art_n16 = 0;
+  s.art_n48 = 0;
+  s.art_n256 = 0;
+
+  art_visit(tree, [&](Node *n) {
+    if (isLeaf(n)) {
+      s.n_leaf++;
+      uintptr_t v = getData((uintptr_t) n);
+      assert(v);
+      assert(!isPointer(v));
+      s.n_bytes += sizeof(uintptr_t);
+    } else {
+      s.n_internal++;
+      switch (n->type) {
+        case NodeType4: {
+           Node4* node = static_cast<Node4*>(n);
+           s.n_slack_art += 4 - node->count;
+           s.art_n4++;
+           s.n_bytes += sizeof(NodeType4);
+           break;
+        }
+        case NodeType16: {
+           Node16* node=static_cast<Node16*>(n);
+           s.n_slack_art += 16 - node->count;
+           s.art_n16++;
+           s.n_bytes += sizeof(NodeType16);
+           break;
+        }
+        case NodeType48: {
+           Node48* node=static_cast<Node48*>(n);
+           s.n_slack_art += 48 - node->count;
+           s.art_n48++;
+           s.n_bytes += sizeof(NodeType48);
+           break;
+        }
+        case NodeType256: {
+           Node256* node=static_cast<Node256*>(n);
+           s.n_slack_art += 256 - node->count;
+           s.art_n256++;
+           s.n_bytes += sizeof(NodeType256);
+           break;
+        }
+      }
+    }
+  });
 }

@@ -9,7 +9,7 @@ void init(unsigned *iarr, unsigned iN) {
   t = time_it([&] {
     N = iN;
     arr = new unsigned[N];
-    for (int i = 0; i < N; i++)
+    for (int i = 0; i < (int) N; i++)
       arr[i] = iarr[i];
   });
   sort(arr, arr + N);
