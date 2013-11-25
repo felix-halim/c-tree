@@ -12,10 +12,11 @@ using namespace std;
 #define BATCH 10000000
 
 int tmp[BATCH] = { 0 };
-int wtmp[BATCH];
-Comb<int> cnt(300000000);
+unsigned wtmp[BATCH];
+Comb<unsigned> cnt(300000000);
 
 int main() {
+  fprintf(stderr, "%d\n", sizeof(unsigned));
   FILE *in = fopen("data/skyserver.data", "rb");
   FILE *out = fopen("data/skyserver.u5data", "wb");
   assert(in);
@@ -24,7 +25,7 @@ int main() {
     int N = fread(tmp, sizeof(int), BATCH, in);
     int ntmp = 0;
     for (int i = 0; i < N; i++, nth++) {
-      int t = tmp[i] * 5, tt;
+      unsigned t = ((unsigned) tmp[i]) * 10, tt;
       int ninc = 0;
       while (true) {
         auto it = cnt.lower_bound(t);
@@ -45,7 +46,7 @@ int main() {
       }
       wtmp[ntmp++] = t;
     }
-    fwrite(wtmp, sizeof(int), ntmp, out);
+    fwrite(wtmp, sizeof(unsigned), ntmp, out);
     fflush(out);
     fprintf(stderr, "%d. size = %lu.\n", nth, cnt.size());
   }
