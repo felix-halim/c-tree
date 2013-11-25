@@ -10,12 +10,12 @@ using namespace std;
 #define BATCH 10000000
 
 int tmp[BATCH] = { 0 };
-long long wtmp[BATCH];
+int wtmp[BATCH];
 map<int, int> s;
 
 int main() {
-  FILE *in = fopen("data/skyserver.udata", "rb");
-  FILE *out = fopen("data/skyserver.udata2", "wb");
+  FILE *in = fopen("data/skyserver.data", "rb");
+  FILE *out = fopen("data/skyserver.udata", "wb");
   assert(in);
   assert(out);
   int ndup = 0, dup_max = 0;
