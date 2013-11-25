@@ -33,6 +33,7 @@ int n_large; // Number of leaf large buckets.
 int n_small; // Number of leaf small buckets.
 int n_index; // Number of buckets chains.
 
+template <typename T>
 class Bucket {
  protected:
   int N;        // Number of data elements in this bucket pointed by D.
@@ -41,16 +42,17 @@ class Bucket {
   int size() { return N; }
 };
 
-class SmallBucket : public Bucket {
-  int D[SMALL_SIZE];
+template <typename T>
+class SmallBucket : public Bucket<T> {
+  T D[SMALL_SIZE];
   int n_touch;
 
  public:
-  SmallBucket(int *arr, int n) {
-    N = n;
-    memcpy(D, arr, sizeof(int) * n);
-    sort(D, D + N);
-    large_type = 0;
+  SmallBucket(T *arr, int n) {
+    this->N = n;
+    memcpy(D, arr, sizeof(T) * n);
+    sort(D, D + this->N);
+    this->large_type = 0;
     n_small++;
   }
 
@@ -58,41 +60,41 @@ class SmallBucket : public Bucket {
     n_small--;
   }
 
-  int slack() { return SMALL_SIZE - N; }
+  int slack() { return SMALL_SIZE - this->N; }
 
   int n_touched() { return ++n_touch; }
 
-  int data(int i) {
+  T data(int i) {
     // fprintf(stderr, "i = %d / %d\n", i, N);
-    assert(i >= 0 && i < N); return D[i];
+    assert(i >= 0 && i < this->N); return D[i];
   }
 
-  int lower_pos(int v) {
-    for (int i = 0; i < N; i++) {
+  int lower_pos(T v) {
+    for (int i = 0; i < this->N; i++) {
       if (D[i] >= v) return i;
     }
-    return N;
+    return this->N;
   }
 
-  int erase(int v) {
-    assert(N);
+  int erase(T v) {
+    assert(this->N);
     int i = 0;
-    for (; i < N; i++) {
+    for (; i < this->N; i++) {
       if (D[i] == v) break;
     }
-    if (i == N) return -1;
-    N--;
-    for (int j = i; j < N; j++) {
+    if (i == this->N) return -1;
+    this->N--;
+    for (int j = i; j < this->N; j++) {
       D[j] = D[j + 1];
     }
     return i;
   }
 
-  bool insert(int &v) {
-    if (N == SMALL_SIZE) {
-      if (D[N - 1] < v) return false;
-      int t = D[N - 1];
-      for (int i = N - 1; i > 0; i--) {
+  bool insert(T &v) {
+    if (this->N == SMALL_SIZE) {
+      if (D[this->N - 1] < v) return false;
+      T t = D[this->N - 1];
+      for (int i = this->N - 1; i > 0; i--) {
         if (D[i - 1] > v) {
           D[i] = D[i - 1];
         } else {
@@ -103,7 +105,7 @@ class SmallBucket : public Bucket {
       }
       assert(0);
     }
-    int i = N++;
+    int i = this->N++;
     for (; i > 0; i--) {
       if (D[i - 1] > v) {
         D[i] = D[i - 1];
@@ -117,15 +119,16 @@ class SmallBucket : public Bucket {
 
 // Dynamically resize COMB bucket sizes.
 // If number of cracks > 32, it splits to two smaller buckets.
-class LargeBucket : public Bucket {
+template <typename T>
+class LargeBucket : public Bucket<T> {
   static const unsigned short MAX_CRACK = 64;
 
   int I;                // last indexed position
   unsigned char nC;     // the number of cracker indices
   unsigned long long S; // sorted bits
   int C[MAX_CRACK-1];   // the cracker indices
-  int V[MAX_CRACK-1];     // the cracker value
-  int D[LARGE_SIZE];      // the data elements
+  T V[MAX_CRACK-1];     // the cracker value
+  T D[LARGE_SIZE];      // the data elements
   int n_erase;  // number of erase operations performed to this bucket.
   int n_touch;
   LargeBucket* next_b;   // buckets can be chained like a linked list of buckets
@@ -133,7 +136,7 @@ class LargeBucket : public Bucket {
                         // otherwise the index of the bucket [0, num_of_buckets)
   LargeBucket* tail_b;   // pointer to the last bucket in the chain.
 
-  int* partition(int *F, int *L, int const &v) {
+  T* partition(T *F, T *L, T const &v) {
     while (true) {
       while (true)
         if (F == L) return F;
@@ -204,16 +207,16 @@ class LargeBucket : public Bucket {
   }
 
   // partitions roughly in the middle satisfying the DECRACK_AT
-  int* rough_middle_partition(int *L, int *R, Random &rng, int gap) {
+  T* rough_middle_partition(T *L, T *R, Random &rng, int gap) {
     int ntry = 10;
-    for (int *i=L, *j=R, *p; ntry--; ){
+    for (T *i=L, *j=R, *p; ntry--; ){
       std::iter_swap(j-1, i + rng.nextInt(j-i));
       std::iter_swap(j-1, p = partition(i, j-1, *(j-1)));
       if (p-L <= gap) i = p;
       else if (R-p <= gap) j = p;
       else return p;
     }
-    int *M = L+((R-L)>>1);
+    T *M = L+((R-L)>>1);
     std::nth_element(L,M,R);
     return M;
   }
@@ -228,7 +231,7 @@ class LargeBucket : public Bucket {
     int minC = nC;
     for (int j = I; I < this->N; j= ++I) {        // insert all pending elements (from I to N)
       int i = nC - 1;
-      int tmp = D[j];            // store the pending tuple
+      T tmp = D[j];            // store the pending tuple
       for (; i>=0 && (tmp < V[i]); i--){  // insert by shuffling through the cracker indices C
         int &L = C[i];          // left boundary of this cracker piece
         D[j] = D[L+1];          // replace the pending with the next to cracker boundary
@@ -245,7 +248,7 @@ class LargeBucket : public Bucket {
 
   // returns a piece [L,R) that contains v
   // it will reorganize the elements so that the R-L range gets smaller overtime
-  int get_piece_by_value(int v, int &L, int &R, Random &rng) {
+  int get_piece_by_value(T v, int &L, int &R, Random &rng) {
     flush_pending_inserts();
     int i = 0;
     while (i<nC && (v >= V[i])) i++;      // find the cracker indices that covers v
@@ -268,15 +271,15 @@ public:
     this->N = 0;
     clear_indexes();
     n_erase = n_touch = 0;
-    large_type = 1;
+    this->large_type = 1;
     n_large++;
   }
 
-  LargeBucket(int *arr, int n): next_b(nullptr), tail_b(nullptr) {
-    memcpy(D, arr, sizeof(int) * n);
+  LargeBucket(T *arr, int n): next_b(nullptr), tail_b(nullptr) {
+    memcpy(D, arr, sizeof(T) * n);
     this->N = n;
     n_erase = n_touch = 0;
-    large_type = 1;
+    this->large_type = 1;
     n_large++;
   }
 
@@ -291,16 +294,16 @@ public:
   void clear_indexes(){ S = nC = I = 0; }
   int n_touched() { return ++n_touch; }
   int n_erased() { return ++n_erase; }
-  int remove_first() { assert(N > 0); int ret = D[0]; D[0] = D[--N]; return ret; }
+  T remove_first() { assert(this->N > 0); T ret = D[0]; D[0] = D[--this->N]; return ret; }
   int capacity() const { return LARGE_SIZE; }
   LargeBucket* next() const { return next_b; }
   LargeBucket* tail() const { return tail_b; }
-  int& data(int i) { assert(i >= 0 && i < this->N); return D[i]; }
-  void sort() { std::sort(D, D + N); };
-  void set_data(int i, int v) { assert(i >= 0 && i < this->N); D[i] = v; }
-  int* data() { return D; }
+  T& data(int i) { assert(i >= 0 && i < this->N); return D[i]; }
+  void sort() { std::sort(D, D + this->N); };
+  void set_data(int i, T v) { assert(i >= 0 && i < this->N); D[i] = v; }
+  T* data() { return D; }
 
-  void rec_split(int L, int R, Random &rng, std::function<void(int*, int)> callback) {
+  void rec_split(int L, int R, Random &rng, std::function<void(T*, int)> callback) {
     if (R - L <= SMALL_SIZE) {
       callback(D + L, R - L);
     } else {
@@ -310,8 +313,8 @@ public:
     }
   }
 
-  void split(Random &rng, std::function<void(int*, int)> callback) {
-    rec_split(0, N, rng, callback);
+  void split(Random &rng, std::function<void(T*, int)> callback) {
+    rec_split(0, this->N, rng, callback);
   }
 
   void add_chain(LargeBucket *next) {
@@ -326,7 +329,7 @@ public:
     next->set_tail(nullptr);
   }
 
-  void insert(int const &v) {
+  void insert(T const &v) {
     if (this->N < LARGE_SIZE) {
       D[this->N++] = v;
       return;
@@ -343,40 +346,40 @@ public:
     tail_b->D[tail_b->N++] = v;
   }
 
-  int remove_random_data(Random &rng) {
+  T remove_random_data(Random &rng) {
     int j = rng.nextInt(this->N);
-    int ret = D[j];
+    T ret = D[j];
     D[j] = D[--this->N];
     return ret;
   }
 
-  void swap_random_data_with(int &R, Random &rng) {
+  void swap_random_data_with(T &R, Random &rng) {
     assert(this->N > 0);
     swap(R, D[rng.nextInt(this->N)]);
   }
 
-  void append(int value) {
+  void append(T value) {
     assert(this->N < LARGE_SIZE);
     D[this->N++] = value;
   }
 
-  void each(std::function<void(int)> callback) {
-    for (int i = 0; i < N; i++) {
+  void each(std::function<void(T)> callback) {
+    for (int i = 0; i < this->N; i++) {
       callback(D[i]);
     }
   }
 
-  int bulk_insert(int const *v, int length) {
+  int bulk_insert(T const *v, int length) {
     assert(this->N == 0);
-    memcpy(D, v, sizeof(int) * length);
+    memcpy(D, v, sizeof(T) * length);
     return this->N = length;
   }
 
   // partition this bucket based on value v, destroying all cracker indices
-  int partition(int const &v) {
+  int partition(T const &v) {
     clear_indexes();
     assert(this->N > 0 && this->N <= LARGE_SIZE);
-    return std::partition(D, D + this->N, [&](int x){ return (x < v); }) - D;
+    return std::partition(D, D + this->N, [&](T x){ return (x < v); }) - D;
   }
 
   // move this bucket data in range [fromIdx, end) and append
@@ -385,17 +388,17 @@ public:
     clear_indexes(); to->clear_indexes();    // destroy both buckets' cracker indices
     assert(this->N > fromIdx);            // make sure there is something to move
     assert(to->N + this->N - fromIdx <= LARGE_SIZE);    // make sure the receiver has enough space
-    memmove(to->D + to->N, D+fromIdx, (this->N - fromIdx) * sizeof(int));
+    memmove(to->D + to->N, D+fromIdx, (this->N - fromIdx) * sizeof(T));
     to->N += this->N - fromIdx;
     this->N = fromIdx;
   }
 
-  int lower_pos(int value, Random &rng) {
+  int lower_pos(T value, Random &rng) {
     int i, L, R;
     return crack(value, i, L, R, true, rng);
   }
 
-  int crack(int v, int &i, int &L, int &R, bool sort_piece, Random &rng) {
+  int crack(T v, int &i, int &L, int &R, bool sort_piece, Random &rng) {
     assert(!next());            // it doesn't make sense crack a chained bucket!
     i = get_piece_by_value(v,L,R,rng);    // find the piece [L,R) containing v
     assert(L>=0 && L<=R && R <= this->N);        // range check
@@ -415,16 +418,16 @@ public:
     // return std::lower_bound(D+L, D+R, v) - D;    // find the element v using binary search
   }
 
-  int erase(int v, Random &rng) {
+  int erase(T v, Random &rng) {
     assert(!next_b);
     int i, L, R, at = crack(v, i, L, R, false, rng);
     // if (at >= R || !eq(D[at],v)) return false;  // the element to be erased is not found!
     if (at >= R) {
-      fprintf(stderr, "R = %d, N = %d, v = %d, DR = %d\n", R, N, v, D[R]);
-      for (int i = 0; i < N; i++) {
+      fprintf(stderr, "R = %d, N = %d, v = %d, DR = %d\n", R, this->N, v, D[R]);
+      for (int i = 0; i < this->N; i++) {
         fprintf(stderr, "D[%d] = %d\n", i, D[i]);
       }
-      assert(R == N);
+      assert(R == this->N);
       return at;
     }
     if (D[at] != v) return -1;  // the element to be erased is not found!
@@ -474,16 +477,12 @@ inline uintptr_t getData(uintptr_t v) {
   return v >> 1;
 }
 
-int data(Bucket *b) {
-  return b->large_type ? ((LargeBucket*) b)->data(0) : ((SmallBucket*) b)->data(0);
+template <typename T>
+T data(Bucket<T> *b) {
+  return b->large_type ? ((LargeBucket<T>*) b)->data(0) : ((SmallBucket<T>*) b)->data(0);
 }
 
-inline uintptr_t getLeafValue(Node* node) {
-  // The the value stored in the pseudo-leaf
-  uintptr_t v = getData((uintptr_t) node);
-  return isPointer(v) ? data((Bucket*) v) : getData(v);
-}
-
+template <typename T>
 class Comb {
   Random rng;  // The random number generator.
   Node* tree;
@@ -522,9 +521,9 @@ class Comb {
   }
 
   template <typename B>
-  int get_random_pivot(B *b, Random &rng) {  // pick the pivot near the median
+  T get_random_pivot(B *b, Random &rng) {  // pick the pivot near the median
     assert(b->next());
-    int R[11]; // Randomly pick 11 elements from b.
+    T R[11]; // Randomly pick 11 elements from b.
     for (int i = 0; i < 11; i++) {
       // fprintf(stderr, "%p sz = %d\n", b, b->size());
       if (b->size()) {
@@ -557,21 +556,21 @@ class Comb {
     return R[5];
   }
 
-  void mark_hi(int* D, int N, int const &P, int *hi, int &nhi){
+  void mark_hi(T* D, int N, T const &P, int *hi, int &nhi){
     for (int i=0; i < N; i++){
       hi[nhi] = i;
       nhi += (D[i] >= P);
     }
   }
 
-  void mark_lo(int* D, int N, int const &P, int *lo, int &nlo){
+  void mark_lo(T* D, int N, T const &P, int *lo, int &nlo){
     for (int i=0; i < N; i++){
       lo[nlo] = i;
       nlo += (D[i] < P);
     }
   }
 
-  void fusion(int *Lp, int *Rp, int *hi, int *lo, int &nhi, int &nlo){
+  void fusion(T *Lp, T *Rp, int *hi, int *lo, int &nhi, int &nlo){
     int m = std::min(nhi, nlo); assert(m > 0);
     int *hip = hi + nhi - 1, *lop = lo + nlo - 1;
     nhi -= m; nlo -= m;
@@ -582,8 +581,8 @@ class Comb {
   template <typename B>
   B* stochastic_split_chain(B *b, Random &rng) {
     // fprintf(stderr, "bsz = %d\n", b->size());
-    const int &bp = b->remove_first();
-    const int &p = get_random_pivot(b, rng);
+    const T &bp = b->remove_first();
+    const T &p = get_random_pivot(b, rng);
 
     B *left_chain = nullptr;
     B *right_chain = nullptr;
@@ -638,7 +637,7 @@ class Comb {
     }
 
     assert(left_chain);
-    int first = left_chain->data(0);
+    T first = left_chain->data(0);
     left_chain->set_data(0, bp);
     left_chain->insert(first);
 
@@ -655,7 +654,7 @@ public:
 
   Comb() { tree = NULL; }
 
-  void insert_root(Bucket *b) {
+  void insert_root(Bucket<T> *b) {
     uint8_t key[8];
     uint64_t value = data(b);
     assert(value >= 0);
@@ -679,8 +678,8 @@ public:
     }
   }
 
-  void load(int const *arr, int n) {
-    LargeBucket *root = new LargeBucket();
+  void load(T const *arr, int n) {
+    LargeBucket<T> *root = new LargeBucket<T>();
     root->append(0); // Dummy leftmost bucket.
     assert(root);
     assert(!( ((uintptr_t) root) & 3));
@@ -688,11 +687,11 @@ public:
 
     int i = 0;
     while (i + LARGE_SIZE <= n) {
-      LargeBucket *b = new LargeBucket();
+      LargeBucket<T> *b = new LargeBucket<T>();
       b->bulk_insert(arr + i, LARGE_SIZE);
       i += LARGE_SIZE;
       if (root) {
-        ((LargeBucket*) root)->add_chain(b);
+        ((LargeBucket<T>*) root)->add_chain(b);
       } else {
         root = b;
       }
@@ -718,16 +717,16 @@ public:
     return ::lower_bound(tree,key,8,0,8);
   }
 
-  void insert(int value) {
+  void insert(T value) {
     // fprintf(stderr, "ins %d\n", value);
     Node *n = find_bucket(value, nullptr);
     assert(isLeaf(n));
     uintptr_t v = getData((uintptr_t) n);
     if (isPointer(v)) {
-      Bucket *b = (Bucket*) v;
+      Bucket<T> *b = (Bucket<T>*) v;
       if (b->large_type) {
-        ((LargeBucket*) v)->insert(value);
-      } else if (!((SmallBucket*) b)->insert(value)) {
+        ((LargeBucket<T>*) v)->insert(value);
+      } else if (!((SmallBucket<T>*) b)->insert(value)) {
         insert_root_value(value);
       }
     } else {
@@ -757,9 +756,9 @@ public:
     return true;
   }
 
-  LargeBucket* make_standalone(LargeBucket *lb, int value) {
+  LargeBucket<T>* make_standalone(LargeBucket<T> *lb, T value) {
     while (lb->next()) {
-      LargeBucket *rb = stochastic_split_chain(lb, rng);
+      LargeBucket<T> *rb = stochastic_split_chain(lb, rng);
       // fprintf(stderr, "stochastic_split_chain %d\n", rb->data(0));
       insert_root(rb);
       lb = (value < rb->data(0)) ? lb : rb;
@@ -767,7 +766,7 @@ public:
     return lb;
   }
 
-  bool erase(int const &value) {
+  bool erase(T const &value) {
     // fprintf(stderr, "ERASE %d\n", value);
     // art_debug = 1;
     if (n_large + n_small) {
@@ -775,9 +774,9 @@ public:
       assert(isLeaf(n));
       uintptr_t v = getData((uintptr_t) n);
       if (isPointer(v)) {
-        Bucket *b = (Bucket*) v;
+        Bucket<T> *b = (Bucket<T>*) v;
         if (b->large_type) {
-          LargeBucket *lb = make_standalone((LargeBucket*) b, value);
+          LargeBucket<T> *lb = make_standalone((LargeBucket<T>*) b, value);
           if (LARGE_TOUCH == 0) {
             transition_to_art(lb);
             return erase_root(value);
@@ -787,7 +786,7 @@ public:
             return lb->erase(value, rng);
           }
         }
-        SmallBucket *sb = (SmallBucket*) b;
+        SmallBucket<T> *sb = (SmallBucket<T>*) b;
         // fprintf(stderr, "smallize\n");
         if (!sb) return false;
         // fprintf(stderr, "trans\n");
@@ -808,14 +807,14 @@ public:
     return erase_root(value);
   }
 
-  SmallBucket* to_small_bucket(Bucket *b, int value) {
+  SmallBucket<T>* to_small_bucket(Bucket<T> *b, T value) {
     assert(b);
     if (b->large_type) {
-      LargeBucket *lb = (LargeBucket*) b;
+      LargeBucket<T> *lb = (LargeBucket<T>*) b;
       erase_root(lb->data(0));
-      SmallBucket *target = nullptr;
-      lb->split(rng, [&](int *D, int n) {
-        SmallBucket *sb = new SmallBucket(D, n);
+      SmallBucket<T> *target = nullptr;
+      lb->split(rng, [&](T *D, int n) {
+        SmallBucket<T> *sb = new SmallBucket<T>(D, n);
         assert(sb->size());
         insert_root(sb);
         if (sb->data(0) <= value && (!target || sb->data(0) > target->data(0))) {
@@ -825,11 +824,11 @@ public:
       delete lb;
       b = target;
     }
-    return (SmallBucket*) b;
+    return (SmallBucket<T>*) b;
   }
 
   /* TODO: lazy lower_bound */
-  int lower_bound(int const &value) {
+  T lower_bound(T const &value) {
     static int nth = 0; nth++;
     // art_debug = 1;
     // fprintf(stderr, "lower_bound %d\n", value);
@@ -841,14 +840,14 @@ public:
       uintptr_t v = getData((uintptr_t) n);
       assert(v);
       if (isPointer(v)) {
-        Bucket *b = (Bucket*) v;
+        Bucket<T> *b = (Bucket<T>*) v;
         if (b->large_type) {
-          LargeBucket *lb = (LargeBucket*) b;
+          LargeBucket<T> *lb = (LargeBucket<T>*) b;
           bool has_next = lb->next();
           lb = make_standalone(lb, value);
           int pos = lb->lower_pos(value, rng);
           if (pos < lb->size()) {
-            int ret = lb->data(pos);
+            T ret = lb->data(pos);
             if (LARGE_TOUCH == 0) transition_to_art(lb);
             else if (lb->n_touched() > LARGE_TOUCH) to_small_bucket(lb, value);
             return ret;
@@ -860,17 +859,17 @@ public:
             next = ::lower_bound(tree,key,8,0,8);
           }
         } else {
-          SmallBucket *sb = (SmallBucket*) b;
+          SmallBucket<T> *sb = (SmallBucket<T>*) b;
           if (sb) {
             int pos = sb->lower_pos(value);
             if (pos < sb->size()) {
-              int ret = sb->data(pos);
+              T ret = sb->data(pos);
               if (sb->n_touched() > SMALL_TOUCH) transition_to_art(sb);
               return ret;
             }
           }
         }
-      } else if ((int) getData(v) == value) {
+      } else if ((T) getData(v) == value) {
         return value;
       }
     }
@@ -888,10 +887,10 @@ public:
         uintptr_t v = getData((uintptr_t) n);
         assert(v);
         if (isPointer(v)) {
-          Bucket *b = (Bucket*) v;
+          Bucket<T> *b = (Bucket<T>*) v;
           if (b->large_type) {
-            n_bytes += sizeof(LargeBucket);
-            LargeBucket *lb = (LargeBucket*) b;
+            n_bytes += sizeof(LargeBucket<T>);
+            LargeBucket<T> *lb = (LargeBucket<T>*) b;
             n_slack_leaves += lb->slack();
             n_chain--;
             while (lb) {
@@ -899,8 +898,8 @@ public:
               n_chain++;
             }
           } else {
-            n_bytes += sizeof(SmallBucket);
-            SmallBucket *sb = (SmallBucket*) b;
+            n_bytes += sizeof(SmallBucket<T>);
+            SmallBucket<T> *sb = (SmallBucket<T>*) b;
             n_slack_leaves += sb->slack();
           }
         } else {

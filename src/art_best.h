@@ -902,7 +902,7 @@ static void rec_insert(Node *&node, int depth, int maxKeyLength, uintptr_t *tmp,
    delete[] tmp2;
 }
 
-void bulk_insert(Node *&node, int *arr, int N) {
+void bulk_insert(Node *&node, unsigned *arr, int N) {
    uintptr_t *tmp = new uintptr_t[N];
    for (int i = 0; i < N; i++) {
       uint8_t *key = (uint8_t*) &tmp[i];

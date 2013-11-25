@@ -3,7 +3,7 @@ ODIR     = ../bin
 DEPFILE  = .depends
 CXXFLAGS = -O3 -g -DNDEBUGx -std=c++0x# -stdlib=libc++
 # CXXFLAGS = -O0 -g -pg -std=c++0x# -stdlib=libc++
-FLAGS    = -I. -DSELECT_QUERY
+FLAGS    = -I. -DSELECT_QUERYx
 
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Linux)

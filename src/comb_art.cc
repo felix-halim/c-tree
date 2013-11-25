@@ -7,9 +7,15 @@
 #include "comb_art.h"
 #include "test.h"
 
-Comb c;
+inline uintptr_t getLeafValue(Node* node) {
+  // The the value stored in the pseudo-leaf
+  uintptr_t v = getData((uintptr_t) node);
+  return isPointer(v) ? data((Bucket<unsigned>*) v) : getData(v);
+}
 
-void init(int *arr, int N) {
+Comb<unsigned> c;
+
+void init(unsigned *arr, unsigned N) {
   // art_debug = 1;
   c.load(arr, N);
   // for (int i = 0; i < N; i++) {
@@ -18,11 +24,11 @@ void init(int *arr, int N) {
   // }
 }
 
-void insert(int value) {
+void insert(unsigned value) {
   c.insert(value);
 }
 
-void erase(int value) {
+void erase(unsigned value) {
   // fprintf(stderr, "erase %d\n", value);
   #ifdef NDEBUG
     c.erase(value);
@@ -33,17 +39,17 @@ void erase(int value) {
   #endif
 }
 
-int lower_bound(int value) {
-  int ret = c.lower_bound(value);
+unsigned lower_bound(unsigned value) {
+  unsigned ret = c.lower_bound(value);
   // fprintf(stdout, "%d (%d)\n", ret, value); fflush(stdout);
   return ret;
 }
 
-int select(int a, int b) {
+unsigned select(unsigned a, unsigned b) {
   return c.lower_bound(a) + c.lower_bound(b);
 }
 
-int count(int a, int b) {
+unsigned count(unsigned a, unsigned b) {
   return 0;
 }
 

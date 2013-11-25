@@ -13,7 +13,7 @@ using namespace std;
 
 Node* tree = NULL;
 
-void init(int *arr, int N) {
+void init(unsigned *arr, unsigned N) {
   #ifdef EAGER
     bulk_insert(tree, arr, N); // Lazy insert, chain buckets.
   #else
@@ -22,13 +22,13 @@ void init(int *arr, int N) {
   // art_debug = 1;
 }
 
-void insert(int value64) {
+void insert(unsigned value64) {
   uint8_t key[8];
   loadKey(value64, key);
   insert(&tree,key,0,value64,8);
 }
 
-void erase(int value) {
+void erase(unsigned value) {
   uint8_t key[8];
   uint64_t value64 = value;
   loadKey(value64, key);
@@ -37,7 +37,7 @@ void erase(int value) {
   // assert(!lookup(&tree,key,8,0,8));
 }
 
-int lower_bound(int value) {
+unsigned lower_bound(unsigned value) {
   uint64_t value64 = value;
   uint8_t key[8];
   loadKey(value64, key);
@@ -52,7 +52,7 @@ int lower_bound(int value) {
   // #endif
 
   Node* leaf=lower_bound(tree,key,8,0,8);
-  int ret = 0;
+  unsigned ret = 0;
   if (isLeaf(leaf)) {
     ret = getLeafValue(leaf);
     // fprintf(stdout, "%d (%d)\n", ret, value); fflush(stdout);
@@ -60,7 +60,7 @@ int lower_bound(int value) {
   return ret;
 }
 
-int select(int a, int b) {
+unsigned select(unsigned a, unsigned b) {
   return lower_bound(a) + lower_bound(b);
 }
 

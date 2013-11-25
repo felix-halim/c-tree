@@ -12,13 +12,13 @@ using namespace std::chrono;
 #include "query.h"
 #include "update.h"
 
-void init(int *arr, int N);   // Initializes the initial values of N integers.
-int lower_bound(int value);   // Query for lower bound, returns 0 if not found.
-int select(int a, int b);     // Select values from [a, b), without fetching the values.
-int count(int a, int b);      // Count values in range [a, b).
-int sum(int a, int b);        // Sum values in range [a, b).
-void insert(int value);       // Inserts the value.
-void erase(int value);        // Deletes the value. The value guaranteed to exists.
+void init(unsigned *arr, unsigned N);   // Initializes the initial values of N integers.
+unsigned lower_bound(unsigned value);   // Query for lower bound, returns 0 if not found.
+unsigned select(unsigned a, unsigned b);     // Select values from [a, b), without fetching the values.
+unsigned count(unsigned a, unsigned b);      // Count values in range [a, b).
+unsigned sum(unsigned a, unsigned b);        // Sum values in range [a, b).
+void insert(unsigned value);       // Inserts the value.
+void erase(unsigned value);        // Deletes the value. The value guaranteed to exists.
 void results(Statistics &s);  // Optionally fill in statistics.
 
 int main(int argc, char *argv[]) {
@@ -41,11 +41,11 @@ int main(int argc, char *argv[]) {
   int U = atoi(argv[5]);
   Workload query_w(MAXQ, sel, W);
   fprintf(stderr, "Loading ... ");
-  Update update(argv[1], U, W, [&](int mx) { query_w.set_max(mx + 1); });
+  Update update(argv[1], U, W, [&](unsigned mx) { query_w.set_max(mx + 1); });
   fprintf(stderr, "done. ");
   Statistics s(parse_algorithm_name(argv[0]), query_w.name(), update.name());
 
-  fprintf(stderr, "N = %d, ", update.get_n());
+  fprintf(stderr, "N = %u, ", update.get_n());
 
   double insert_time = time_it([&] { init(update.get_arr(), update.get_n()); });
 
@@ -59,7 +59,7 @@ int main(int argc, char *argv[]) {
     double runtime = time_it([&] {
       long long nQ = - *next_sample; nQ += *(++next_sample); Q += nQ;
 
-      for (int a, b; nQ--; i++) {
+      for (unsigned a, b; nQ--; i++) {
         bool ok = query_w.query(a,b); // get query endpoints based on the workload
         assert(ok || W == 0);
 
@@ -75,8 +75,8 @@ int main(int argc, char *argv[]) {
           #endif
 
         update_time += update.execute(i,
-          [](int v){ insert(v); }, // insert.
-          [](int v){ erase(v); } // erase.
+          [](unsigned v){ insert(v); }, // insert.
+          [](unsigned v){ erase(v); } // erase.
         );
       }
     });

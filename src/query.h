@@ -10,15 +10,15 @@
 using namespace std;
 
 class Workload {
-  int N;    // The number of elements in arr.
+  unsigned N;    // The number of elements in arr.
   int W;    // The selected workload to be generated.
-  int S;    // The selectivity (unused for some workloads).
+  unsigned S;    // The selectivity (unused for some workloads).
   int I;    // The I'th query (internal use only).
-  int a, b; // The last query range [a,b].
-  int seq_jump;
+  unsigned a, b; // The last query range [a,b].
+  unsigned seq_jump;
   long long MAXQ;
   double s;
-  vector<int> skyq;
+  vector<unsigned> skyq;
   int skyqi;
 
   mt19937 gen;
@@ -56,7 +56,8 @@ class Workload {
     } else {
       double x, y;
       while (fscanf(in, "%lf %lf", &x, &y) != EOF) {
-        skyq.push_back(int(y * 1000000));
+        unsigned z = unsigned(y * 1000000);
+        skyq.push_back(z);
       }
       fclose(in);
     }
@@ -117,7 +118,7 @@ class Workload {
   
   // Sequential with no overlap with the subsequent query ranges.
   bool seq_no_over_w() {
-    static int prevB;
+    static unsigned prevB;
     if (!I) prevB = 0;
     a = prevB + 10;
     if (a + 5 > N) return false;
@@ -137,7 +138,7 @@ class Workload {
   
   // Pick 1000 integers and produce range queries with endpoints using the 1000 picked integers.
   bool cons_rand_w() {
-    static int R[1000];
+    static unsigned R[1000];
     if (!I) {
       for (int i = 0; i < 1000; i++) {
         R[i] = nextInt(N);
@@ -154,8 +155,8 @@ class Workload {
   // Start at the [middle - 100500, middle + 100500), 
   // then zoom in by making the query range smaller by 100 on each query.
   bool zoom_in_w() {
-    static int L; if (!I) L = N / 3;
-    static int R; if (!I) R = 2 * N / 3;
+    static unsigned L; if (!I) L = N / 3;
+    static unsigned R; if (!I) R = 2 * N / 3;
     if (L >= R || L < 0 || R > N) return false;
     a = L; L += 100;  // make the range smaller
     b = R; R -= 100;
@@ -165,8 +166,8 @@ class Workload {
   // Start at the [middle - 500, middle + 500),
   // then zoom out by making the query range larger by 100 each query.
   bool zoom_out_w() {
-    static int L; if (!I) L = N / 2 - 500;
-    static int R; if (!I) R = N / 2 + 500;
+    static unsigned L; if (!I) L = N / 2 - 500;
+    static unsigned R; if (!I) R = N / 2 + 500;
     if (L < 1 || R > N) return false;
     a = L; L -= 100;  // make the range bigger
     b = R; R += 100;
@@ -175,9 +176,9 @@ class Workload {
   
   // After zooming in on one region, move to next unexplored region to the right.
   bool seq_zoom_in() {
-    static int L; if (!I) L = 1;
-    static int G = 100000;
-    static int R; if (!I) R = G;
+    static unsigned L; if (!I) L = 1;
+    static unsigned G = 100000;
+    static unsigned R; if (!I) R = G;
     if (L >= R) L += G, R = L + G;
     if (R > N) return false;
     a = L; L += 100;
@@ -187,9 +188,9 @@ class Workload {
   
   // After zooming out on one ragion, move to the next unexplored region on the right.
   bool seq_zoom_out() {
-    static int G = 100000;
-    static int L; if (!I) L = G / 2 + 1000;
-    static int R; if (!I) R = L + 10;
+    static unsigned G = 100000;
+    static unsigned L; if (!I) L = G / 2 + 1000;
+    static unsigned R; if (!I) R = L + 10;
     if (R > L + G) {
       L = R + G / 2 + 1000;
       R = L + 10;
@@ -222,8 +223,8 @@ class Workload {
   // Start at the [middle - 500, middle + 500),
   // then zoom out by making the query range larger by 100 each query.
   bool zoom_out_alt_w() {
-    static int L; if (!I) L = N / 2 - 500;
-    static int R; if (!I) R = N / 2 + 500;
+    static unsigned L; if (!I) L = N / 2 - 500;
+    static unsigned R; if (!I) R = N / 2 + 500;
     if (L < 1 || R > N) return false;
     if (I & 1) {
       a = L; 
@@ -240,8 +241,8 @@ class Workload {
   // Start at the [middle - 500, middle + 500),
   // then zoom out by making the query range larger by 100 each query.
   bool skew_zoom_out_alt_w() {
-    static int L; if (!I) L = N - 355000;
-    static int R; if (!I) R = N - 350000;
+    static unsigned L; if (!I) L = N - 355000;
+    static unsigned R; if (!I) R = N - 350000;
     if (L < 1 || R > N) return false;
     if (I & 1) {
       b = R; 
@@ -263,16 +264,16 @@ class Workload {
   }
 
   bool mixed_w() {
-    static int work = 0;
-    static int base = 0;
+    static unsigned work = 0;
+    static unsigned base = 0;
     if (I % 1000 == 0) {
       work = nextInt(15) + 1;
       base = nextInt(20);
     }
-    int tW = W; W = work;
-    int tI = I; I %= 1000;
-    int tN = N; N /= 20;
-    int ta, tb;
+    unsigned tW = W; W = work;
+    unsigned tI = I; I %= 1000;
+    unsigned tN = N; N /= 20;
+    unsigned ta, tb;
     bool ok = query(ta, tb);
     W = tW;
     I = tI;
@@ -297,7 +298,7 @@ public :
     if (W == 0) init_skyq();
 
     if (W == 2) {
-      int j = get_max() / 100 / MAXQ;
+      int j = N / 100 / MAXQ;
       fprintf(stderr, "j = %d\n", j);
       set_seq_jump(max(1, j));
     } else if (W == 17) {
@@ -307,22 +308,18 @@ public :
 
   long long maxq() { return MAXQ; }
 
-  void set_max(int mx) {
+  void set_max(unsigned mx) {
     N = mx;
     S = mx * s;
   }
 
   void inc_max() { N++; }
 
-  int get_max() {
-    return N;
-  }
-
-  void set_seq_jump(int seq_jump_) {
+  void set_seq_jump(unsigned seq_jump_) {
     seq_jump = seq_jump_;
   }
 
-  bool query(int &na, int &nb) {
+  bool query(unsigned &na, unsigned &nb) {
     assert(N > 0);
     switch (W) {
       case 0 : if (!skyserver_w()) return false; break;
