@@ -59,7 +59,7 @@ struct Statistics {
 
   // Each algorithm optionally fill in the following stats at the end of run:
   int n_index;
-  int n_bytes;
+  long long n_bytes;
   int n_slack_int;
   int n_slack_leaf;
   int n_internal;
@@ -96,7 +96,7 @@ struct Statistics {
     printf(",%.6lf", query_time);
     printf(",%llu", checksum);
     printf(",%d", n_index);
-    printf(",%d", n_bytes);
+    printf(",%lld", n_bytes);
     printf(",%d", n_slack_int);
     printf(",%d", n_slack_leaf);
     printf(",%d", n_internal);
