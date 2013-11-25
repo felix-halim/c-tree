@@ -13,7 +13,7 @@ using namespace std;
 
 int tmp[BATCH] = { 0 };
 int wtmp[BATCH];
-Comb<int> cnt(580000000);
+Comb<int> cnt(300000000);
 
 int main() {
   FILE *in = fopen("data/skyserver.data", "rb");
