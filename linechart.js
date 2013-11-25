@@ -1,3 +1,12 @@
+/*
+- Skewed updates, zoomed updates, front updates, tail updates, etc., interleaved with uniform or non-uniform queries.
+- It is good to have the real *time* graphs apart from any ratio graph we also use.
+
+- For Fig 17, don't we need other algorithms in there, eg. scrack, btree
+- Streaming insert
+Also memory usage
+
+*/
 function renderLinecharts() {
   var charts = document.getElementsByClassName('chart');
   Array.prototype.forEach.call(charts, parse_div);
@@ -19,7 +28,12 @@ function to_data(lines) {
       for (var k = 0; ok && k < field.length; k++) {
         if (d[field[k]] != value[k]) ok = false;
       }
-      if (ok) { ret.push(d); break; }
+      if (ok) {
+        d['__color'] = values[j].color || 'black';
+        d['__line'] = values[j].line || '-';
+        ret.push(d);
+        break;
+      }
     }
   }
   return ret;
@@ -48,7 +62,10 @@ function linechart(div, opts) {
   function ticksPow10(d) { return 10 + formatPower(Math.round(Math.log(d) / Math.LN10)); }
 
   var algos = opts.data = group(to_data(opts.lines), opts.lines.group_by);
-  console.log(algos);
+
+  populate_graph_data(algos);
+
+  // console.log(algos);
   if (opts.base) {
     var base = algos[opts.base];
     if (!base) alert('base not found: ' + opts.base);
@@ -91,17 +108,6 @@ function linechart(div, opts) {
   function fy(d) { return y(d[opts.yAxis.attr]); }
   var line = d3.svg.line().interpolate("linear").x(fx).y(fy);
 
-  // var color = d3.scale.category10();
-  var color = d3.scale.ordinal();
-  color.domain(d3.keys(algos));
-  color.range(color.domain().map(function (key) { return algo_name[key] ? algo_name[key].color : 'black'; }));
-
-  var algo_arr = color.domain().map(function(key) { return { key: key, values: algos[key] }; });
-  function extreme(f, arr, attr) { return f(arr, function (a) { return f(a.values, function (d) { return d[attr]; }); }); }
-  // x.domain(d3.extent(data, function(d) { return d.Q; }));
-  x.domain(opts.xAxis.domain || [ extreme(d3.min, algo_arr, opts.xAxis.attr), extreme(d3.max, algo_arr, opts.xAxis.attr) ]);
-  y.domain(opts.yAxis.domain || [ extreme(d3.min, algo_arr, opts.yAxis.attr), extreme(d3.max, algo_arr, opts.yAxis.attr) ]);
-
   var svg = d3.select(div).append('svg');
   svg.attr('width', opts.width);
   svg.attr('height', opts.height);
@@ -109,7 +115,34 @@ function linechart(div, opts) {
   div.style.height = opts.height+'px';
   svg = svg.append("g").attr("transform", "translate(" + opts.margin.left + "," + opts.margin.top + ")");
 
+  var color_map = {};
+  for (var i = 0; i < opts.lines.values.length; i++) {
+    var value = opts.lines.values[i];
+    var label = value.label;
+    var legendG = svg.append("g").attr('transform', "translate(" + label[1] + ", " + label[2] + ")");
+    for (var j = 0; j < opts.lines.fields.length; j++) if (opts.lines.fields[j] == opts.lines.group_by) color_map[value.value[j]] = value.color;
+    legendG.append("text").attr({ fill : value.color, style : "font-size:14px", "alignment-baseline": 'middle' }).text(label[0]);
+    if (value.line && value.line[0])
+      legendG.append("path").attr({ stroke: value.color, d: "M" + (-20) + " " + 0 + " L" + (-1) + " " + 0, });
+    if (value.line && value.line[1])
+      legendG.append("path").attr({ fill: value.color, transform: "translate(" + (-10) + ", " + 0 + ")", d: symbol(value.line[1]), });
+  }
+
+  // var color = d3.scale.category10();
+  var color = d3.scale.ordinal();
+  color.domain(d3.keys(algos));
+  color.range(color.domain().map(function (key) {
+    return color_map[key] ? color_map[key] : 'black';
+  }));
+
+  var algo_arr = color.domain().map(function(key) { return { key: key, values: algos[key] }; });
+  function extreme(f, arr, attr) { return f(arr, function (a) { return f(a.values, function (d) { return d[attr]; }); }); }
+  // x.domain(d3.extent(data, function(d) { return d.Q; }));
+  x.domain(opts.xAxis.domain || [ extreme(d3.min, algo_arr, opts.xAxis.attr), extreme(d3.max, algo_arr, opts.xAxis.attr) ]);
+  y.domain(opts.yAxis.domain || [ extreme(d3.min, algo_arr, opts.yAxis.attr), extreme(d3.max, algo_arr, opts.yAxis.attr) ]);
+
   function symbol(s) { return d3.svg.symbol().size(30).type(symbols[s]); }
+
 
   var arr = [];
   color.domain().map(function(key) { arr = arr.concat(algos[key]); });
@@ -118,17 +151,9 @@ function linechart(div, opts) {
      .enter().append("path")
      .attr("class", "dot")
      .attr("transform", function (d) { return "translate(" + fx(d) + ", " + fy(d) + ")"; })
-     // .attr("d", function (d) { return symbol(d.algorithm)(); })
-     .attr("fill", function (d) { return color(d.algorithm); })
-     .attr("stroke", function (d) { return color(d.algorithm); });
-
-  for (var i = 0; i < opts.lines.values.length; i++) {
-    var label = opts.lines.values[i].label;
-    var legendG = svg.append("g").attr('transform', "translate(" + label[3] + ", " + label[4] + ")");
-    legendG.append("text").attr({ fill : label[1], style : "font-size:14px", "alignment-baseline": 'middle' }).text(label[0]);
-    legendG.append("path").attr({ stroke: label[1], d: "M" + (-20) + " " + 0 + " L" + (-1) + " " + 0, });
-    legendG.append("path").attr({ fill: label[1], transform: "translate(" + (-10) + ", " + 0 + ")", d: symbol(label[2]), });
-  }
+     .attr("d", function (d) { var L = d['__line']; return (L && L[1]) ? symbol(L[1])() : null; })
+     .attr("fill", function (d) { return d['__color']; })
+     .attr("stroke", function (d) { return d['__color']; });
 
   opts.fontSize = opts.fontSize || "15px";
 
@@ -231,7 +256,12 @@ function isOneOrTen(d) {
 
 
 var symbols = {
-  '-^' : 'triangle-up',
+  '^' : 'triangle-up',
+  'o' : 'circle',
+  'v' : 'triangle-down',
+  'd' : 'diamond',
+  's' : 'square',
+  '+' : 'cross',
 };
 
 var algo_name = {
@@ -413,4 +443,30 @@ function barchart(id, xcap, ylabel, data, update_w, Q, algo_name) {
   //     .attr("dy", ".35em")
   //     .style("text-anchor", "end")
   //     .text(function(d) { return d; });
+}
+
+
+
+function populate_graph_data(algos) {
+  var s = null;
+  for (var a in algos) if (algos.hasOwnProperty(a)) {
+    var algo = algos[a];
+    if (!s) {
+      s = '<tr>';
+      for (var p in algo[0]) if (algo[0].hasOwnProperty(p)) {
+        s += '<th>' + p + '</th>';
+      }
+      s += '</tr>';
+    }
+
+    for (var i = 0; i < algo.length; i++) {
+      var a = algo[i];
+      s += '<tr>';
+      for (var p in a) if (a.hasOwnProperty(p)) {
+        s += '<td>' + a[p] + '</td>';
+      }
+      s += '</tr>';
+    }
+  }
+  document.getElementById('graph-data').innerHTML = s;
 }

@@ -28,6 +28,23 @@ sky)          ./run.sh compile $2 || exit;
               bin/$2 data/skyserver.u5data $Q 0.000001 0 $3;;
               # valgrind --leak-check=yes bin/$2 $N $Q 0.1 1 $3;;
 
+skies)
+              ./run.sh sky comb_art_0_0 0 | tee -a $out
+              ./run.sh sky comb_art_1_0 0 | tee -a $out
+              ./run.sh sky comb_art_10_0 0 | tee -a $out
+              ./run.sh sky comb_art_10_1 0 | tee -a $out
+              ./run.sh sky comb_art_10_10 0 | tee -a $out
+              ./run.sh sky comb_art_100_0 0 | tee -a $out
+              ./run.sh sky comb_art_100_1 0 | tee -a $out
+              ./run.sh sky comb_art_100_10 0 | tee -a $out
+              ./run.sh sky comb_art_100_100 0 | tee -a $out
+              ./run.sh sky comb_art_1000_0 0 | tee -a $out
+              ./run.sh sky comb_art_1000_1 0 | tee -a $out
+              ./run.sh sky comb_art_1000_10 0 | tee -a $out
+              ./run.sh sky comb_art_1000_100 0 | tee -a $out
+              ./run.sh sky comb_art_1000_1000 0 | tee -a $out
+              ;;
+
 custom)       ./run.sh algo ctree_32_64 1
               ./run.sh algo art 1
               ./run.sh algo art_best_eager 1
@@ -63,24 +80,24 @@ n_leaves,n_capacity,n_internals,max_depth,slack,in_size,ln_size,ia_free,ia_size,
               ;;
 
 batch_slb)
-              ./run.sh algo comb_art_0_0 0.000001 0 | tee -a $out
-              ./run.sh algo comb_art_1_0 0.000001 0 | tee -a $out
-              ./run.sh algo comb_art_1_1 0.000001 0 | tee -a $out
-              ./run.sh algo comb_art_1_10 0.000001 0 | tee -a $out
-              ./run.sh algo comb_art_1_100 0.000001 0 | tee -a $out
-              ./run.sh algo comb_art_1_1000 0.000001 0 | tee -a $out
-              ./run.sh algo comb_art_10_1 0.000001 0 | tee -a $out
-              ./run.sh algo comb_art_10_10 0.000001 0 | tee -a $out
-              ./run.sh algo comb_art_10_100 0.000001 0 | tee -a $out
-              ./run.sh algo comb_art_10_1000 0.000001 0 | tee -a $out
-              ./run.sh algo comb_art_100_1 0.000001 0 | tee -a $out
-              ./run.sh algo comb_art_100_10 0.000001 0 | tee -a $out
-              ./run.sh algo comb_art_100_100 0.000001 0 | tee -a $out
-              ./run.sh algo comb_art_100_1000 0.000001 0 | tee -a $out
-              ./run.sh algo comb_art_1000_1 0.000001 0 | tee -a $out
-              ./run.sh algo comb_art_1000_10 0.000001 0 | tee -a $out
-              ./run.sh algo comb_art_1000_100 0.000001 0 | tee -a $out
-              ./run.sh algo comb_art_1000_1000 0.000001 0 | tee -a $out
+              ./run.sh algo comb_art_0_0 0.000001 1 | tee -a $out
+              ./run.sh algo comb_art_1_0 0.000001 1 | tee -a $out
+              ./run.sh algo comb_art_1_1 0.000001 1 | tee -a $out
+              ./run.sh algo comb_art_1_10 0.000001 1 | tee -a $out
+              ./run.sh algo comb_art_1_100 0.000001 1 | tee -a $out
+              ./run.sh algo comb_art_1_1000 0.000001 1 | tee -a $out
+              ./run.sh algo comb_art_10_1 0.000001 1 | tee -a $out
+              ./run.sh algo comb_art_10_10 0.000001 1 | tee -a $out
+              ./run.sh algo comb_art_10_100 0.000001 1 | tee -a $out
+              ./run.sh algo comb_art_10_1000 0.000001 1 | tee -a $out
+              ./run.sh algo comb_art_100_1 0.000001 1 | tee -a $out
+              ./run.sh algo comb_art_100_10 0.000001 1 | tee -a $out
+              ./run.sh algo comb_art_100_100 0.000001 1 | tee -a $out
+              ./run.sh algo comb_art_100_1000 0.000001 1 | tee -a $out
+              ./run.sh algo comb_art_1000_1 0.000001 1 | tee -a $out
+              ./run.sh algo comb_art_1000_10 0.000001 1 | tee -a $out
+              ./run.sh algo comb_art_1000_100 0.000001 1 | tee -a $out
+              ./run.sh algo comb_art_1000_1000 0.000001 1 | tee -a $out
               ;;
 
 batch_sel) 
