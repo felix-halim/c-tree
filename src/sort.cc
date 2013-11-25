@@ -31,7 +31,7 @@ unsigned select(unsigned a, unsigned b) {
 
 void results(Statistics &s) {
   // assert(c.check());
-  // s.n_leaves = c.num_of_buckets();
+  s.n_bytes = N * sizeof(unsigned);
   // s.n_capacity = c.num_of_buckets() * c.bucket_size();
   // s.n_internals = 1;
   // s.max_depth = 2;
