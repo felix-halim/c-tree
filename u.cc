@@ -30,11 +30,11 @@ int main() {
 
         int ninc = 0;
         while (next.count(t)) t = t[next], ninc++;
-        if (ninc > 100) {
+        if (ninc > 1) {
           fprintf(stderr, ".");
-        } else if (ninc > 1000) {
+        } else if (ninc > 10) {
           fprintf(stderr, "x");
-        } else if (ninc > 10000) {
+        } else if (ninc > 100) {
           fprintf(stderr, "z");
         }
       }
