@@ -30,16 +30,16 @@ int main() {
 
         int ninc = 0;
         while (next.count(t)) t = next[t], ninc++;
-        if (ninc > 1) {
+        if (ninc > 10) {
           fprintf(stderr, ".");
-        } else if (ninc > 10) {
-          fprintf(stderr, "x");
         } else if (ninc > 100) {
+          fprintf(stderr, "x");
+        } else if (ninc > 1000) {
           fprintf(stderr, "z");
         }
       }
       assert(!next.count(t) && t >= 0);
-      next[tmp[i]] = next.count(t + 1) ? next[t + 1] : (t + 1);
+      next[tmp[i]] = t + 1;
       wtmp[nt++] = t;
     }
     fwrite(wtmp, sizeof(int), nt, out);
