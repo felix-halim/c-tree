@@ -14,8 +14,8 @@ int wtmp[BATCH];
 map<int, int> s;
 
 int main() {
-  FILE *in = fopen("data/skyserver.data", "rb");
-  FILE *out = fopen("data/skyserver.udata", "wb");
+  FILE *in = fopen("data/skyserver.udata", "rb");
+  FILE *out = fopen("data/skyserver.udata2", "wb");
   assert(in);
   assert(out);
   int ndup = 0, dup_max = 0;
