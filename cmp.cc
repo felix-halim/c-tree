@@ -23,6 +23,10 @@ int main() {
     int N1 = fread(tmp1, sizeof(int), BATCH, in1);
     int N2 = fread(tmp2, sizeof(int), BATCH, in2);
     assert(N1 == N2);
+    for (int i = 0; i < N1; i++) {
+      if (tmp1[i] != tmp2[i])
+        fprintf(stderr, "%d. %d %d\n", i, tmp1[i], tmp2[i]);
+    }
     int res = memcmp(tmp1, tmp2, sizeof(int) * N1);
     assert(res == 0);
   }
