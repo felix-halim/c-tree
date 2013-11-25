@@ -44,8 +44,8 @@ class Update {
     if (U != 6) {
       load();
       if (U == 3) prepare_queue();
-      else if (U == 7) N = 100000;
-      else if (U == 8) N = 10;
+      // else if (U == 7) N = 100000;
+      // else if (U == 8) N = 10;
     } else {
       load(100000);
     }
@@ -58,7 +58,7 @@ class Update {
 
   void prepare_deletion(int N) { shuffle(arr.begin(), arr.begin() + N, gen); }
   unsigned* get_arr() { return &arr[0]; }
-  int get_n() { return min(1000000000, (W == 0) ? N : (N / 2)); }
+  int get_n() { return min(1000000000, (W == 0) ? arr.size() : (arr.size() / 2)); }
   int size() { return arr.size(); }
   void clear() { arr.clear(); }
 
