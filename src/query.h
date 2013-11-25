@@ -56,7 +56,7 @@ class Workload {
     } else {
       double x, y;
       while (fscanf(in, "%lf %lf", &x, &y) != EOF) {
-        unsigned z = unsigned(y * 1000000);
+        unsigned z = unsigned(y * 1000000 * 10);
         skyq.push_back(z);
       }
       fclose(in);
