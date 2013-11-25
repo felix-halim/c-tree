@@ -14,7 +14,11 @@ int wtmp[BATCH];
 map<int, int> next;
 map<int, int> root;
 
-int get_root(int t) { return root[t] = root.count(t) ? get_root(root[t]) : t; }
+int get_root(int t) {
+  if (!root.count(t)) return root[t] = t;
+  int nr = get_root(root[t]);
+  return root[t] = nr;
+}
 
 int main() {
   FILE *in = fopen("data/skyserver.data", "rb");
