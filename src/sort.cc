@@ -2,30 +2,30 @@
 #include <cassert>
 #include "test.h"
 
-int *arr, N;
+unsigned *arr, N;
 double t;
 
-void init(int *iarr, int iN) {
+void init(unsigned *iarr, unsigned iN) {
   t = time_it([&] {
     N = iN;
-    arr = new int[N];
+    arr = new unsigned[N];
     for (int i = 0; i < N; i++)
       arr[i] = iarr[i];
   });
   sort(arr, arr + N);
 }
 
-void insert(int value) {}
-void erase(int value) {}
+void insert(unsigned value) {}
+void erase(unsigned value) {}
 
-int lower_bound(int value) {
+unsigned lower_bound(unsigned value) {
   auto it = lower_bound(arr, arr + N, value);
   return (it == arr + N) ? 0 : *it;
 }
 
-int select(int a, int b) {
-  int i1 = lower_bound(arr, arr + N, a) - arr;
-  int i2 = lower_bound(arr, arr + N, b) - arr;
+unsigned select(unsigned a, unsigned b) {
+  unsigned i1 = lower_bound(arr, arr + N, a) - arr;
+  unsigned i2 = lower_bound(arr, arr + N, b) - arr;
   return ((i1 == N) ? 0 : arr[i1]) + ((i2 == N) ? 0 : arr[i2]);
 }
 
