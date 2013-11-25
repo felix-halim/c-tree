@@ -5,13 +5,15 @@
 #include <map>
 #include <algorithm>
 
+#include "src/comb.h"
+
 using namespace std;
 
 #define BATCH 10000000
 
 int tmp[BATCH] = { 0 };
 int wtmp[BATCH];
-map<int, int> cnt;
+Comb<int> cnt;
 
 int main() {
   FILE *in = fopen("data/skyserver.data", "rb");
@@ -22,20 +24,25 @@ int main() {
     int N = fread(tmp, sizeof(int), BATCH, in);
     int ntmp = 0;
     for (int i = 0; i < N; i++, nth++) {
-      int t = tmp[i] * 5;
+      int t = tmp[i] * 5, tt;
       int ninc = 0;
-      while (cnt.count(t)) {
+      while (true) {
+        auto it = cnt.lower_bound(t);
+        if (!it.next(tt) && tt != t) break;
         t++;
         ninc++;
       }
+      cnt.insert(t);
+
       if (ninc > 10000) {
-        fprintf(stderr, "?");
+        fprintf(stderr, "X");
       } else if (ninc > 1000) {
-        fprintf(stderr, ";");
+        fprintf(stderr, "?");
       } else if (ninc > 100) {
+        fprintf(stderr, ";");
+      } else if (ninc > 10) {
         fprintf(stderr, ".");
       }
-      cnt[t] = 1;
       wtmp[ntmp++] = t;
     }
     fwrite(wtmp, sizeof(int), ntmp, out);
