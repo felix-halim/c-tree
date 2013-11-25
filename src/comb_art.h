@@ -877,8 +877,9 @@ public:
     return isLeaf(next) ? getLeafValue(next) : 0;
   }
 
-  void statistics(std::function<void(int, int, int, int, int, int, int, int, int, int, int, int, int)> cb) {
-    int n_bytes = 0, n_slack_art = 0, n_slack_leaves = 0, n_chain = 0, n_internal = 0,
+  void statistics(std::function<void(int, long long, int, int, int, int, int, int, int, int, int, int, int)> cb) {
+    long long n_bytes = 0;
+    int n_slack_art = 0, n_slack_leaves = 0, n_chain = 0, n_internal = 0,
         n_leaf = 0, art_n4 = 0, art_n16 = 0, art_n48 = 0, art_n256 = 0;
 
     art_visit(tree, [&](Node *n) {

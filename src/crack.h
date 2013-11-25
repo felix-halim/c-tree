@@ -56,13 +56,13 @@ struct CIndex {
   int prev_pos() const { return pos - holes; }
 };
 
-typedef int value_type;                   // the data element value type (can be int or long long)
+typedef unsigned value_type;                   // the data element value type (can be int or long long)
 typedef map<value_type, CIndex> ci_type;  // cracker[cracker_value] = (cracker_index, cracker_holes)
 typedef ci_type::iterator ci_iter;        // the iterator type for the cracker
 
-multiset<int> pins, pdel; // pending updates (insert / delete)
-int *arr, N;              // the dataset array
-int *marr, msize;         // for materialization
+multiset<value_type> pins, pdel; // pending updates (insert / delete)
+unsigned *arr; int N;              // the dataset array
+unsigned *marr; int msize;         // for materialization
 ci_type ci;               // the cracker index
 
 int partition(value_type *arr, value_type v, int L, int R){
@@ -142,7 +142,8 @@ void print_all(ci_type &ci, value_type *arr, int &N, multiset<int> &pending_inse
 
 void check(ci_type &ci, value_type *arr, int &N, multiset<int> &pending_insert, multiset<int> &pending_delete){
 //  fprintf(stderr,"CHECKING\n");
-  int idx = 0, lo = 0;
+  int idx = 0;
+  value_type lo = 0;
   assert(pending_insert.empty() || *pending_insert.begin() != -1);
   assert(pending_delete.empty() || *pending_delete.begin() != -1);
   for (ci_iter it=ci.begin(); it!=ci.end(); it++){
@@ -158,7 +159,7 @@ void check(ci_type &ci, value_type *arr, int &N, multiset<int> &pending_insert, 
       fprintf(stderr,"%d %d %d, N = %d\n",it->first,it->second.pos,it->second.holes,N);
     assert(it->second.pos < N);
     REP(j,it->second.prev_pos() - idx){
-      if (it->second.sorted && j && arr[idx-1]!=-1 && arr[idx]!=-1){
+      if (it->second.sorted && j && arr[idx-1] && arr[idx]){
         if (!(arr[idx-1] < arr[idx])){
           print_all(ci,arr,N,pending_insert,pending_delete,99);
           fprintf(stderr,"idx = %d",idx);
@@ -178,7 +179,7 @@ void check(ci_type &ci, value_type *arr, int &N, multiset<int> &pending_insert, 
       idx++;
     }
     REP(j,it->second.holes){
-      assert(arr[it->second.pos - j - 1] == -1);
+      assert(arr[it->second.pos - j - 1]);
     }
     lo = it->first;
     idx = it->second.pos;
@@ -334,7 +335,7 @@ bool piece_is_empty(ci_type &ci, ci_iter &it2){
   return true;
 }
 
-void do_merge_ripple_insert(ci_type &ci, value_type *arr, int &N, multiset<int> &pending_insert, multiset<int> &pending_delete, value_type a, value_type b, value_type &new_hi){
+void do_merge_ripple_insert(ci_type &ci, value_type *arr, int &N, multiset<value_type> &pending_insert, multiset<value_type> &pending_delete, value_type a, value_type b, value_type &new_hi){
 //  fprintf(stderr,"domri\n");
 //  check(ci,arr,N,pending_insert,pending_delete);
   int L1,R1; ci_iter it1 = find_piece(ci, N, a, L1,R1);
@@ -470,7 +471,7 @@ void do_merge_ripple_insert(ci_type &ci, value_type *arr, int &N, multiset<int> 
 //  check(ci,arr,N,pending_insert,pending_delete);
 }
 
-void do_merge_ripple_delete(ci_type &ci, value_type *arr, int &N, multiset<int> &pending_insert, multiset<int> &pending_delete, value_type a, value_type b){
+void do_merge_ripple_delete(ci_type &ci, value_type *arr, int &N, multiset<value_type> &pending_insert, multiset<value_type> &pending_delete, value_type a, value_type b){
 //  check(ci,arr,N,pending_insert,pending_delete);
   int L1,R1; ci_iter it1 = find_piece(ci, N, a, L1,R1);
   int L2,R2; ci_iter it2 = find_piece(ci, N, b, L2,R2);
@@ -570,7 +571,7 @@ void do_merge_ripple_delete(ci_type &ci, value_type *arr, int &N, multiset<int> 
 }
 
 // this is to make all qualifying tuples in range [a,b) are inside the main array
-int merge_ripple(ci_type &ci, value_type *arr, int &N, multiset<int> &pins, multiset<int> &pdel, value_type a, value_type b){
+int merge_ripple(ci_type &ci, value_type *arr, int &N, multiset<value_type> &pins, multiset<value_type> &pdel, value_type a, value_type b){
   if (!pins.size() && !pdel.size()) return -1;
   value_type new_hi = -1;
 
