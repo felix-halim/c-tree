@@ -14,7 +14,7 @@ using namespace std;
 Node* tree = NULL;
 
 void init(unsigned *arr, unsigned N) {
-  for (int i = 0; i < N; i++) {
+  for (int i = 0; i < (int) N; i++) {
     insert(arr[i]);
   }
   // fprintf(stderr, "hash = %llu\n", (unsigned long long) hash_tree(tree));
@@ -59,7 +59,7 @@ unsigned select(unsigned a, unsigned b) {
 
 void results(Statistics &s) {
   s.n_bytes = 0;
-  s.n_slack_art = 0;
+  s.n_slack_int = 0;
   s.n_internal = 0,
   s.n_leaf = 0;
   s.art_n4 = 0;
@@ -79,28 +79,28 @@ void results(Statistics &s) {
       switch (n->type) {
         case NodeType4: {
            Node4* node = static_cast<Node4*>(n);
-           s.n_slack_art += 4 - node->count;
+           s.n_slack_int += 4 - node->count;
            s.art_n4++;
            s.n_bytes += sizeof(NodeType4);
            break;
         }
         case NodeType16: {
            Node16* node=static_cast<Node16*>(n);
-           s.n_slack_art += 16 - node->count;
+           s.n_slack_int += 16 - node->count;
            s.art_n16++;
            s.n_bytes += sizeof(NodeType16);
            break;
         }
         case NodeType48: {
            Node48* node=static_cast<Node48*>(n);
-           s.n_slack_art += 48 - node->count;
+           s.n_slack_int += 48 - node->count;
            s.art_n48++;
            s.n_bytes += sizeof(NodeType48);
            break;
         }
         case NodeType256: {
            Node256* node=static_cast<Node256*>(n);
-           s.n_slack_art += 256 - node->count;
+           s.n_slack_int += 256 - node->count;
            s.art_n256++;
            s.n_bytes += sizeof(NodeType256);
            break;
