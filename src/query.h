@@ -9,6 +9,27 @@
 
 using namespace std;
 
+const char* workload_name[18] = {
+  "SkyServer",     // 0
+  "Random",        // 1
+  "SeqOver",       // 2
+  "SeqInv",        // 3
+  "SeqRand",       // 4
+  "SeqNoOver",     // 5
+  "SeqAlt",        // 6
+  "ConsRandom",    // 7
+  "ZoomIn",        // 8
+  "ZoomOut",       // 9
+  "SeqZoomIn",     // 10
+  "SeqZoomOut",    // 11
+  "Skew",          // 12
+  "ZoomOutAlt",    // 13
+  "SkewZoomOutAlt",// 14
+  "Periodic",      // 15
+  "Mixed",         // 16
+  "Domain"         // 17
+};
+
 class Workload {
   unsigned N;    // The number of elements in arr.
   int W;    // The selected workload to be generated.
@@ -23,27 +44,6 @@ class Workload {
 
   mt19937 gen;
   uniform_int_distribution<> dis;
-
-  string workload_name[18] {
-    "SkyServer",     // 0
-    "Random",        // 1
-    "SeqOver",       // 2
-    "SeqInv",        // 3
-    "SeqRand",       // 4
-    "SeqNoOver",     // 5
-    "SeqAlt",        // 6
-    "ConsRandom",    // 7
-    "ZoomIn",        // 8
-    "ZoomOut",       // 9
-    "SeqZoomIn",     // 10
-    "SeqZoomOut",    // 11
-    "Skew",          // 12
-    "ZoomOutAlt",    // 13
-    "SkewZoomOutAlt",// 14
-    "Periodic",      // 15
-    "Mixed",         // 16
-    "Domain"         // 17
-  };
 
   int nextInt(int modulo) {
     return dis(gen) % modulo;

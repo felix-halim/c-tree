@@ -8,6 +8,19 @@
 
 using namespace std;
 
+const char* update_workload[10] = {
+  "NOUP",   // 0. Read only queries.
+  "LFHV",   // 1. Update 1000 tuples every 1000 queries.
+  "HFLV",   // 2. Update 10 tuples every 10 queries.
+  "QUEUE",  // 3. Remove the largest value, insert new smaller value than any existing value.
+  "TRASH",  // 4. Insert values in the middle of the domain.
+  "DELETE", // 5. Delete 1000 tuples every 1000 queries.
+  "APPENDSKY", // 6. Insert 100K tuples every query. 
+  "APPEND", // 7. Insert 100K tuples every query. 
+  "APPEND", // 8. Insert 10 tuples every 10 query. 
+  "SKEW",   // 9. LFHV but on 20% domain only.
+};
+
 class Update {
   vector<unsigned> arr;
   FILE *in;
@@ -18,19 +31,6 @@ class Update {
 
   mt19937 gen;
   uniform_int_distribution<> dis;
-
-  string update_workload[10] {
-    "NOUP",   // 0. Read only queries.
-    "LFHV",   // 1. Update 1000 tuples every 1000 queries.
-    "HFLV",   // 2. Update 10 tuples every 10 queries.
-    "QUEUE",  // 3. Remove the largest value, insert new smaller value than any existing value.
-    "TRASH",  // 4. Insert values in the middle of the domain.
-    "DELETE", // 5. Delete 1000 tuples every 1000 queries.
-    "APPENDSKY", // 6. Insert 100K tuples every query. 
-    "APPEND", // 7. Insert 100K tuples every query. 
-    "APPEND", // 8. Insert 10 tuples every 10 query. 
-    "SKEW",   // 9. LFHV but on 20% domain only.
-  };
 
  public:
 
