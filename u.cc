@@ -32,20 +32,14 @@ int main() {
     int N = fread(tmp, sizeof(int), BATCH, in);
     int ntmp = 0;
     for (int i = 0; i < N; i++, nth++) {
-      fprintf(stderr, "i0 = %d, tmp = %d\n", nth, tmp[i]);
       int r = get_root(tmp[i]);
-      fprintf(stderr, "i = %d, r = %d\n", nth, r);
       int t = next.count(r) ? next[r] : r;
-      fprintf(stderr, "i1 = %d, r = %d\n", nth, r);
       assert(t >= 0);
       int nr = get_root(t + 1);
-      fprintf(stderr, "i2 = %d, r = %d\n", nth, r);
       int nt = next.count(nr) ? next[nr] : nr;
-      fprintf(stderr, "i3 = %d, r = %d\n", nth, r);
       root[nr] = r;
       next[r] = nt;
       wtmp[ntmp++] = t;
-      fprintf(stderr, "i4 = %d, r = %d\n", nth, r);
     }
     fwrite(wtmp, sizeof(int), ntmp, out);
     fflush(out);
