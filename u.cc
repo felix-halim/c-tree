@@ -16,7 +16,9 @@ map<int, int> root;
 
 int get_root(int t) {
   if (!root.count(t)) return root[t] = t;
-  int nr = get_root(root[t]);
+  int r = root[t];
+  if (r == t) return t;
+  int nr = get_root(r);
   return root[t] = nr;
 }
 
