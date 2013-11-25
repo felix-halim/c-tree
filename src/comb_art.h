@@ -889,11 +889,11 @@ public:
         if (isPointer(v)) {
           Bucket<T> *b = (Bucket<T>*) v;
           if (b->large_type) {
-            n_bytes += sizeof(LargeBucket<T>);
             LargeBucket<T> *lb = (LargeBucket<T>*) b;
             n_slack_leaves += lb->slack();
             n_chain--;
             while (lb) {
+              n_bytes += sizeof(LargeBucket<T>);
               lb = lb->next();
               n_chain++;
             }
