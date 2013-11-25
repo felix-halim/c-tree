@@ -29,7 +29,7 @@ int main() {
         ndup++;
 
         int ninc = 0;
-        while (next.count(t)) t++, ninc++;
+        while (next.count(t)) t = t[next], ninc++;
         if (ninc > 100) {
           fprintf(stderr, ".");
         } else if (ninc > 1000) {
