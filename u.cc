@@ -11,42 +11,40 @@ using namespace std;
 
 int tmp[BATCH] = { 0 };
 int wtmp[BATCH];
-map<int, int> s;
+map<int, int> next;
 
 int main() {
   FILE *in = fopen("data/skyserver.data", "rb");
   FILE *out = fopen("data/skyserver.udata", "wb");
   assert(in);
   assert(out);
-  int ndup = 0, dup_max = 0;
+  int ndup = 0;
   for (int nth = 0; !feof(in); ) {
     int N = fread(tmp, sizeof(int), BATCH, in);
     int nt = 0;
     for (int i = 0; i < N; i++, nth++) {
       int t = tmp[i];
-      // printf("%d ", tmp[i]);
-      if (s.count(t)) {
-        s[t]++;
-        dup_max = max(dup_max, s[t]);
+      if (next.count(t)) {
+        t = next[t];
         ndup++;
 
         int ninc = 0;
-        while (s.count(t)) t++, ninc++;
-        if (ninc > 1000) {
+        while (next.count(t)) t++, ninc++;
+        if (ninc > 100) {
           fprintf(stderr, ".");
-        } else if (ninc > 10000) {
+        } else if (ninc > 1000) {
           fprintf(stderr, "x");
-        } else if (ninc > 100000) {
+        } else if (ninc > 10000) {
           fprintf(stderr, "z");
         }
       }
-      assert(!s.count(t) && t >= 0);
-      s[t] = 1;
+      assert(!next.count(t) && t >= 0);
+      next[tmp[i]] = t + 1;
       wtmp[nt++] = t;
     }
     fwrite(wtmp, sizeof(int), nt, out);
     fflush(out);
-    fprintf(stderr, "%d. ndup = %d, size = %lu, dup_max = %d.\n", nth, ndup, s.size(), dup_max);
+    fprintf(stderr, "%d. ndup = %d, size = %lu.\n", nth, ndup, s.size());
   }
   fclose(out);
   if (ferror(in)) { fprintf(stderr,"Error reading file!\n"); }
