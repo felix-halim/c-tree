@@ -44,7 +44,7 @@ int main() {
     }
     fwrite(wtmp, sizeof(int), nt, out);
     fflush(out);
-    fprintf(stderr, "%d. ndup = %d, size = %lu.\n", nth, ndup, s.size());
+    fprintf(stderr, "%d. ndup = %d, size = %lu.\n", nth, ndup, next.size());
   }
   fclose(out);
   if (ferror(in)) { fprintf(stderr,"Error reading file!\n"); }
