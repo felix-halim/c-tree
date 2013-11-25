@@ -14,8 +14,8 @@ long long wtmp[BATCH];
 map<int, int> s;
 
 int main() {
-  FILE *in = fopen("data/skyserver.udata", "rb");
-  FILE *out = fopen("data/skyserver.udata2", "wb");
+  FILE *in = fopen("data/skyserver.data", "rb");
+  FILE *out = fopen("data/skyserver.udata", "wb");
   assert(in);
   assert(out);
   int ndup = 0, dup_max = 0;
@@ -32,7 +32,6 @@ int main() {
 
         int ninc = 0;
         while (s.count(t)) t++, ninc++;
-        s[t]++;
         if (ninc > 100) {
           fprintf(stderr, ".");
         } else if (ninc > 1000) {
@@ -40,16 +39,14 @@ int main() {
         } else if (ninc > 10000) {
           fprintf(stderr, "z");
         }
-        wtmp[nt++] = t;
-      } else {
-        s[t] = 1;
-        wtmp[nt++] = t;
       }
+      assert(!s.count(t) && t >= 0);
+      s[t] = 1;
+      wtmp[nt++] = t;
     }
-    if (nt > 0) {
-      fwrite(wtmp, sizeof(int), nt, out);
-      fflush(out);
-    }
+    assert(nt == BATCH);
+    fwrite(wtmp, sizeof(int), nt, out);
+    fflush(out);
     fprintf(stderr, "%d. ndup = %d, size = %lu, dup_max = %d.\n", nth, ndup, s.size(), dup_max);
   }
   fclose(out);
