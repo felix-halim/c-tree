@@ -30,7 +30,7 @@ int main() {
     int N = fread(tmp, sizeof(int), BATCH, in);
     int ntmp = 0;
     for (int i = 0; i < N; i++, nth++) {
-      fprintf(stderr, "i0 = %d\n", nth);
+      fprintf(stderr, "i0 = %d, tmp = %d\n", nth, tmp[i]);
       int r = get_root(tmp[i]);
       fprintf(stderr, "i = %d, r = %d\n", nth, r);
       int t = next.count(r) ? next[r] : r;
