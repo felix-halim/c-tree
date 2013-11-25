@@ -28,7 +28,7 @@ int main() {
       int ninc = 0;
       while (true) {
         auto it = cnt.lower_bound(t);
-        if (!it.next(tt) && tt != t) break;
+        if (!it.next(tt) || tt != t) break;
         t++;
         ninc++;
       }
