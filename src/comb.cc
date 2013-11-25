@@ -34,7 +34,7 @@ void erase(unsigned value) {
 unsigned lower_bound(unsigned value) {
   unsigned val = 0;
   unsigned ret = c.lower_bound(value).next(val) ? val : 0;
-  fprintf(stdout, "%d (%d)\n", ret, value);
+  // fprintf(stdout, "%d (%d)\n", ret, value);
   return ret;
 }
 
