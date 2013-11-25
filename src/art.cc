@@ -70,9 +70,6 @@ void results(Statistics &s) {
   art_visit(tree, [&](Node *n) {
     if (isLeaf(n)) {
       s.n_leaf++;
-      uintptr_t v = getData((uintptr_t) n);
-      assert(v);
-      assert(!isPointer(v));
       s.n_bytes += sizeof(uintptr_t);
     } else {
       s.n_internal++;
