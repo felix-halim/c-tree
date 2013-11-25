@@ -31,6 +31,7 @@ int main() {
     int ntmp = 0;
     for (int i = 0; i < N; i++, nth++) {
       int r = get_root(tmp[i]);
+      fprintf(stderr, "i = %d, r = %d\n", nth, r);
       int t = next.count(r) ? next[r] : r;
       assert(t >= 0);
       int nr = get_root(t + 1);
