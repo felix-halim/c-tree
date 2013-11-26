@@ -79,45 +79,24 @@ n_leaves,n_capacity,n_internals,max_depth,slack,in_size,ln_size,ia_free,ia_size,
               echo "';" >> data.js
               ;;
 
-batch_slb)
-              ./run.sh algo comb_art_1000000000_1000000000 0.000001 1 | tee -a $out
-              # ./run.sh algo comb_art_0_0 0.000001 1 | tee -a $out
-              # ./run.sh algo comb_art_1_0 0.000001 1 | tee -a $out
-              # ./run.sh algo comb_art_1_1 0.000001 1 | tee -a $out
-              # ./run.sh algo comb_art_1_10 0.000001 1 | tee -a $out
-              # ./run.sh algo comb_art_1_100 0.000001 1 | tee -a $out
-              # ./run.sh algo comb_art_1_1000 0.000001 1 | tee -a $out
-              # ./run.sh algo comb_art_10_1 0.000001 1 | tee -a $out
-              # ./run.sh algo comb_art_10_10 0.000001 1 | tee -a $out
-              # ./run.sh algo comb_art_10_100 0.000001 1 | tee -a $out
-              # ./run.sh algo comb_art_10_1000 0.000001 1 | tee -a $out
-              # ./run.sh algo comb_art_100_1 0.000001 1 | tee -a $out
-              # ./run.sh algo comb_art_100_10 0.000001 1 | tee -a $out
-              # ./run.sh algo comb_art_100_100 0.000001 1 | tee -a $out
-              # ./run.sh algo comb_art_100_1000 0.000001 1 | tee -a $out
-              # ./run.sh algo comb_art_1000_1 0.000001 1 | tee -a $out
-              # ./run.sh algo comb_art_1000_10 0.000001 1 | tee -a $out
-              # ./run.sh algo comb_art_1000_100 0.000001 1 | tee -a $out
-              # ./run.sh algo comb_art_1000_1000 0.000001 1 | tee -a $out
+batch_sela)
+              ./run.sh batch_sel mdd1r 0
+              ./run.sh batch_sel comb_art_10_10 0
+              ./run.sh batch_sel art_best_eager 0
+              ./run.sh batch_sel mdd1r 1
+              ./run.sh batch_sel comb_art_10_10 1
+              ./run.sh batch_sel art_best_eager 1
               ;;
 
 batch_sel) 
-              ./run.sh algo comb_art 0.000001 0 | tee -a $out
-              ./run.sh algo comb_art 0.00001 0 | tee -a $out
-              ./run.sh algo comb_art 0.0001 0 | tee -a $out
-              ./run.sh algo comb_art 0.001 0 | tee -a $out
-              ./run.sh algo comb_art 0.01 0 | tee -a $out
-              ./run.sh algo comb_art 0.1 0 | tee -a $out
-              ./run.sh algo comb_art 0.5 0 | tee -a $out
-              ./run.sh algo comb_art 0.9 0 | tee -a $out
-              # ./run.sh append crack_count 0.000001 | tee -a $out
-              # ./run.sh append crack_count 0.00001 | tee -a $out
-              # ./run.sh append crack_count 0.0001 | tee -a $out
-              # ./run.sh append crack_count 0.001 | tee -a $out
-              # ./run.sh append crack_count 0.01 | tee -a $out
-              # ./run.sh append crack_count 0.1 | tee -a $out
-              ./run.sh append crack_count 0.5 | tee -a $out
-              ./run.sh append crack_count 0.9 | tee -a $out
+              ./run.sh algo $2 0.000001 $3 | tee -a $out
+              ./run.sh algo $2 0.00001 $3 | tee -a $out
+              ./run.sh algo $2 0.0001 $3 | tee -a $out
+              ./run.sh algo $2 0.001 $3 | tee -a $out
+              ./run.sh algo $2 0.01 $3 | tee -a $out
+              ./run.sh algo $2 0.1 $3 | tee -a $out
+              ./run.sh algo $2 0.5 $3 | tee -a $out
+              ./run.sh algo $2 0.9 $3 | tee -a $out
               ;;
 
 batch_noup)   ./run.sh seq comb 0 | tee -a $out

@@ -4,8 +4,9 @@
 <meta charset="utf-8">
 <script src="d3.v3.min.js"></script>
 <script src="linechart2.js?1"></script>
+<script src="jquery-2.0.3.min.js"></script>
 <script>
-var opts_arr = [], opts_selected = 0;
+var opts_arr = [], opts_selected = 2;
 
 d3.csv('results.csv')
 
@@ -61,6 +62,7 @@ d3.csv('results.csv')
     s += '<option value="' + ith + '">' + opts.title + '</option>';
   });
   document.getElementById('graph-selections').innerHTML = s;
+  document.getElementById('graph-selections').selectedIndex = opts_selected;
   opts_changed();
 });
 
@@ -73,8 +75,8 @@ function render() {
 }
 
 function opts_changed() {
-  var i = document.getElementById('graph-selections').selectedIndex;
-  document.getElementById('config').value = opts_arr[i];
+  opts_selected = document.getElementById('graph-selections').selectedIndex;
+  document.getElementById('config').value = opts_arr[opts_selected];
   render();
 }
 
@@ -93,19 +95,21 @@ function dl() {
 <div style="float:left; margin:auto">
   <form id="svg2pdf" method="post" action="http://uhunt2.felix-halim.net:8000/svg2pdf">
     <input type="text" id="p" name="p" value="" hidden>
-    <button style="float:right; margin-right:30px" onclick="dl()">Save as PDF</button>
     Graph: <select id="graph-selections" onchange="opts_changed()"></select>
   </form>
   <div id="chart" style="width:500px; height:300px;"></div>
+  <br>
+  <center>
+  <button style="" onclick="dl()">Save as PDF</button>
+  </center>
 </div>
 
 <table id="dimensions" style="display:none" border="0"></table>
 
 <textarea id="config" rows="30" cols="150" style="font-size:12px; clear:both"></textarea>
 
-<script type="text/plain" class="graph">
-{
-  title: 'Vary #Touch',
+<script type="text/plain" class="graph">{
+  title: 'Vary #Touch NOUP',
   description: 'On random workload, without updates, it is preferable to not transit to ART. Stays in the cracked large bucket state. TRIMMER-X, X is the number of touches before the elements in the large bucket is merged to the ART root array.',
   width: 350, height: 300,
   xAxis: {
@@ -121,9 +125,9 @@ function dl() {
     label: 'Ratio to ART',
     attr: 'total_time',
     scale: 'log',
-    domain: [0.04, 3],
+    domain: [0.04, 4],
     format: '',
-    ticks: [0.05, 0.06, 0.07, 0.08, 0.09, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 2, 3],
+    ticks: [0.05, 0.06, 0.07, 0.08, 0.09, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 2, 3, 4],
     margin: 40
   },
   base: 'art_best_eager',
@@ -132,16 +136,92 @@ function dl() {
     values : [
       { label: [      'ART',   20,  50], color: 'green', line: '', value:['art_best_eager', 'Random', 'NOUP', 100000000] },
       { label: ['TRIMMER-0',  120, 145], color:  'red', line: '', value:['comb_art_0_0', 'Random', 'NOUP', 100000000] },
-      { label: ['TRIMMER-1',  120, 160], color:  'lime', line: '', value:['comb_art_1_1', 'Random', 'NOUP', 100000000] },
-      { label: ['TRIMMER-10',  120, 175], color:  'blue', line: '', value:['comb_art_10_1', 'Random', 'NOUP', 100000000] },
-      { label: ['TRIMMER-100',  120, 190], color:  'orange', line: '', value:['comb_art_100_1', 'Random', 'NOUP', 100000000] },
-      { label: ['TRIMMER-1000',  120, 205], color:  'black', line: '', value:['comb_art_1000_1', 'Random', 'NOUP', 100000000] },
+//      { label: ['TRIMMER-1',  120, 150], color:  'lime', line: '', value:['comb_art_1_1', 'Random', 'NOUP', 100000000] },
+      { label: ['TRIMMER-10',  120, 165], color:  'blue', line: '', value:['comb_art_10_1', 'Random', 'NOUP', 100000000] },
+//      { label: ['TRIMMER-100',  120, 180], color:  'orange', line: '', value:['comb_art_100_1', 'Random', 'NOUP', 100000000] },
+//      { label: ['TRIMMER-1000',  120, 195], color:  'magenta', line: '', value:['comb_art_1000_1', 'Random', 'NOUP', 100000000] },
+      { label: ['TRIMMER-INF',  120, 185], color:  'black', line: '', value:['comb_art_1000000000_1000000000', 'Random', 'NOUP', 100000000] },
     ],
     group_by: 'algorithm',
   },
 }
 </script>
 
+<script type="text/plain" class="graph">{
+  title: 'Vary #Touch LFHV',
+  description: 'On random workload, with LFHV updates, it is preferable to transit to ART because Large bucket still has some overheads for updates. TRIMMER-X, X is the number of touches before the elements in the large bucket is merged to the ART root array.',
+  width: 350, height: 300,
+  xAxis: {
+    label: 'Query Sequence',
+    attr: 'Q',
+    scale: 'log',
+    domain: [0.5, 2e9],
+    format: 'pow10',
+    ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9],
+    margin: 40,
+  },
+  yAxis: {
+    label: 'Ratio to ART',
+    attr: 'total_time',
+    scale: 'log',
+    domain: [0.04, 4],
+    format: '',
+    ticks: [0.05, 0.06, 0.07, 0.08, 0.09, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 2, 3, 4],
+    margin: 40
+  },
+  base: 'art_best_eager',
+  lines: {
+    fields : ['algorithm', 'query_workload', 'update_workload', 'N'],
+    values : [
+      { label: [      'ART',   20,  50], color: 'green', line: '', value:['art_best_eager', 'Random', 'LFHV', 100000000] },
+      { label: ['TRIMMER-0',  120, 145], color:  'red', line: '', value:['comb_art_0_0', 'Random', 'LFHV', 100000000] },
+//      { label: ['TRIMMER-1',  120, 150], color:  'lime', line: '', value:['comb_art_1_1', 'Random', 'LFHV', 100000000] },
+      { label: ['TRIMMER-10',  120, 165], color:  'blue', line: '', value:['comb_art_10_1', 'Random', 'LFHV', 100000000] },
+//      { label: ['TRIMMER-100',  120, 180], color:  'orange', line: '', value:['comb_art_100_1', 'Random', 'LFHV', 100000000] },
+//      { label: ['TRIMMER-1000',  120, 195], color:  'magenta', line: '', value:['comb_art_1000_1', 'Random', 'LFHV', 100000000] },
+      { label: ['TRIMMER-INF',  120, 185], color:  'black', line: '', value:['comb_art_1000000000_1000000000', 'Random', 'LFHV', 100000000] },
+    ],
+    group_by: 'algorithm',
+  },
+}
+</script>
+
+<script type="text/plain" class="graph">{
+  title: 'Insignificant Small Bucket',
+  description: 'Transiting to small buckets does not give significant benefits.',
+  width: 350, height: 300,
+  xAxis: {
+    label: 'Query Sequence',
+    attr: 'Q',
+    scale: 'log',
+    domain: [0.5, 2e9],
+    format: 'pow10',
+    ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9],
+    margin: 40,
+  },
+  yAxis: {
+    label: 'Ratio to ART',
+    attr: 'total_time',
+    scale: 'log',
+    domain: [0.04, 4],
+    format: '',
+    ticks: [0.05, 0.06, 0.07, 0.08, 0.09, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 2, 3, 4],
+    margin: 40
+  },
+  base: 'art_best_eager',
+  lines: {
+    fields : ['algorithm', 'query_workload', 'update_workload', 'N'],
+    values : [
+      { label: [      'ART',   20,  50], color: 'green', line: '', value:['art_best_eager', 'Random', 'LFHV', 100000000] },
+      { label: ['TRIMMER-1-0',  110, 145], color:  'red', line: '', value:['comb_art_1_0', 'Random', 'LFHV', 100000000] },
+      { label: ['TRIMMER-1-10',  110, 165], color:  'blue', line: '', value:['comb_art_1_10', 'Random', 'LFHV', 100000000] },
+//      { label: ['TRIMMER-100',  110, 180], color:  'orange', line: '', value:['comb_art_1_100', 'Random', 'LFHV', 100000000] },
+      { label: ['TRIMMER-1-1000',  110, 185], color:  'black', line: '', value:['comb_art_1_1000', 'Random', 'LFHV', 100000000] },
+    ],
+    group_by: 'algorithm',
+  },
+}
+</script>
 
 <br>
 <br>
