@@ -4,7 +4,8 @@
 
 - For Fig 17, don't we need other algorithms in there, eg. scrack, btree
 - Streaming insert
-Also memory usage
+- Also memory usage
+- different selectivity for scrack
 
 */
 function renderLinecharts() {

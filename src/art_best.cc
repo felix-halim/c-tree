@@ -1,7 +1,7 @@
 #include <cstdio>
 #include <cassert>
 #include <algorithm>
-#include "art_best.h"
+#include "art.h"
 #include "test.h"
 
 inline uintptr_t getLeafValue(Node* node) {
@@ -25,7 +25,8 @@ void init(unsigned *arr, unsigned N) {
 void insert(unsigned value64) {
   uint8_t key[8];
   loadKey(value64, key);
-  insert(&tree,key,0,value64,8);
+  // insert(&tree,key,0,value64,8);
+  insert(tree,&tree,key,0,value64,8);
 }
 
 void erase(unsigned value) {
@@ -33,6 +34,7 @@ void erase(unsigned value) {
   uint64_t value64 = value;
   loadKey(value64, key);
   // assert(lookup(&tree,key,8,0,8));
+  // erase(tree,&tree,key,8,0,8);
   erase(tree,&tree,key,8,0,8);
   // assert(!lookup(&tree,key,8,0,8));
 }
