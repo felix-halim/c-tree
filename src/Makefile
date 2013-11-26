@@ -56,7 +56,7 @@ $(ODIR)/comb: comb.cc comb.h test.h update.h query.h util.h
 $(ODIR)/comb3: comb3.cc comb3.h test.h update.h query.h util.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DCOMB6400 -Wall -o $@ $<
 
-$(ODIR)/comb_art_-1_0: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
+$(ODIR)/comb_art_1000000000_1000000000: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DLARGE_TOUCH=1000000000 -DSMALL_TOUCH=1000000000 -Wall -o $@ $<
 
 $(ODIR)/comb_art_0_0: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
