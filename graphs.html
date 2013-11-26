@@ -3,8 +3,11 @@
 <head>
 <meta charset="utf-8">
 <script src="d3.v3.min.js"></script>
+<script src="linechart2.js?1"></script>
 <script>
-d3.csv('http://localhost:8080/results.csv')
+var opts_arr = [], opts_selected = 0;
+
+d3.csv('results.csv')
 
 .row(function (d) {
   d.Q = +d.Q;
@@ -49,16 +52,31 @@ d3.csv('http://localhost:8080/results.csv')
 
   document.getElementById('dimensions').innerHTML = s;
   document.getElementById('config').addEventListener('input', render, false);
-  render();
 
-  function render() {
-    var ta = document.getElementById('config');
-    eval('var opts = ' + ta.value);
-    var svg = document.getElementById('chart');
-    while (svg.firstChild) svg.removeChild(svg.firstChild);
-    linechart(svg, opts);
-  }
+  var graphs = document.getElementsByClassName('graph');
+  var s = '';
+  Array.prototype.forEach.call(graphs, function (src, ith) {
+    eval('var opts = ' + src.innerText);
+    opts_arr.push(src.innerText);
+    s += '<option value="' + ith + '">' + opts.title + '</option>';
+  });
+  document.getElementById('graph-selections').innerHTML = s;
+  opts_changed();
 });
+
+function render() {
+  var ta = document.getElementById('config');
+  eval('var opts = ' + ta.value);
+  var svg = document.getElementById('chart');
+  while (svg.firstChild) svg.removeChild(svg.firstChild);
+  linechart(svg, opts);
+}
+
+function opts_changed() {
+  var i = document.getElementById('graph-selections').selectedIndex;
+  document.getElementById('config').value = opts_arr[i];
+  render();
+}
 
 function dl() {
   var svg = document.getElementById('chart');
@@ -66,8 +84,6 @@ function dl() {
   $('#svg2pdf').submit();
 }
 </script>
-<script src="linechart.js?13"></script>
-<script src="jquery-2.0.3.min.js"></script>
 </head>
 
 
@@ -75,21 +91,23 @@ function dl() {
 
 
 <div style="float:left; margin:auto">
-  <div id="chart" style="width:500px; height:300px;"></div>
   <form id="svg2pdf" method="post" action="http://uhunt2.felix-halim.net:8000/svg2pdf">
     <input type="text" id="p" name="p" value="" hidden>
-    <br>
-    <center>
-    <button style="clear:both; margin:auto" onclick="dl()">Save as PDF</button>
-    </center>
+    <button style="float:right; margin-right:30px" onclick="dl()">Save as PDF</button>
+    Graph: <select id="graph-selections" onchange="opts_changed()"></select>
   </form>
+  <div id="chart" style="width:500px; height:300px;"></div>
 </div>
 
-<table id="dimensions" style="" border="0"></table>
+<table id="dimensions" style="display:none" border="0"></table>
 
-<textarea id="config" rows="30" cols="150" style="font-size:12px; clear:both">
+<textarea id="config" rows="30" cols="150" style="font-size:12px; clear:both"></textarea>
+
+<script type="text/plain" class="graph">
 {
-  width: 475, height: 300,
+  title: 'Vary #Touch',
+  description: 'On random workload, without updates, it is preferable to not transit to ART. Stays in the cracked large bucket state.',
+  width: 350, height: 300,
   xAxis: {
     label: 'Query Sequence',
     attr: 'Q',
@@ -100,31 +118,32 @@ function dl() {
     margin: 40,
   },
   yAxis: {
-    label: 'Timeline (seconds)',
+    label: 'Ratio to ART',
     attr: 'total_time',
     scale: 'log',
-    domain: [0.3, 1000],
-    format: 'd',
-    ticks: [1, 10, 1e2, 1e3],
+    domain: [0.04, 3],
+    format: '',
+    ticks: [0.05, 0.06, 0.07, 0.08, 0.09, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 2, 3],
     margin: 40
   },
+  base: 'art_best_eager',
   lines: {
     fields : ['algorithm', 'query_workload', 'update_workload', 'N'],
     values : [
-//      { label: ['TRIMMER', 120, 210], color:  'blue', line: '', value:['comb_art_1000_1000', 'Random', 'NOUP', 100000000] },
-      { label: ['TRIMMER-0',  20, 45], color:  'red', line: '', value:['comb_art_0_0', 'Random', 'NOUP', 100000000] },
-      { label: ['TRIMMER-1',  20, 60], color:  'lime', line: '', value:['comb_art_1_1', 'Random', 'NOUP', 100000000] },
-      { label: ['TRIMMER-10',  20, 75], color:  'blue', line: '', value:['comb_art_10_1', 'Random', 'NOUP', 100000000] },
-      { label: ['TRIMMER-100',  20, 90], color:  'orange', line: '', value:['comb_art_100_1', 'Random', 'NOUP', 100000000] },
-      { label: ['TRIMMER-1000',  20, 105], color:  'black', line: '', value:['comb_art_1000_1', 'Random', 'NOUP', 100000000] },
-      { label: [   'ARTB', 20,  30], color: 'green', line: '', value:[    'art_best_eager', 'Random', 'NOUP', 100000000] },
-//      { label: [   'SORT', 20,  80], color:   'red', line: '', value:[              'sort', 'SkyServer', 'NOUP', 585634221] },
+      { label: [      'ART',   20,  50], color: 'green', line: '', value:['art_best_eager', 'Random', 'NOUP', 100000000] },
+      { label: ['TRIMMER-0',  120, 145], color:  'red', line: '', value:['comb_art_0_0', 'Random', 'NOUP', 100000000] },
+      { label: ['TRIMMER-1',  120, 160], color:  'lime', line: '', value:['comb_art_1_1', 'Random', 'NOUP', 100000000] },
+      { label: ['TRIMMER-10',  120, 175], color:  'blue', line: '', value:['comb_art_10_1', 'Random', 'NOUP', 100000000] },
+      { label: ['TRIMMER-100',  120, 190], color:  'orange', line: '', value:['comb_art_100_1', 'Random', 'NOUP', 100000000] },
+      { label: ['TRIMMER-1000',  120, 205], color:  'black', line: '', value:['comb_art_1000_1', 'Random', 'NOUP', 100000000] },
     ],
     group_by: 'algorithm',
   },
 }
-</textarea>
+</script>
 
+
+<br>
 <br>
 
 <table id="graph-data" style="font-size:11px" border="1"></table>

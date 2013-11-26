@@ -80,24 +80,25 @@ n_leaves,n_capacity,n_internals,max_depth,slack,in_size,ln_size,ia_free,ia_size,
               ;;
 
 batch_slb)
-              ./run.sh algo comb_art_0_0 0.000001 1 | tee -a $out
-              ./run.sh algo comb_art_1_0 0.000001 1 | tee -a $out
-              ./run.sh algo comb_art_1_1 0.000001 1 | tee -a $out
-              ./run.sh algo comb_art_1_10 0.000001 1 | tee -a $out
-              ./run.sh algo comb_art_1_100 0.000001 1 | tee -a $out
-              ./run.sh algo comb_art_1_1000 0.000001 1 | tee -a $out
-              ./run.sh algo comb_art_10_1 0.000001 1 | tee -a $out
-              ./run.sh algo comb_art_10_10 0.000001 1 | tee -a $out
-              ./run.sh algo comb_art_10_100 0.000001 1 | tee -a $out
-              ./run.sh algo comb_art_10_1000 0.000001 1 | tee -a $out
-              ./run.sh algo comb_art_100_1 0.000001 1 | tee -a $out
-              ./run.sh algo comb_art_100_10 0.000001 1 | tee -a $out
-              ./run.sh algo comb_art_100_100 0.000001 1 | tee -a $out
-              ./run.sh algo comb_art_100_1000 0.000001 1 | tee -a $out
-              ./run.sh algo comb_art_1000_1 0.000001 1 | tee -a $out
-              ./run.sh algo comb_art_1000_10 0.000001 1 | tee -a $out
-              ./run.sh algo comb_art_1000_100 0.000001 1 | tee -a $out
-              ./run.sh algo comb_art_1000_1000 0.000001 1 | tee -a $out
+              ./run.sh algo comb_art_1000000000_1000000000 0.000001 1 | tee -a $out
+              # ./run.sh algo comb_art_0_0 0.000001 1 | tee -a $out
+              # ./run.sh algo comb_art_1_0 0.000001 1 | tee -a $out
+              # ./run.sh algo comb_art_1_1 0.000001 1 | tee -a $out
+              # ./run.sh algo comb_art_1_10 0.000001 1 | tee -a $out
+              # ./run.sh algo comb_art_1_100 0.000001 1 | tee -a $out
+              # ./run.sh algo comb_art_1_1000 0.000001 1 | tee -a $out
+              # ./run.sh algo comb_art_10_1 0.000001 1 | tee -a $out
+              # ./run.sh algo comb_art_10_10 0.000001 1 | tee -a $out
+              # ./run.sh algo comb_art_10_100 0.000001 1 | tee -a $out
+              # ./run.sh algo comb_art_10_1000 0.000001 1 | tee -a $out
+              # ./run.sh algo comb_art_100_1 0.000001 1 | tee -a $out
+              # ./run.sh algo comb_art_100_10 0.000001 1 | tee -a $out
+              # ./run.sh algo comb_art_100_100 0.000001 1 | tee -a $out
+              # ./run.sh algo comb_art_100_1000 0.000001 1 | tee -a $out
+              # ./run.sh algo comb_art_1000_1 0.000001 1 | tee -a $out
+              # ./run.sh algo comb_art_1000_10 0.000001 1 | tee -a $out
+              # ./run.sh algo comb_art_1000_100 0.000001 1 | tee -a $out
+              # ./run.sh algo comb_art_1000_1000 0.000001 1 | tee -a $out
               ;;
 
 batch_sel) 
@@ -246,6 +247,10 @@ batch_ctree)  ./run.sh noup ctree_32_32 | tee -a $out
               ./run.sh lfhv ctree_16_128 | tee -a $out
               ./run.sh lfhv ctree_16_256 | tee -a $out
 
+              ;;
+
+fhnet2)
+              scp graphs.html linechart2.js results.csv felixhalim@felix-halim.net:~/public_html/research/ctree/
               ;;
 
 fhnet)        scp experiments.html felixhalim@felix-halim.net:~/public_html/research/ctree/

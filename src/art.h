@@ -1080,3 +1080,105 @@ void eraseNode256(Node256* node,Node** nodeRef,uint8_t keyByte) {
       delete node;
    }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+static void rec_insert(Node *&node, int depth, int maxKeyLength, uintptr_t *tmp, int N) {
+   assert(!node);
+   if (N < 14384) {
+      for (int i = 0; i < N; i++) {
+         uint8_t *key = (uint8_t*) &tmp[i];
+         insert(node, &node, key, depth, __builtin_bswap64(tmp[i]), maxKeyLength);
+      }
+      return;
+   }
+   // if (depth < 6) fprintf(stderr, "depth = %d, %d\n", depth, N);
+   if (depth >= maxKeyLength) return;
+   int cnt[256], sidx, nchild, ndepth = depth;
+   while (true) {
+      for (int i = 0; i < 256; i++) cnt[i] = 0;
+      for (int i = 0; i < N; i++) {
+         uint8_t *key = (uint8_t*) &tmp[i];
+         cnt[key[ndepth]]++;
+      }
+      sidx = nchild = 0;
+      for (int i = 0; i < 256; i++) {
+         int cur = cnt[i];
+         if (cur) nchild++;
+         cnt[i] = sidx;
+         sidx += cur;
+      }
+      ndepth++;
+      if (nchild > 1 || ndepth >= maxKeyLength) break;
+   }
+
+   if (nchild <= 4) {
+      node = new Node4();
+   } else if (nchild <= 16) {
+      node = new Node16();
+   } else if (nchild <= 48) {
+      node = new Node48();
+   } else {
+      node = new Node256();
+   }
+
+   if (depth + 1 < ndepth) {
+      // Path compression.
+      while (depth + 1 < ndepth) {
+         uint8_t *key = (uint8_t*) &tmp[0];
+         node->prefix[node->prefixLength++] = key[depth++];
+      }
+   }
+
+   uintptr_t *tmp2 = new uintptr_t[N];
+   for (int i = 0; i < N; i++) {
+      uint8_t *key = (uint8_t*) &tmp[i];
+      tmp2[cnt[key[depth]]++] = tmp[i];
+   }
+   // memcpy(tmp, tmp2, sizeof(uintptr_t) * N);
+
+   sidx = 0;
+   for (int i = 0; i < 256; i++) {
+      if (sidx < cnt[i]) {
+         switch (node->type) {
+            case NodeType4: insertNode4((Node4*&) node, &node, (uint8_t) i, NULL); break;
+            case NodeType16: insertNode16((Node16*&) node, &node, (uint8_t) i, NULL); break;
+            case NodeType48: insertNode48((Node48*&) node, &node, (uint8_t) i, NULL); break;
+            case NodeType256: insertNode256((Node256*&) node, &node, (uint8_t) i, NULL); break;
+         }
+         // fprintf(stderr, "nchild = %d\n", nchild);
+         Node **child = findChild(node, i);
+         assert(child);
+         rec_insert(*child, ndepth, maxKeyLength, tmp2 + sidx, cnt[i] - sidx);
+      }
+      sidx = cnt[i];
+   }
+   delete[] tmp2;
+}
+
+void bulk_insert(Node *&node, unsigned *arr, int N) {
+   uintptr_t *tmp = new uintptr_t[N];
+   for (int i = 0; i < N; i++) {
+      uint8_t *key = (uint8_t*) &tmp[i];
+      loadKey(arr[i], key);
+      // insert(node, key, 0, arr[i], 8, false); // Lazy insert, chain buckets.
+   }
+   rec_insert(node, 0, 8, tmp, N);
+   delete[] tmp;
+}
