@@ -516,7 +516,7 @@ Node* lower_bound_prev(Node* node, uint8_t key[], unsigned keyLength, unsigned d
             }
          }
       }
-      ART_DEBUG("VALUE = %lu, is_less = %d, %lu\n", getLeafValue(node) >> 30, is_less, sizeof(uintptr_t));
+      ART_DEBUG("VALUE = %lu, is_less = %d, %lu\n", getLeafValue(node) , is_less, sizeof(uintptr_t));
       return node;
    }
 
@@ -551,7 +551,7 @@ Node* lower_bound_prev(Node* node, uint8_t key[], unsigned keyLength, unsigned d
                   // ART_DEBUG("got it, %d\n", isLeaf(node->child[i]));
                   Node *ret = lower_bound_prev(c, key, keyLength, depth, maxKeyLength, next, skippedPrefix, is_less || node->key[i] < keyByte);
                   if (ret) {
-                     for (i++; i < node->count && !(*next); i++) {
+                     for (i++; i < node->count && next && !(*next); i++) {
                         *next = lower_bound_next(node->child[i], depth);
                      }
                      return ret;
@@ -581,7 +581,7 @@ Node* lower_bound_prev(Node* node, uint8_t key[], unsigned keyLength, unsigned d
                if (is_less || flipSign(node->key[pos]) <= keyByte) {
                   Node *ret = lower_bound_prev(node->child[pos], key, keyLength, depth, maxKeyLength, next, skippedPrefix, is_less || flipSign(node->key[pos]) < keyByte);
                   if (ret) {
-                     for (pos++; pos < node->count && !(*next); pos++) {
+                     for (pos++; pos < node->count && next && !(*next); pos++) {
                         *next = lower_bound_next(node->child[pos], depth);
                      }
                      return ret;
@@ -604,7 +604,7 @@ Node* lower_bound_prev(Node* node, uint8_t key[], unsigned keyLength, unsigned d
                   ART_DEBUG("N48C %d = %lld\n", keyByte, isLeaf(c) ? getLeafValue(c) >> 30 : -1LL);
                   Node *ret = lower_bound_prev(c, key, keyLength, depth, maxKeyLength, next, skippedPrefix, is_less);
                   if (ret) {
-                     for (keyByte++; keyByte < 256 && !(*next); keyByte++) {
+                     for (keyByte++; keyByte < 256 && next && !(*next); keyByte++) {
                         if (node->childIndex[keyByte] != emptyMarker) {
                            c = node->child[node->childIndex[keyByte]];
                            *next = lower_bound_next(c, depth);
@@ -627,8 +627,10 @@ Node* lower_bound_prev(Node* node, uint8_t key[], unsigned keyLength, unsigned d
                if (node->child[keyByte]) {
                   Node *ret = lower_bound_prev(node->child[keyByte], key, keyLength, depth, maxKeyLength, next, skippedPrefix, is_less);
                   if (ret) {
-                     for (keyByte++; keyByte < 256 && !(*next); keyByte++) {
+                     ART_DEBUG("GOT IT");
+                     for (keyByte++; keyByte < 256 && next && !(*next); keyByte++) {
                         if (node->child[keyByte]) {
+                           ART_DEBUG("CHECKING %d", keyByte);
                            *next = lower_bound_next(node->child[keyByte], depth);
                         }
                      }

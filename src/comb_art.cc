@@ -25,11 +25,12 @@ void init(unsigned *arr, unsigned N) {
 }
 
 void insert(unsigned value) {
+  // fprintf(stderr, "insert %u\n", value);
   c.insert(value);
 }
 
 void erase(unsigned value) {
-  // fprintf(stderr, "erase %d\n", value);
+  // fprintf(stderr, "erase %u\n", value);
   #ifdef NDEBUG
     c.erase(value);
   #else
