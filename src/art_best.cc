@@ -12,6 +12,7 @@ inline uintptr_t getLeafValue(Node* node) {
 using namespace std;
 
 Node* tree = NULL;
+int N;
 
 void init(unsigned *arr, unsigned N) {
   #ifdef EAGER
@@ -27,6 +28,7 @@ void insert(unsigned value64) {
   loadKey(value64, key);
   // insert(&tree,key,0,value64,8);
   insert(tree,&tree,key,0,value64,8);
+  N++;
 }
 
 void erase(unsigned value) {
@@ -37,6 +39,7 @@ void erase(unsigned value) {
   // erase(tree,&tree,key,8,0,8);
   erase(tree,&tree,key,8,0,8);
   // assert(!lookup(&tree,key,8,0,8));
+  N--;
 }
 
 unsigned lower_bound(unsigned value) {
@@ -67,4 +70,5 @@ unsigned select(unsigned a, unsigned b) {
 }
 
 void results(Statistics &s) {
+  s.N = N;
 }

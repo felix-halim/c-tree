@@ -707,7 +707,7 @@ public:
     loadKey(value64, key);
     Node *ret = lower_bound_prev(tree, key, 8, 0, 8, next);
     if (!ret) {
-      fprintf(stderr, "NO PREV %lu\n", value64);
+      fprintf(stderr, "NO PREV %llu\n", value64);
     }
     assert(ret);
     assert(isLeaf(ret));
@@ -886,9 +886,9 @@ public:
     return isLeaf(next) ? getLeafValue(next) : 0;
   }
 
-  void statistics(std::function<void(int, long long, int, int, int, int, int, int, int, int, int, int, int)> cb) {
+  void statistics(std::function<void(int, int, long long, int, int, int, int, int, int, int, int, int, int, int)> cb) {
     long long n_bytes = 0;
-    int n_slack_art = 0, n_slack_leaves = 0, n_chain = 0, n_internal = 0,
+    int N = -1, n_slack_art = 0, n_slack_leaves = 0, n_chain = 0, n_internal = 0,
         n_leaf = 0, art_n4 = 0, art_n16 = 0, art_n48 = 0, art_n256 = 0;
 
     art_visit(tree, [&](Node *n) {
@@ -904,6 +904,7 @@ public:
             n_chain--;
             while (lb) {
               n_bytes += sizeof(LargeBucket<T>);
+              N += lb->size();
               lb = lb->next();
               n_chain++;
             }
@@ -911,9 +912,11 @@ public:
             n_bytes += sizeof(SmallBucket<T>);
             SmallBucket<T> *sb = (SmallBucket<T>*) b;
             n_slack_leaves += sb->slack();
+            N += sb->size();
           }
         } else {
           n_bytes += sizeof(uintptr_t);
+          N++;
         }
       } else {
         n_internal++;
@@ -949,7 +952,7 @@ public:
         }
       }
     });
-    cb(n_index, n_bytes, n_slack_art, n_slack_leaves, n_internal, n_leaf, n_small, n_large, n_chain, art_n4, art_n16, art_n48, art_n256);
+    cb(N, n_index, n_bytes, n_slack_art, n_slack_leaves, n_internal, n_leaf, n_small, n_large, n_chain, art_n4, art_n16, art_n48, art_n256);
   }
 };
 

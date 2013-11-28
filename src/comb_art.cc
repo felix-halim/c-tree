@@ -56,8 +56,9 @@ unsigned count(unsigned a, unsigned b) {
 
 void results(Statistics &s) {
   // assert(c.check());
-  c.statistics([&](int n_index, long long n_bytes, int n_slack_art, int n_slack_leaves, int n_internal, int n_leaf,
+  c.statistics([&](int N, int n_index, long long n_bytes, int n_slack_art, int n_slack_leaves, int n_internal, int n_leaf,
       int n_small, int n_large, int n_chain, int art_n4, int art_n16, int art_n48, int art_n256) {
+    s.N = N;
     s.n_index = n_index;
     s.n_bytes = n_bytes;
     s.n_slack_int = n_slack_art;

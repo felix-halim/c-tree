@@ -58,6 +58,7 @@ struct Statistics {
   }
 
   // Each algorithm optionally fill in the following stats at the end of run:
+  int N;
   int n_index;
   long long n_bytes;
   int n_slack_int;
@@ -82,7 +83,7 @@ struct Statistics {
       "bt_int_sz,bt_leaf_sz,large_touch,small_touch,art_n4,art_n16,art_n48,art_n256,query_type\n");
   }
 
-  void print(int N, long long Q, double selectivity, int verified, double insert_time, double query_time, double update_time, unsigned long long checksum) {
+  void print(long long Q, double selectivity, int verified, double insert_time, double query_time, double update_time, unsigned long long checksum) {
     printf("%lu", system_clock::to_time_t(system_clock::now()));
     printf(",\"%s\"", algorithm.c_str());
     printf(",\"%s\"", query_workload.c_str());
