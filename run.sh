@@ -29,9 +29,10 @@ sky)          ./run.sh compile $2 || exit;
               # valgrind --leak-check=yes bin/$2 $N $Q 0.1 1 $3;;
 
 skies)
-              ./run.sh sky sort 0 | tee -a $out
-              ./run.sh sky mdd1r 0 | tee -a $out
-              ./run.sh sky art 0 | tee -a $out
+              ./run.sh sky comb_art_10_10 6 | tee -a $out
+              ./run.sh sky art_best_eager 6 | tee -a $out
+              ./run.sh sky mdd1r 6 | tee -a $out
+              # ./run.sh sky art 6 | tee -a $out
               # ./run.sh sky comb_art_0_0 0 | tee -a $out
               # ./run.sh sky comb_art_1_0 0 | tee -a $out
               # ./run.sh sky comb_art_10_0 0 | tee -a $out
