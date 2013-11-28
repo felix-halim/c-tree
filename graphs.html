@@ -6,7 +6,7 @@
 <script src="linechart2.js?2"></script>
 <script src="jquery-2.0.3.min.js"></script>
 <script>
-var opts_arr = [], opts_selected = 3;
+var opts_arr = [], opts_selected = 4;
 
 d3.csv('results.csv?1')
 
@@ -292,6 +292,55 @@ function dl() {
       color: 'green', line:'', x: 20, y: 130,
       filter: { algorithm: 'art_best_eager', query_workload: 'Random', update_workload: 'LFHV', N: 100000000, selectivity: '0.010000' }
     },
+  },
+}
+</script>
+
+
+<script type="text/plain" class="graph">{
+  title: 'Scrack is not resilient',
+  description: 'Under LFHV updates, the bigger lower selectivity, the worse the performance.',
+  width: 350, height: 300,
+  xAxis: {
+    label: 'Query Sequence',
+    attr: 'Q',
+    scale: 'log',
+    domain: [0.5, 2e6],
+    format: 'd',
+    ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9],
+    margin: 40,
+  },
+  yAxis: {
+    label: 'Ratio to ART',
+    attr: 'total_time',
+    scale: 'log',
+    domain: [0.04, 1000],
+    format: '',
+    ticks: [0.05, 0.06, 0.07, 0.08, 0.09, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
+    margin: 40
+  },
+  // base: 'ART',
+  lines: {
+    // 'SCrack 0.0001%': {
+    //   color: 'red', line:'', x: 171, y: 95, r:-50,
+    //   filter: { algorithm: 'mdd1r', query_workload: 'SkyServer', update_workload: 'NOUP', N: 585634221, selectivity: '0.000001' }
+    // },
+    // 'SCrack 0.01%': {
+    //   color: 'orange', line:'', x: 150, y: 95, r: -74,
+    //   filter: { algorithm: 'mdd1r', query_workload: 'SkyServer', update_workload: 'NOUP', N: 585634221, selectivity: '0.000001' }
+    // },
+    // 'SCrack 1%': {
+    //   color: 'magenta', line:'', x: 122, y: 90, r: -77,
+    //   filter: { algorithm: 'comb_art_10_10', query_workload: 'SkyServer', update_workload: 'NOUP', N: 585634221, selectivity: '0.000001' }
+    // },
+    'TRIMMER': {
+      color: 'blue', line:'', x: 65, y: 195, r:-22,
+      filter: { algorithm: 'comb_art_10_10', query_workload: 'SkyServer', update_workload: 'NOUP', N: 585634221, selectivity: '0.000001' }
+    },
+    // 'ART': {
+    //   color: 'green', line:'', x: 20, y: 130,
+    //   filter: { algorithm: 'art_best_eager', query_workload: 'SkyServer', update_workload: 'NOUP', N: 585634221, selectivity: '0.010000' }
+    // },
   },
 }
 </script>
