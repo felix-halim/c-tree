@@ -78,8 +78,8 @@ int main(int argc, char *argv[]) {
 
         update.execute(i,
           [](unsigned v){ insert(v); }, // insert.
-          [](unsigned v){ erase(v); } // erase.
-          [&](double load_t) { load_time += load_t; }
+          [](unsigned v){ erase(v); }, // erase.
+          [&](double load_t) { load_time += load_t; },
           [&](double update_t) { update_time += update_t; }
         );
       }

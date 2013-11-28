@@ -199,10 +199,8 @@ class Update {
           load_time_cb(time_it([&] { load(100000); }));
           if (arr.size()) {
             update_time_cb(time_it([&] {
-              if (loaded) {
-                unsigned *arr = get_arr();
-                REP(j, size()) insert(arr[j]);
-              }
+              unsigned *arr = get_arr();
+              REP(j, size()) insert(arr[j]);
             }));
           }
         }
