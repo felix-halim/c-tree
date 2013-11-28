@@ -706,9 +706,6 @@ public:
     uint8_t key[8];
     loadKey(value64, key);
     Node *ret = lower_bound_prev(tree, key, 8, 0, 8, next);
-    if (!ret) {
-      fprintf(stderr, "NO PREV %llu\n", value64);
-    }
     assert(ret);
     assert(isLeaf(ret));
     return ret;
