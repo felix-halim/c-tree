@@ -56,6 +56,7 @@ int main(int argc, char *argv[]) {
   double total_query_time = 0, total_update_time = 0;
   unsigned long long checksum = 0;
   for (long long i = 1, *next_sample = &samples[0], Q = 0; ; ) {
+    double load_time = 0; // Should not be counted. It is time to load data from disk.
     double update_time = 0;
     double runtime = time_it([&] {
       long long nQ = - *next_sample; nQ += *(++next_sample); Q += nQ;
@@ -75,12 +76,15 @@ int main(int argc, char *argv[]) {
             lower_bound(a);
           #endif
 
-        update_time += update.execute(i,
+        update.execute(i,
           [](unsigned v){ insert(v); }, // insert.
           [](unsigned v){ erase(v); } // erase.
+          [&](double load_t) { load_time += load_t; }
+          [&](double update_t) { update_time += update_t; }
         );
       }
     });
+    runtime -= load_time;
     total_query_time += runtime - update_time;
     total_update_time += update_time;
 

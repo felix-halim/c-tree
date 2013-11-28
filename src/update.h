@@ -15,9 +15,8 @@ const char* update_workload[10] = {
   "QUEUE",  // 3. Remove the largest value, insert new smaller value than any existing value.
   "TRASH",  // 4. Insert values in the middle of the domain.
   "DELETE", // 5. Delete 1000 tuples every 1000 queries.
-  "APPENDSKY", // 6. Insert 100K tuples every query. 
-  "APPEND", // 7. Insert 100K tuples every query. 
-  "APPEND", // 8. Insert 10 tuples every 10 query. 
+  "APPENDB", // 6. Insert 100K tuples every query. 
+  "APPENDF", // 8. Insert 10 tuples every 10 query. 
   "SKEW",   // 9. LFHV but on 20% domain only.
 };
 
@@ -41,13 +40,13 @@ class Update {
     in = fopen(fn, "rb");
     if (!in) { fprintf(stderr,"Error opening file %s\n", fn); exit(1); }
 
-    if (U != 6) {
+    if (U == 6) {
+      load(100000);
+    } else {
       load();
       if (U == 3) prepare_queue();
       // else if (U == 7) N = 100000;
       // else if (U == 8) N = 10;
-    } else {
-      load(100000);
     }
 
     if (U == 5) {
@@ -126,86 +125,92 @@ class Update {
 
   int code() { return U; }
 
-  double execute(long long i, std::function<void(unsigned)> insert, std::function<void(unsigned)> erase) {
+  void execute(long long i,
+      std::function<void(unsigned)> insert,
+      std::function<void(unsigned)> erase,
+      std::function<void(double)> load_time_cb,
+      std::function<void(double)> update_time_cb) {
+
     switch (U) {
       // NOUP.
-      case 0: return 0;
+      case 0: break;
 
       // LFHV.
-      case 1: return (i % 1000) ? 0 :
-        time_it([&] {
+      case 1: if (i % 1000 == 0)
+        update_time_cb(time_it([&] {
           unsigned a, b;
           REP(j, 1000) {
             update(a, b);
             erase(a);
             insert(b);
           }
-        });
+        }));
+        break;
 
       // HFHV.
-      case 2: return (i % 10) ? 0 :
-        time_it([&] {
+      case 2: if (i % 10 == 0)
+        update_time_cb(time_it([&] {
           unsigned a, b;
           REP(j, 1000) {
             update(a, b);
             erase(a);
             insert(b);
           }
-        });
+        }));
+        break;
 
       // QUEUE.
-      case 3: return (i % 10) ? 0 :
-        time_it([&] {
+      case 3: if (i % 10 == 0)
+        update_time_cb(time_it([&] {
           unsigned a, b;
           REP(j, 10) {
             update_queue(a, b);
             erase(a);
             insert(b);
           }
-        });
+        }));
+        break;
 
       // TRASH.
-      case 4: return (i != 10000) ? 0 :
-        time_it([&] {
+      case 4: if (i == 10000)
+        update_time_cb(time_it([&] {
           unsigned *arr = get_arr();
           int N = get_n();
           REP(j, 1000000) {
             insert(arr[N + j]);
             // fprintf(stderr, "%d \n", arr[N + j]);
           }
-        });
+        }));
+        break;
 
       // DELETE.
-      case 5: return (i % 1000) ? 0 :
-        time_it([&] {
+      case 5: if (i % 1000 == 0)
+        update_time_cb(time_it([&] {
           REP(j, 1000) {
             erase(update_delete());
           }
-        });
+        }));
+        break;
 
       // APPEND SKY SERVER.
-      case 6: return
-        time_it([&] {
-          // if (MAXQ != -1) {
-            clear();
-            bool loaded = false;
-            // load_time += time_it([&] {
-              loaded = load(100000);
-              // query_w.set_max(max_element());
-              // N += size();
-            // });
-            if (loaded) {
-              unsigned *arr = get_arr();
-              REP(j, size()) insert(arr[j]);
-            } else {
-              // MAXQ = -1;
-            }
-          // }
-        });
+      case 6:
+        if (i % 1000 == 0 && arr.size()) {
+          clear();
+          load_time_cb(time_it([&] { load(100000); }));
+          if (arr.size()) {
+            update_time_cb(time_it([&] {
+              if (loaded) {
+                unsigned *arr = get_arr();
+                REP(j, size()) insert(arr[j]);
+              }
+            }));
+          }
+        }
+        break;
 
       // APPEND.
-      case 7: return
-        time_it([&] {
+      case 7: 
+        update_time_cb(time_it([&] {
           // if (MAXQ != -1) {
             int N = get_n();
             int add = size() / 2 - N;
@@ -216,11 +221,12 @@ class Update {
               // MAXQ = -1;
             }
           // }
-        });
+        }));
+        break;
 
       // APPEND.
-      case 8: return (i % 10) ? 0 :
-        time_it([&] {
+      case 8: if (i % 10 == 0)
+        update_time_cb(time_it([&] {
           int N = get_n();
           // if (MAXQ != -1) {
             int add = size() / 2 - N;
@@ -231,18 +237,20 @@ class Update {
               // MAXQ = -1;
             }
           // }
-        });
+        }));
+        break;
 
       // SKEW.
-      case 9: return (i % 1000) ? 0 :
-        time_it([&] {
+      case 9: if (i % 1000 == 0)
+        update_time_cb(time_it([&] {
           unsigned a, b;
           REP(j, 1000) {
             update(a, b);
             erase(a);
             insert(b);
           }
-        });
+        }));
+        break;
 
       default: return 0;
     }
