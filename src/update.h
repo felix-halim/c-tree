@@ -250,7 +250,7 @@ class Update {
         }));
         break;
 
-      default: return 0;
+      default: break;
     }
   }
 };
