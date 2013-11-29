@@ -7,9 +7,9 @@
 using namespace std;
 using namespace ctree;
 
-CTree<int> c;
+CTree<unsigned> c;
 
-void init(int *arr, int N) {
+void init(unsigned *arr, unsigned N) {
   // c.load("ctree"); return;
 
   c.batch_insert(arr, N);
@@ -26,11 +26,11 @@ void init(int *arr, int N) {
   // // c.debug();
 }
 
-void insert(int value) {
+void insert(unsigned value) {
   c.insert(value);
 }
 
-void erase(int value) {
+void erase(unsigned value) {
   #ifdef NDEBUG
     c.erase(value);
   #else
@@ -39,26 +39,26 @@ void erase(int value) {
   #endif
 }
 
-int lower_bound(int value) {
+unsigned lower_bound(unsigned value) {
   auto it = c.lower_bound(value);
-  int ret = it.first ? it.second : 0;
+  unsigned ret = it.first ? it.second : 0;
   // fprintf(stderr, "%d (%d)\n", ret, value);
   return ret;
 }
 
-int select(int a, int b) {
+unsigned select(unsigned a, unsigned b) {
   auto it1 = c.lower_bound(a);
   auto it2 = c.lower_bound(b);
-  int ret1 = it1.first ? it1.second : 0;
-  int ret2 = it2.first ? it2.second : 0;
+  unsigned ret1 = it1.first ? it1.second : 0;
+  unsigned ret2 = it2.first ? it2.second : 0;
   // fprintf(stderr, "%d (%d)\n", ret, value);
   return ret1 + ret2;
 }
 
-int sum(int a, int b) {
+unsigned sum(unsigned a, unsigned b) {
   // auto it1 = c.lower_bound(a);
   // auto it2 = c.lower_bound(b);
-  int ret = 0;
+  unsigned ret = 0;
   // for (int val; it1 != it2 && it1.next(val); ret += val);
   // fprintf(stderr, "%d (%d)\n", ret, value);
   return ret;

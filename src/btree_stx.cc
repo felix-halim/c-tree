@@ -3,32 +3,32 @@
 #include "stx/btree_multiset"
 #include "test.h"
 
-stx::btree_multiset<int> b;
+stx::btree_multiset<unsigned> b;
 
-void init(int *arr, int N) {
+void init(unsigned *arr, unsigned N) {
   b.insert(arr, arr + N);
 }
 
-void insert(int value) {
+void insert(unsigned value) {
   b.insert(value);
 }
 
-void erase(int value) {
+void erase(unsigned value) {
   auto it = b.lower_bound(value);
   assert(it != b.end());
   b.erase(it);
 }
 
-int lower_bound(int value) {
+unsigned lower_bound(unsigned value) {
   auto it = b.lower_bound(value);
   return (it == b.end()) ? 0 : *it;
 }
 
-int select(int lo, int hi) {
+unsigned select(unsigned lo, unsigned hi) {
   auto it1 = b.lower_bound(lo);
   auto it2 = b.lower_bound(hi);
-  int ret1 = (it1 == b.end()) ? 0 : *it1;
-  int ret2 = (it2 == b.end()) ? 0 : *it2;
+  unsigned ret1 = (it1 == b.end()) ? 0 : *it1;
+  unsigned ret2 = (it2 == b.end()) ? 0 : *it2;
   // fprintf(stderr, "%d (%d)\n", ret, value);
   return ret1 + ret2;
 }
