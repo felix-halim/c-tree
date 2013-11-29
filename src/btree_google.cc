@@ -36,7 +36,7 @@ int select(int lo, int hi) {
 
 void results(Statistics &s) {
   // assert(c.check());
-  s.note = "Google";
+  s.N = b.size();
   // s.n_leaves = c.num_of_buckets();
   // s.n_capacity = c.num_of_buckets() * c.bucket_size();
   // s.n_internals = 1;

@@ -67,16 +67,15 @@ int sum(int a, int b) {
 void results(Statistics &s) {
   // assert(c.check());
   #ifdef EAGER
-    s.note = "Eager";
   #else
-    s.note = "Lazy";
   #endif
-  s.n_leaves = nLeaves;
-  s.n_capacity = nCap;
-  s.n_internals = nInternals;
-  s.max_depth = c.max_depth();
-  s.slack = c.slack();
-  s.in_size = INTERNAL_BSIZE;
-  s.ln_size = LEAF_BSIZE;
-  c.alloc_sizes(s.ia_free, s.ia_size, s.la_free, s.la_size);
+  s.N = c.size();
+  // s.n_leaves = nLeaves;
+  // s.n_capacity = nCap;
+  // s.n_internals = nInternals;
+  // s.max_depth = c.max_depth();
+  // s.slack = c.slack();
+  // s.in_size = INTERNAL_BSIZE;
+  // s.ln_size = LEAF_BSIZE;
+  // c.alloc_sizes(s.ia_free, s.ia_size, s.la_free, s.la_size);
 }
