@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <script src="d3.v3.min.js"></script>
-<script src="linechart2.js?2"></script>
+<script src="linechart2.js?3"></script>
 <script src="jquery-2.0.3.min.js"></script>
 <script>
-var opts_arr = [], opts_selected = 4;
+var opts_arr = [], opts_selected = 5;
 
-d3.csv('results.csv?1')
+d3.csv('results.csv?2')
 
 .row(function (d) {
   d.Q = +d.Q;
@@ -307,7 +307,7 @@ function dl() {
     scale: 'log',
     domain: [0.5, 2e7],
     format: 'd',
-    ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9],
+    ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7],
     margin: 40,
   },
   yAxis: {
@@ -316,7 +316,7 @@ function dl() {
     scale: 'logx',
     domain: [-2, 60],
     format: '',
-    ticks: [0, 5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
+    ticks: [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
     margin: 40
   },
   // base: 'ART',
@@ -336,6 +336,46 @@ function dl() {
     'ART': {
       color: 'green', line:'', x: 25, y: 52,
       filter: { algorithm: 'art_best_eager', query_workload: 'SkyServer', update_workload: 'NOUP', N: 585634221, selectivity: '0.000001' }
+    },
+  },
+}
+</script>
+
+<script type="text/plain" class="graph">{
+  title: 'SkyServer Insert 100K / query',
+  description: 'Gradually inserts SkyServer dataset 100K tuples per query (using SkyServer workload). The entire 580M tuples will be inserted after 5K queries. The rest of the queries do not have inserts. ART bulk insert fails to work because not all data are available upfront. ART bulk insert took ~40 secs while non-bulk took ~100 secs. While TRIMMER is unaffected by bulk or non-bulk. Cracking with MRD/MRI suffers trashing, it does not complete the workload even after 16 hours.',
+  width: 350, height: 300,
+  xAxis: {
+    label: 'Query Sequence',
+    attr: 'Q',
+    scale: 'log',
+    domain: [0.5, 2e6],
+    format: 'd',
+    ticks: [1, 10, 1e2, 1e3, 1e4, 1e5, 1e6],
+    margin: 40,
+  },
+  yAxis: {
+    label: 'Cumulative Runtime (seconds)',
+    attr: 'total_time',
+    scale: 'logx',
+    domain: [-10, 300],
+    format: '',
+    ticks: [0, 40, 80, 120, 160, 200, 240, 280],
+    margin: 40
+  },
+  // base: 'ART',
+  lines: {
+    'SCrack': {
+      color: 'red', line:'', x: 117, y: 120, r:-85,
+      filter: { algorithm: 'mdd1r', query_workload: 'SkyServer', update_workload: 'APPENDB', selectivity: '0.000001' }
+    },
+    'TRIMMER': {
+      color: 'orange', line:'', x: 170, y: 187, r:0,
+      filter: { algorithm: 'comb_art_1000000000_1000000000', query_workload: 'SkyServer', update_workload: 'APPENDB', selectivity: '0.000001' }
+    },
+    'ART': {
+      color: 'green', line:'', x: 175, y: 132,
+      filter: { algorithm: 'art_best_eager', query_workload: 'SkyServer', update_workload: 'APPENDB', selectivity: '0.000001' }
     },
   },
 }

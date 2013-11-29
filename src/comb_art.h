@@ -954,3 +954,52 @@ public:
 };
 
 #endif
+
+/*
+NOTEs:
+- cracker_index can be any sorted data structure (e.g. ART, BTree, etc..)
+- the transition to cracker_index only happens during delete operation. It's not beneficial to transit for insert (see experiment).
+
+function insert(v) {
+  ptr = search v in the cracker_index and get the pointer to leaf.
+  if (ptr is a pointer to a bucket chain) {
+    append v to bucket chain pointed by ptr.
+  } else {
+    inserts v to cracker_index or
+    create a new bucket chain (in case of large inserts) and append.
+  }
+}
+
+function erase(v) {
+  ptr = search v in the cracker_index and get the pointer to leaf.
+  if (ptr is a pointer to a bucket chain) {
+    perform DDR to the bucket chain pointed by ptr until the target bucket has no chain.
+    bucket = the first and only bucket pointed in the bucket chain.
+    if (the bucket has been touched >= X times) {
+      move all elements in the bucket to cracker_index.
+      erase v from cracker_index.
+    } else {
+      erase v from the bucket.
+    }
+  } else {
+    erase v from cracker_index.
+  }
+}
+
+function query(v) {
+  ptr = search v in the cracker_index and get the pointer to leaf.
+  if (ptr is a pointer to a bucket chain) {
+    perform DDR to the bucket chain pointed by ptr until the target bucket has no chain.
+    bucket = the first and only bucket pointed in the bucket chain.
+    pos = crack the bucket on v
+    return pointer to (bucket, pos).
+  } else {
+    return pointer to ptr.
+  }
+}
+
+NOTEs:
+- the return value of query() can be a pointer to (cracked) bucket or pointer to cracker_index.
+- we can traverse the next element in the (cracked) bucket or in the cracker_index.
+
+*/
