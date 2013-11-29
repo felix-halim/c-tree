@@ -3,7 +3,7 @@
 mkdir bin 2> /dev/null
 mkdir res 2> /dev/null
 N=data/100000000.data
-Q=1000000
+Q=1000000000
 out=results.js
 
 case $1 in
@@ -107,20 +107,10 @@ batch_sel)
               ./run.sh algo $2 0.9 $3 | tee -a $out
               ;;
 
-batch_noup)   ./run.sh seq comb 0 | tee -a $out
+batch_noup)   ./run.sh seq comb_art_1000000000_1000000000 0 | tee -a $out
               ./run.sh seq sort 0 | tee -a $out
-              ./run.sh seq crack 0 | tee -a $out
-              ./run.sh seq ctree_eager 0 | tee -a $out
-              ./run.sh seq ctree_32_64 0 | tee -a $out
-              ./run.sh seq ctree_32_1024 0 | tee -a $out
-              ./run.sh seq ctree_32_4096 0 | tee -a $out
-              ./run.sh seq art 0 | tee -a $out
-              ./run.sh seq art_best 0 | tee -a $out
+              ./run.sh seq mdd1r 0 | tee -a $out
               ./run.sh seq art_best_eager 0 | tee -a $out
-              # ./run.sh seq art_crack 0 | tee -a $out
-              ./run.sh seq ctree_exp_leafsize 0 | tee -a $out
-              ./run.sh seq btree_google 0 | tee -a $out
-              ./run.sh seq btree_stx 0 | tee -a $out
               ;;
 
 batch_sky)    ./run.sh append comb 0 | tee -a $out

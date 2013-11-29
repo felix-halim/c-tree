@@ -47,7 +47,7 @@ int main(int argc, char *argv[]) {
 
   fprintf(stderr, "N = %u, ", update.get_n());
 
-  // sort(update.get_arr(), update.get_arr() + update.get_n());
+  sort(update.get_arr(), update.get_arr() + update.get_n());
   double insert_time = time_it([&] { init(update.get_arr(), update.get_n()); });
 
   fprintf(stderr, "I = %.3lf, Q = %lld\n", insert_time, query_w.maxq());
