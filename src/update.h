@@ -84,9 +84,7 @@ class Update {
       if (arr[i] > next_smallest)
         fprintf(stderr, "%d %d\n", i, arr[i]);
       assert(arr[i] <= next_smallest);
-      // if (arr[i] <= next_smallest) {
-        arr[i] += next_smallest;
-      // }
+      arr[i] += next_smallest;
     }
   }
 

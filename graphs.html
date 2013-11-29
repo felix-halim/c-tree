@@ -6,7 +6,11 @@
 <script src="linechart2.js?3"></script>
 <script src="jquery-2.0.3.min.js"></script>
 <script>
-var opts_arr = [], opts_selected = 6;
+var opts_arr = [], opts_selected = 5;
+
+$(window).on('hashchange', function() {
+  change_selection(parseInt(location.hash.substring(1)));
+});
 
 d3.csv('results.csv?2')
 
@@ -62,9 +66,18 @@ d3.csv('results.csv?2')
     s += '<option value="' + ith + '">' + opts.title + '</option>';
   });
   document.getElementById('graph-selections').innerHTML = s;
-  document.getElementById('graph-selections').selectedIndex = opts_selected;
-  opts_changed();
+
+  if (location.hash) {
+    change_selection(parseInt(location.hash.substring(1)));
+  } else {
+    change_selection(opts_selected);
+  }
 });
+
+function change_selection(idx) {
+  document.getElementById('graph-selections').selectedIndex = opts_selected = idx;
+  opts_changed();
+}
 
 function render() {
   var ta = document.getElementById('config');
@@ -368,6 +381,10 @@ function dl() {
     'SCrack': {
       color: 'red', line:'', x: 117, y: 120, r:-85,
       filter: { algorithm: 'mdd1r', query_workload: 'SkyServer', update_workload: 'APPENDB', selectivity: '0.000001' }
+    },
+    'BTree': {
+      color: 'blue', line:'', x: 170, y: 104, r:0,
+      filter: { algorithm: 'btree_google', query_workload: 'SkyServer', update_workload: 'APPENDB', selectivity: '0.000001' }
     },
     'TRIMMER': {
       color: 'orange', line:'', x: 170, y: 187, r:0,

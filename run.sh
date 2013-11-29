@@ -63,7 +63,7 @@ custom)       ./run.sh algo ctree_32_64 1
               ;;
 
 seq)          ./run.sh compile $2 || exit;
-              bin/$2 $N $Q 0.1 2 $3;;
+              bin/$2 $N $Q 0.000001 2 $3;;
               # valgrind --leak-check=yes bin/$2 $N $Q 0.001 1 $3;;
 
 split)        make -s -C src "../bin/split" || exit;
@@ -99,6 +99,19 @@ batch_sela)
               ./run.sh batch_sel art_best_eager 1
               ;;
 
+batch_seq)
+              ./run.sh seq sort 0
+              ./run.sh seq mdd1r 0
+              ./run.sh seq btree_google 0
+              ./run.sh seq comb_art_1000000000_1000000000 0
+              ./run.sh seq art_best_eager 0
+
+              ./run.sh seq mdd1r 1
+              ./run.sh seq btree_google 1
+              ./run.sh seq comb_art_1000000000_1000000000 1
+              ./run.sh seq art_best_eager 1
+              ;;
+
 batch_sel) 
               ./run.sh algo $2 0.000001 $3 | tee -a $out
               ./run.sh algo $2 0.00001 $3 | tee -a $out
@@ -116,24 +129,24 @@ batch_noup)   ./run.sh algo comb_art_1000000000_1000000000 0.1 0 | tee -a $out
               ./run.sh algo art_best_eager 0.1 0 | tee -a $out
               ;;
 
-batch_sky)    ./run.sh append comb 0 | tee -a $out
-              ./run.sh append comb 1 | tee -a $out
-              ./run.sh append mdd1r 0 | tee -a $out
-              ./run.sh append ctree_32_64 0 | tee -a $out
-              ./run.sh append ctree_32_1024 0 | tee -a $out
-              ./run.sh append ctree_32_4096 0 | tee -a $out
-              ./run.sh append ctree_eager 0 | tee -a $out
-              ./run.sh append btree_google 0 | tee -a $out
-              ./run.sh append btree_stx 0 | tee -a $out
-              ./run.sh append ctree_32_64 1 | tee -a $out
-              ./run.sh append ctree_32_1024 1 | tee -a $out
-              ./run.sh append ctree_32_4096 1 | tee -a $out
-              ./run.sh append ctree_eager 1 | tee -a $out
-              ./run.sh append btree_google 1 | tee -a $out
-              ./run.sh append btree_stx 1 | tee -a $out
-              ./run.sh append crack 1 | tee -a $out
-              ./run.sh append mdd1r 1 | tee -a $out
-              ./run.sh append crack 0 | tee -a $out
+batch_sky)
+              ./run.sh algo comb  1 | tee -a $out
+              ./run.sh algo mdd1r 0 | tee -a $out
+              ./run.sh algo ctree_32_64 0 | tee -a $out
+              ./run.sh algo ctree_32_1024 0 | tee -a $out
+              ./run.sh algo ctree_32_4096 0 | tee -a $out
+              ./run.sh algo ctree_eager 0 | tee -a $out
+              ./run.sh algo btree_google 0 | tee -a $out
+              ./run.sh algo btree_stx 0 | tee -a $out
+              ./run.sh algo ctree_32_64 1 | tee -a $out
+              ./run.sh algo ctree_32_1024 1 | tee -a $out
+              ./run.sh algo ctree_32_4096 1 | tee -a $out
+              ./run.sh algo ctree_eager 1 | tee -a $out
+              ./run.sh algo btree_google 1 | tee -a $out
+              ./run.sh algo btree_stx 1 | tee -a $out
+              ./run.sh algo crack 1 | tee -a $out
+              ./run.sh algo mdd1r 1 | tee -a $out
+              ./run.sh algo crack 0 | tee -a $out
               # ./run.sh append art | tee -a $out
               # ./run.sh append arto | tee -a $out
               # ./run.sh append art_best | tee -a $out
@@ -230,7 +243,7 @@ batch_ctree)  ./run.sh noup ctree_32_32 | tee -a $out
               ;;
 
 fhnet2)
-              scp graphs.html linechart2.js results.csv felixhalim@felix-halim.net:~/public_html/research/ctree/
+              scp graphs.html linechart2.js results.csv jquery-2.0.3.min.js felixhalim@felix-halim.net:~/public_html/research/ctree/
               ;;
 
 fhnet)        scp experiments.html felixhalim@felix-halim.net:~/public_html/research/ctree/
