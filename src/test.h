@@ -93,6 +93,6 @@ int main(int argc, char *argv[]) {
     s.print(Q, query_w.selectivity(), verify(update.code(), update.get_n(), Q, checksum),
       insert_time, total_query_time, total_update_time, checksum);
 
-    if (Q >= query_w.maxq() || runtime > 3600) break;
+    if (Q >= query_w.maxq() || runtime > 3600 * 5) break;
   }
 }
