@@ -3,7 +3,7 @@
 mkdir bin 2> /dev/null
 mkdir res 2> /dev/null
 N=data/100000000.data
-Q=1000000
+Q=1000000000
 out=results.js
 
 case $1 in
