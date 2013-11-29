@@ -194,7 +194,7 @@ class Update {
 
       // APPEND SKY SERVER.
       case 6:
-        if (arr.size()) {
+        if (i % 100 == 0 && arr.size()) {
           clear();
           load_time_cb(time_it([&] { load(100000); }));
           if (arr.size()) {
