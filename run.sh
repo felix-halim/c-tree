@@ -107,10 +107,10 @@ batch_sel)
               ./run.sh algo $2 0.9 $3 | tee -a $out
               ;;
 
-batch_noup)   ./run.sh seq comb_art_1000000000_1000000000 0 | tee -a $out
-              ./run.sh seq sort 0 | tee -a $out
-              ./run.sh seq mdd1r 0 | tee -a $out
-              ./run.sh seq art_best_eager 0 | tee -a $out
+batch_noup)   ./run.sh algo comb_art_1000000000_1000000000 0.1 0 | tee -a $out
+              ./run.sh algo sort 0.1 0 | tee -a $out
+              ./run.sh algo mdd1r 0.1 0 | tee -a $out
+              ./run.sh algo art_best_eager 0.1 0 | tee -a $out
               ;;
 
 batch_sky)    ./run.sh append comb 0 | tee -a $out
