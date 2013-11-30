@@ -14,7 +14,8 @@ using namespace std;
 Node* tree = NULL;
 int N;
 
-void init(unsigned *arr, unsigned N) {
+void init(unsigned *arr, unsigned n) {
+  N = n;
   #ifdef EAGER
     bulk_insert(tree, arr, N); // Lazy insert, chain buckets.
   #else

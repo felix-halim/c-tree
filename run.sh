@@ -15,8 +15,8 @@ compile)      make -s -C src "../bin/$2" || exit;
 
 algo)         ./run.sh compile $2 || exit;
               S=$3
-              QW=1
-              UW=$4
+              QW=$4
+              UW=$5
               bin/$2 $N $Q $S $QW $UW | tee res/$2_${S}_${QW}_${UW}.csv;;
               # valgrind --leak-check=yes bin/$2 $N $Q 0.1 1 $3;;
 

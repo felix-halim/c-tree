@@ -75,8 +75,14 @@ d3.csv('results.csv?2')
 });
 
 function change_selection(idx) {
-  document.getElementById('graph-selections').selectedIndex = opts_selected = idx;
-  opts_changed();
+  if (typeof(idx) == 'number') {
+    document.getElementById('graph-selections').selectedIndex = opts_selected = idx;
+  } else {
+    opts_selected = document.getElementById('graph-selections').selectedIndex;
+    location.hash = '#' + opts_selected;
+  }
+  document.getElementById('config').value = opts_arr[opts_selected];
+  render();
 }
 
 function render() {
@@ -85,12 +91,6 @@ function render() {
   var svg = document.getElementById('chart');
   while (svg.firstChild) svg.removeChild(svg.firstChild);
   linechart(svg, opts);
-}
-
-function opts_changed() {
-  opts_selected = document.getElementById('graph-selections').selectedIndex;
-  document.getElementById('config').value = opts_arr[opts_selected];
-  render();
 }
 
 function dl() {
@@ -108,7 +108,7 @@ function dl() {
 <div style="float:left; margin:auto">
   <form id="svg2pdf" method="post" action="http://uhunt2.felix-halim.net:8000/svg2pdf">
     <input type="text" id="p" name="p" value="" hidden>
-    Graph: <select id="graph-selections" onchange="opts_changed()"></select>
+    Graph: <select id="graph-selections" onchange="change_selection()"></select>
   </form>
   <div id="chart" style="width:500px; height:300px;"></div>
   <br>
@@ -193,15 +193,15 @@ function dl() {
       color: 'green', line:'', x: 20, y: 50,
       filter: { algorithm: 'art_best_eager', query_workload: 'Random', update_workload: 'LFHV', N: 100000000, selectivity: '0.000001' }
     },
-    'TRIMMER-1-0': {
+    'TRIMMER-0': {
       color: 'red', line:'', x: 110, y: 145,
       filter: { algorithm: 'comb_art_0_0', query_workload: 'Random', update_workload: 'LFHV', N: 100000000, selectivity: '0.000001' }
     },
-    'TRIMMER-1-10': {
+    'TRIMMER-10': {
       color: 'blue', line:'', x: 110, y: 165,
       filter: { algorithm: 'comb_art_10_1', query_workload: 'Random', update_workload: 'LFHV', N: 100000000, selectivity: '0.000001' }
     },
-    'TRIMMER-1-1000': {
+    'TRIMMER-1000': {
       color: 'black', line:'', x: 110, y: 185,
       filter: { algorithm: 'comb_art_1000_1', query_workload: 'Random', update_workload: 'LFHV', N: 100000000, selectivity: '0.000001' }
     },

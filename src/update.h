@@ -115,6 +115,16 @@ class Update {
     to_add = arr[k];
   }
 
+  void update_skew(unsigned &to_del, unsigned &to_add, int start, int end) {
+    int N = end - start;
+    int k = start + dis(gen) % N;
+    to_del = arr[k];
+    int l = N + dis(gen) % N;
+    assert(l < size());
+    swap(arr[k], arr[l]);
+    to_add = arr[k];
+  }
+
   string name() {
     return update_workload[U];
   }
@@ -203,13 +213,15 @@ class Update {
         break;
 
       // SKEW.
-      case 7: if (i % 1000 == 0)
+      case 7:
         update_time_cb(time_it([&] {
           unsigned a, b;
-          REP(j, 1000) {
-            update(a, b);
-            erase(a);
-            insert(b);
+          if (i < 2000) {
+            REP(j, 1000) {
+              update(a, b);
+              erase(a);
+              insert(b);
+            }
           }
         }));
         break;

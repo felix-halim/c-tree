@@ -201,20 +201,22 @@ class Workload {
     return true;
   }
   
-  // 80 percent of the queries falls within 20 percent of the value range and
-  // 20 percent of the queries falls within the 80 percent of the value range.
-  bool skew_w() {
-    if (I >= 10000) return false;
-    if (I < 8000) {
+  // X percent of the queries falls within Y percent of the value range and
+  // (100-X) percent of the queries falls within the rest of the value range.
+  bool skew_w(int X, int Y) {
+    int nY = ((long long) N) * Y / 100;
+    if (nextInt(100 * 1000000) < X * 1000000) {
       do {
-        a = nextInt(N / 5);
-        b = nextInt(N / 5);
+        a = nextInt(nY);
+        b = nextInt(nY);
       } while (a == b);
+      // fprintf(stderr, "nY1 = %10d, %10d %10d\n", nY, a, b);
     } else {
       do {
-        a = N / 5 + nextInt((N * 4) / 5);
-        b = N / 5 + nextInt((N * 4) / 5);
+        a = nY + nextInt(N - nY);
+        b = nY + nextInt(N - nY);
       } while (a == b);
+      // fprintf(stderr, "nY2 = %10d, %10d %10d\n", nY, a, b);
     }
     if (a > b) swap(a, b);
     return true;
@@ -334,7 +336,7 @@ public :
       case 9 : if (!zoom_out_w()) return false; break;
       case 10 : if (!seq_zoom_in()) return false; break;
       case 11 : if (!seq_zoom_out()) return false; break;
-      case 12 : if (!skew_w()) return false; break;
+      case 12 : if (!skew_w(1, 99)) return false; break;
       case 13 : if (!zoom_out_alt_w()) return false; break;
       case 14 : if (!skew_zoom_out_alt_w()) return false; break;
       case 15 : if (!periodic_w()) return false; break;
