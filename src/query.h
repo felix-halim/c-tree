@@ -210,13 +210,13 @@ class Workload {
         a = nextInt(nY);
         b = nextInt(nY);
       } while (a == b);
-      fprintf(stderr, "nY1 = %10d, %10d %10d\n", nY, a, b);
+      // fprintf(stderr, "nY1 = %10d, %10d %10d\n", nY, a, b);
     } else {
       do {
         a = nY + nextInt(N - nY);
         b = nY + nextInt(N - nY);
       } while (a == b);
-      fprintf(stderr, "nY2 = %10d, %10d %10d, N = %d\n", nY, a, b, N);
+      // fprintf(stderr, "nY2 = %10d, %10d %10d, N = %d\n", nY, a, b, N);
     }
     if (a > b) swap(a, b);
     return true;
