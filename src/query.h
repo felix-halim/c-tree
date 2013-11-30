@@ -210,13 +210,13 @@ class Workload {
         a = nextInt(nY);
         b = nextInt(nY);
       } while (a == b);
-      // fprintf(stderr, "nY1 = %10d, %10d %10d\n", nY, a, b);
+      fprintf(stderr, "nY1 = %10d, %10d %10d\n", nY, a, b);
     } else {
       do {
         a = nY + nextInt(N - nY);
         b = nY + nextInt(N - nY);
       } while (a == b);
-      // fprintf(stderr, "nY2 = %10d, %10d %10d\n", nY, a, b);
+      fprintf(stderr, "nY2 = %10d, %10d %10d, N = %d\n", nY, a, b, N);
     }
     if (a > b) swap(a, b);
     return true;
@@ -336,7 +336,7 @@ public :
       case 9 : if (!zoom_out_w()) return false; break;
       case 10 : if (!seq_zoom_in()) return false; break;
       case 11 : if (!seq_zoom_out()) return false; break;
-      case 12 : if (!skew_w(1, 99)) return false; break;
+      case 12 : if (!skew_w(SKEW_X, SKEW_Y)) return false; break;
       case 13 : if (!zoom_out_alt_w()) return false; break;
       case 14 : if (!skew_zoom_out_alt_w()) return false; break;
       case 15 : if (!periodic_w()) return false; break;

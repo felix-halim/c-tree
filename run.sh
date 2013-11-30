@@ -20,6 +20,51 @@ algo)         ./run.sh compile $2 || exit;
               bin/$2 $N $Q $S $QW $UW | tee res/$2_${S}_${QW}_${UW}.csv;;
               # valgrind --leak-check=yes bin/$2 $N $Q 0.1 1 $3;;
 
+skew)
+              ./run.sh algo comb_art_skew_0_0 0.1 12 0 | tee -a $out
+              ./run.sh algo comb_art_skew_0_20 0.1 12 0 | tee -a $out
+              ./run.sh algo comb_art_skew_0_40 0.1 12 0 | tee -a $out
+              ./run.sh algo comb_art_skew_0_60 0.1 12 0 | tee -a $out
+              ./run.sh algo comb_art_skew_0_80 0.1 12 0 | tee -a $out
+              ./run.sh algo comb_art_skew_0_100 0.1 12 0 | tee -a $out
+
+              ./run.sh algo comb_art_skew_10_0 0.1 12 0 | tee -a $out
+              ./run.sh algo comb_art_skew_10_20 0.1 12 0 | tee -a $out
+              ./run.sh algo comb_art_skew_10_40 0.1 12 0 | tee -a $out
+              ./run.sh algo comb_art_skew_10_60 0.1 12 0 | tee -a $out
+              ./run.sh algo comb_art_skew_10_80 0.1 12 0 | tee -a $out
+              ./run.sh algo comb_art_skew_10_100 0.1 12 0 | tee -a $out
+
+              ./run.sh algo comb_art_skew_20_0 0.1 12 0 | tee -a $out
+              ./run.sh algo comb_art_skew_20_20 0.1 12 0 | tee -a $out
+              ./run.sh algo comb_art_skew_20_40 0.1 12 0 | tee -a $out
+              ./run.sh algo comb_art_skew_20_60 0.1 12 0 | tee -a $out
+              ./run.sh algo comb_art_skew_20_80 0.1 12 0 | tee -a $out
+              ./run.sh algo comb_art_skew_20_100 0.1 12 0 | tee -a $out
+
+              ./run.sh algo comb_art_skew_30_0 0.1 12 0 | tee -a $out
+              ./run.sh algo comb_art_skew_30_20 0.1 12 0 | tee -a $out
+              ./run.sh algo comb_art_skew_30_40 0.1 12 0 | tee -a $out
+              ./run.sh algo comb_art_skew_30_60 0.1 12 0 | tee -a $out
+              ./run.sh algo comb_art_skew_30_80 0.1 12 0 | tee -a $out
+              ./run.sh algo comb_art_skew_30_100 0.1 12 0 | tee -a $out
+
+              ./run.sh algo comb_art_skew_40_0 0.1 12 0 | tee -a $out
+              ./run.sh algo comb_art_skew_40_20 0.1 12 0 | tee -a $out
+              ./run.sh algo comb_art_skew_40_40 0.1 12 0 | tee -a $out
+              ./run.sh algo comb_art_skew_40_60 0.1 12 0 | tee -a $out
+              ./run.sh algo comb_art_skew_40_80 0.1 12 0 | tee -a $out
+              ./run.sh algo comb_art_skew_40_100 0.1 12 0 | tee -a $out
+
+              ./run.sh algo comb_art_skew_50_0 0.1 12 0 | tee -a $out
+              ./run.sh algo comb_art_skew_50_20 0.1 12 0 | tee -a $out
+              ./run.sh algo comb_art_skew_50_40 0.1 12 0 | tee -a $out
+              ./run.sh algo comb_art_skew_50_60 0.1 12 0 | tee -a $out
+              ./run.sh algo comb_art_skew_50_80 0.1 12 0 | tee -a $out
+              ./run.sh algo comb_art_skew_50_100 0.1 12 0 | tee -a $out
+
+              ;;
+
 domain)       ./run.sh compile $2 || exit;
               bin/$2 $N $Q 0.1 17 $3;;
               # valgrind --leak-check=yes bin/$2 $N $Q 0.1 1 $3;;
@@ -79,9 +124,6 @@ append)       ./run.sh compile $2 || exit;
 append8)      ./run.sh compile $2 || exit;
               bin/$2 $N $Q $3 1 8;;
               # bin/$2 data/skyserver.data $Q 0.001 $3 6;;
-
-skew)         make -s -C src "../bin/$2" || exit;
-              bin/$2 `hostname` $N 2 $Q $3;;
 
 data)         echo "var data = 'timestamp,algorithm,query_workload,update_workload,\
 N,Q,selectivity,verified,insert_time,update_time,query_time,checksum,\

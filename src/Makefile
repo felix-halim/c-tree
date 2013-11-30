@@ -59,6 +59,121 @@ $(ODIR)/comb3: comb3.cc comb3.h test.h update.h query.h util.h
 $(ODIR)/comb_art_1000000000_1000000000: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DLARGE_TOUCH=1000000000 -DSMALL_TOUCH=1000000000 -Wall -o $@ $<
 
+$(ODIR)/comb_art_skew_0_0: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DLARGE_TOUCH=1000000000 -DSMALL_TOUCH=1000000000 -DSKEW_X=0 -DSKEW_Y=0 -Wall -o $@ $<
+
+$(ODIR)/comb_art_skew_0_20: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DLARGE_TOUCH=1000000000 -DSMALL_TOUCH=1000000000 -DSKEW_X=0 -DSKEW_Y=20 -Wall -o $@ $<
+
+$(ODIR)/comb_art_skew_0_40: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DLARGE_TOUCH=1000000000 -DSMALL_TOUCH=1000000000 -DSKEW_X=0 -DSKEW_Y=40 -Wall -o $@ $<
+
+$(ODIR)/comb_art_skew_0_60: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DLARGE_TOUCH=1000000000 -DSMALL_TOUCH=1000000000 -DSKEW_X=0 -DSKEW_Y=60 -Wall -o $@ $<
+
+$(ODIR)/comb_art_skew_0_80: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DLARGE_TOUCH=1000000000 -DSMALL_TOUCH=1000000000 -DSKEW_X=0 -DSKEW_Y=80 -Wall -o $@ $<
+
+$(ODIR)/comb_art_skew_0_100: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DLARGE_TOUCH=1000000000 -DSMALL_TOUCH=1000000000 -DSKEW_X=0 -DSKEW_Y=100 -Wall -o $@ $<
+
+
+$(ODIR)/comb_art_skew_10_0: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DLARGE_TOUCH=1000000000 -DSMALL_TOUCH=1000000000 -DSKEW_X=10 -DSKEW_Y=0 -Wall -o $@ $<
+
+$(ODIR)/comb_art_skew_10_20: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DLARGE_TOUCH=1000000000 -DSMALL_TOUCH=1000000000 -DSKEW_X=10 -DSKEW_Y=20 -Wall -o $@ $<
+
+$(ODIR)/comb_art_skew_10_40: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DLARGE_TOUCH=1000000000 -DSMALL_TOUCH=1000000000 -DSKEW_X=10 -DSKEW_Y=40 -Wall -o $@ $<
+
+$(ODIR)/comb_art_skew_10_60: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DLARGE_TOUCH=1000000000 -DSMALL_TOUCH=1000000000 -DSKEW_X=10 -DSKEW_Y=60 -Wall -o $@ $<
+
+$(ODIR)/comb_art_skew_10_80: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DLARGE_TOUCH=1000000000 -DSMALL_TOUCH=1000000000 -DSKEW_X=10 -DSKEW_Y=80 -Wall -o $@ $<
+
+$(ODIR)/comb_art_skew_10_100: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DLARGE_TOUCH=1000000000 -DSMALL_TOUCH=1000000000 -DSKEW_X=10 -DSKEW_Y=100 -Wall -o $@ $<
+
+
+$(ODIR)/comb_art_skew_20_0: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DLARGE_TOUCH=1000000000 -DSMALL_TOUCH=1000000000 -DSKEW_X=20 -DSKEW_Y=0 -Wall -o $@ $<
+
+$(ODIR)/comb_art_skew_20_20: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DLARGE_TOUCH=1000000000 -DSMALL_TOUCH=1000000000 -DSKEW_X=20 -DSKEW_Y=20 -Wall -o $@ $<
+
+$(ODIR)/comb_art_skew_20_40: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DLARGE_TOUCH=1000000000 -DSMALL_TOUCH=1000000000 -DSKEW_X=20 -DSKEW_Y=40 -Wall -o $@ $<
+
+$(ODIR)/comb_art_skew_20_60: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DLARGE_TOUCH=1000000000 -DSMALL_TOUCH=1000000000 -DSKEW_X=20 -DSKEW_Y=60 -Wall -o $@ $<
+
+$(ODIR)/comb_art_skew_20_80: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DLARGE_TOUCH=1000000000 -DSMALL_TOUCH=1000000000 -DSKEW_X=20 -DSKEW_Y=80 -Wall -o $@ $<
+
+$(ODIR)/comb_art_skew_20_100: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DLARGE_TOUCH=1000000000 -DSMALL_TOUCH=1000000000 -DSKEW_X=20 -DSKEW_Y=100 -Wall -o $@ $<
+
+
+$(ODIR)/comb_art_skew_30_0: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DLARGE_TOUCH=1000000000 -DSMALL_TOUCH=1000000000 -DSKEW_X=30 -DSKEW_Y=0 -Wall -o $@ $<
+
+$(ODIR)/comb_art_skew_30_20: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DLARGE_TOUCH=1000000000 -DSMALL_TOUCH=1000000000 -DSKEW_X=30 -DSKEW_Y=20 -Wall -o $@ $<
+
+$(ODIR)/comb_art_skew_30_40: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DLARGE_TOUCH=1000000000 -DSMALL_TOUCH=1000000000 -DSKEW_X=30 -DSKEW_Y=40 -Wall -o $@ $<
+
+$(ODIR)/comb_art_skew_30_60: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DLARGE_TOUCH=1000000000 -DSMALL_TOUCH=1000000000 -DSKEW_X=30 -DSKEW_Y=60 -Wall -o $@ $<
+
+$(ODIR)/comb_art_skew_30_80: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DLARGE_TOUCH=1000000000 -DSMALL_TOUCH=1000000000 -DSKEW_X=30 -DSKEW_Y=80 -Wall -o $@ $<
+
+$(ODIR)/comb_art_skew_30_100: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DLARGE_TOUCH=1000000000 -DSMALL_TOUCH=1000000000 -DSKEW_X=30 -DSKEW_Y=100 -Wall -o $@ $<
+
+
+$(ODIR)/comb_art_skew_40_0: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DLARGE_TOUCH=1000000000 -DSMALL_TOUCH=1000000000 -DSKEW_X=40 -DSKEW_Y=0 -Wall -o $@ $<
+
+$(ODIR)/comb_art_skew_40_20: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DLARGE_TOUCH=1000000000 -DSMALL_TOUCH=1000000000 -DSKEW_X=40 -DSKEW_Y=20 -Wall -o $@ $<
+
+$(ODIR)/comb_art_skew_40_40: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DLARGE_TOUCH=1000000000 -DSMALL_TOUCH=1000000000 -DSKEW_X=40 -DSKEW_Y=40 -Wall -o $@ $<
+
+$(ODIR)/comb_art_skew_40_60: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DLARGE_TOUCH=1000000000 -DSMALL_TOUCH=1000000000 -DSKEW_X=40 -DSKEW_Y=60 -Wall -o $@ $<
+
+$(ODIR)/comb_art_skew_40_80: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DLARGE_TOUCH=1000000000 -DSMALL_TOUCH=1000000000 -DSKEW_X=40 -DSKEW_Y=80 -Wall -o $@ $<
+
+$(ODIR)/comb_art_skew_40_100: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DLARGE_TOUCH=1000000000 -DSMALL_TOUCH=1000000000 -DSKEW_X=40 -DSKEW_Y=100 -Wall -o $@ $<
+
+
+$(ODIR)/comb_art_skew_50_0: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DLARGE_TOUCH=1000000000 -DSMALL_TOUCH=1000000000 -DSKEW_X=50 -DSKEW_Y=0 -Wall -o $@ $<
+
+$(ODIR)/comb_art_skew_50_20: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DLARGE_TOUCH=1000000000 -DSMALL_TOUCH=1000000000 -DSKEW_X=50 -DSKEW_Y=20 -Wall -o $@ $<
+
+$(ODIR)/comb_art_skew_50_40: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DLARGE_TOUCH=1000000000 -DSMALL_TOUCH=1000000000 -DSKEW_X=50 -DSKEW_Y=40 -Wall -o $@ $<
+
+$(ODIR)/comb_art_skew_50_60: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DLARGE_TOUCH=1000000000 -DSMALL_TOUCH=1000000000 -DSKEW_X=50 -DSKEW_Y=60 -Wall -o $@ $<
+
+$(ODIR)/comb_art_skew_50_80: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DLARGE_TOUCH=1000000000 -DSMALL_TOUCH=1000000000 -DSKEW_X=50 -DSKEW_Y=80 -Wall -o $@ $<
+
+$(ODIR)/comb_art_skew_50_100: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
+	$(CXX) $(CXXFLAGS) $(FLAGS) -DLARGE_TOUCH=1000000000 -DSMALL_TOUCH=1000000000 -DSKEW_X=50 -DSKEW_Y=100 -Wall -o $@ $<
+
+
+
 $(ODIR)/comb_art_0_0: comb_art.cc comb_art.h art.h test.h update.h query.h util.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DLARGE_TOUCH=0 -DSMALL_TOUCH=0 -Wall -o $@ $<
 
