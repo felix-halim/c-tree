@@ -1,0 +1,23 @@
+\begin{figure}[t]
+\begin{minipage}{4in}
+{\small
+\begin{tabbing}
+16 16\= 16 \= 16 \= 16 \= 16 \= 16 \= 16 \= 16 \= 16 \= \kill
+{\bf Algorithm} $\mathsf{Fission::split\_chain}($root index $i$, pivot value $v)$\\
+1.\>$chain[0]$ = new bucket chain\\
+2.\>$chain[1]$ = new bucket chain\\
+3.\>{\bf foreach} bucket $B_j$ in chain $Pointer(R_i)$ {\bf do}\\
+4.\>\>{\bf while} ($B_j$ is not empty) {\bf do}\\
+5.\>\>\>$t$ = $B_j$.pop\_back() {\it // returns and remove the last tuple}\\
+6.\>\>\>$chain[t \ge v]$.append\_tuple($t$) {\it // chains new bucket if full}\\
+7.\>$Pointer(R_i)$ = chain[0]\\
+8.\>$Pointer(R_{i+1})$ = chain[1]
+\end{tabbing}
+}
+\end{minipage}
+\vspace{-1em}
+\caption{The Fission algorithm.}\label{algo:fission}
+\vspace{-1.5em}
+\end{figure}
+
+% Tuples that are < P are copied to the left bucket, the rest to the right bucket.

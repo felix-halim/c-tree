@@ -1,0 +1,61 @@
+\begin{figure}[t]
+\begin{minipage}{4in}
+{\small
+\begin{tabbing}
+16 16\= 16 \= 16 \= 16 \= 16 \= 16 \= 16 \= 16 \= 16 \= \kill
+{\bf Algorithm} $\mathsf{Crack::split\_chain}($root index $i$, pivot value $v)$\\
+1.\>$A$ = new array of pair$\langle $partition\_position, bucket\_index$\rangle$\\
+2.\>{\bf foreach} bucket $B_j$ chained by $Pointer(R_i)$ {\bf do}\\
+3.\>\>$pos$ = std::partition($Column(B_j)$, $v$)\\
+4.\>\>$A$.push($\langle pos$, $j\rangle$) {\it // appends to the end of the array}\\
+5.\>sort\_descending($A$) {\it // to minimize data exchanges below}\\
+6.\>$left\_chain$ = new bucket chain\\
+7.\>$right\_chain$ = new bucket chain\\
+8.\>$k$ = 0, $n$ = $|A|-1$\\
+9.\>{\bf while} ($k < n$) {\bf do}\\
+10.\>\>let $\langle r,p\rangle$ denote $A_k$\\
+11.\>\>let $\langle s,q\rangle$ denote $A_n$\\
+12.\>\>$a$ = $Column(B_p)$, $b$ = $Column(B_q)$\\
+13.\>\>$m$ = min($|B_p| - r$, $s$)\\
+14.\>\>{\bf while} ($m>0$) {\bf swap}($a_r$, $b_s$), $r$ = $r+1$, $s$ = $s-1$, $m$ = $m-1$\\
+15.\>\>{\bf if} ($r$ == $|B_p|$) $left\_chain$.append\_bucket($B_{p}$), $k$ = $k+1$\\
+16.\>\>{\bf if} ($s$ == 0) $right\_chain$.append\_bucket($B_{q}$), $n$ = $n-1$\\
+17.\>let $\langle r,p\rangle$ denote $A_k$\\
+18.\> $a$ = $Column(B_p)$\\
+19.\>{\bf if} ($r$ == $|B_p|$) $left\_chain$.append\_bucket($B_{p}$)\\
+20.\>{\bf else if} ($r$ == $0$) $right\_chain$.append\_bucket($B_{p}$)\\
+21.\>{\bf else}\\
+22.\>\>$q$ = create a new empty bucket\\
+23.\>\>move tuples at positions [$r$,$|B_p|$) in $Column(B_p)$ to $B_q$\\
+24.\>\>$left\_chain$.append\_bucket($B_{p}$)\\
+25.\>\>$right\_chain$.append\_bucket($B_{q}$)\\
+26.\>$Pointer(R_i)$ = $left\_chain$\\
+27.\>$Pointer(R_{i+1})$ = $right\_chain$\\
+\\
+{\bf function} $\mathsf{std::partition}($column $A$, pivot value $v)$ {\it // from C++ STL}\\
+28.\>$first$ = $0$, $last$ = $|A|$\\
+29.\>{\bf while} (true) {\bf do}\\
+30.\>\>{\bf while} (true) {\bf do}\\
+31.\>\>\>{\bf if} ($first$ == $last$) {\bf return} $first$\\
+32.\>\>\>{\bf else if} ($A_{first}$ < $v$) $first$ = $first$+1\\
+33.\>\>\>{\bf else break}\\
+34.\>\>$last$ = $last$-1\\
+35.\>\>{\bf while} (true) {\bf do}\\
+36.\>\>\>{\bf if} ($first$ == $last$) {\bf return} $first$\\
+37.\>\>\>{\bf else if} ($A_{last}$ $\ge$ $v$) $last$ = $last$-1\\
+38.\>\>\>{\bf else break}\\
+39.\>\>{\bf swap}($A_{first}$, $A_{last}$)\\
+40.\>\>$first$ = $first$+1\\
+\end{tabbing}
+}
+\end{minipage}
+\vspace{-1em}
+\caption{Splitting Comb buckets using cracking.}\label{algo:crack}
+\vspace{-1.5em}
+\end{figure}
+
+
+% // the bucket has been partitioned based on the value P.
+% // the cracker index position is at L
+
+% line 3 destroys $B_j$ local cracker indexes

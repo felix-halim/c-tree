@@ -1,0 +1,72 @@
+\begin{figure}[t]
+\begin{minipage}{4in}
+{\small
+\begin{tabbing}
+16 16\= 16 \= 16 \= 16 \= 16 \= 16 \= 16 \= 16 \= 16 \= \kill
+{\bf Algorithm} $\mathsf{RangeQuery}($low bound $v_1$, high bound $v_2)$\\
+1.\>$lo$ = point\_query($v_1$)\\
+2.\>$hi$ = point\_query($v_2$)\\
+3.\>{\bf return} create\_view($lo$, $hi$) {\it// position of $v$ in Comb} \\
+\\
+{\bf function} $\mathsf{point\_query}($boundary value $v)$\\
+4.\>{\bf if} (isEmpty($R$)) {\bf return} \{$|R|$, 0, 0\} {\it// past-the-end position}\\
+5.\>$i$ = lower\_bound($R$, $v$) {\it// the first $i$ such that $Key(R_i) \geq v$}\\
+6.\>$i$ = make\_standalone($i$, $v$)\\
+7.\>$j$ = $Pointer(R_i)$\\
+8.\>$k$ = crack($j$, $v$)\\
+9.\>{\bf return} \{$i$, $j$, $k$\}\\
+\\
+{\bf function} $\mathsf{make\_standalone}($root index $i$, boundary value $v)$\\
+10.\>{\bf while} (true) {\bf do}\\
+11.\>\>$j$ = the first bucket pointed by $Pointer(R_i)$\\
+12.\>\>{\bf if} ($B_j$ does not have a next bucket) {\bf break}\\
+13.\>\>stochastic\_split\_chain($i$)\\
+14.\>\>{\bf if} ($v \geq Key(R_{i+1}$)) $i = i+1$ {\it// adjust root index to where $v$ is}\\
+15.\>{\bf return} $i$\\
+\\
+{\bf function} $\mathsf{stochastic\_split\_chain}($root index $i)$\\
+16.\>$pv$ = pick\_random\_pivot(i) {\it// stochastic crack pivot value}\\
+17.\>{\bf for} ($j$ = $|R|-1$; $j>i$; $j$-{}-) {\bf do} {\it// shift elements at $j > i$ to the right}\\
+18.\>\>$Pointer(R_{i+1}) = Pointer(R_i)$\\
+19.\>\>$Key(R_{i+1}) = Key(R_i)$\\
+20.\>$|R|$ = $|R|+1$ {\it// increase the number of stored tuples |R|}\\
+21.\>$Key(R_{i+1})$ = $pv$ {\it// set the smallest value in $R_{i+1}$ bucket chain}\\
+22.\>perform split\_chain($i$, $pv$) which split a bucket chain pointed by\\
+\>$Pointer(R_i)$, transferring tuples with values $\geq pv$ to buckets\\
+\>in chain $R_{i+1}$ (implementation details are in Section \ref{sec:splitting})\\
+\\
+{\bf function} $\mathsf{crack}($bucket number $j$, boundary value $v)$\\
+23.\>flush\_pending\_inserts($j$)\\
+24.\>let $P_v$ = the (local) cracker piece of $B_j$ where $v$ is in\\
+25.\>{\bf while} ($|P_v|$ > $CRACK\_AT$) stochastic\_split($P_v$) {\it// perform DD1R}\\
+26.\>{\bf if} ($P_v$'s sorted flag is not set)\\
+27.\>\>{\bf if} (this is a read query) sort the piece $P_v$ and set its sorted flag\\
+28.\>\>{\bf else} {\bf return} the position of $v$ in $P_v$ via linear scan\\
+29.\>{\bf return} the position of $v$ in $P_v$ via binary search\\
+\\
+{\bf function} $\mathsf{flush\_pending\_inserts}($bucket number $j)$\\
+30.\>if (no local cracker index) consider all tuples are merged and {\bf return}\\
+31.\>do merge insert completely to all the (local) pending tuples in $B_j$\\
+32.\>unset the sorted flags of the pieces that are touched during merging\\
+\end{tabbing}
+}
+\end{minipage}
+\vspace{-1em}
+\caption{Range query in Comb.}\label{algo:pointquery}
+\vspace{-1.5em}
+\end{figure}
+
+% We define an iterator as a tuple with 3 values: \{$i$, $j$, $k$\}.
+% An iterator is used to locate the position of a tuple.
+% $i$ is the index of the root array, $j$ is the bucket number,
+% and $k$ is the position of the tuple in the bucket $B_j$.
+
+% $RangeQuery(v_1,v_2)$ returns a view consisting of an iterator such that positions before 
+% the iterator is $<v$ and positions after the iterator is $\geq v$.
+% The iterator is constructed by first finding the index of the root array ($i$)
+% containing the tuple with value $v$ (line 2).
+% The bucket pointed by the root array must be standalone (line 3)
+% otherwise the bucket chain is split until it is standalone (line 8-11). 
+% Next we retrieve the (standalone) bucket number ($j$) pointed by the root array (line 4).
+% The bucket's array is then cracked on value $v$ and the cracked position is at $k$.
+% We now have all the necessary ingredients to construct the pointer \{$i$, $j$, $k$\}.

@@ -1,0 +1,55 @@
+\begin{abstract}
+
+
+We study main-memory indexing tailored for modern applications
+that need to do both efficient reads and efficient updates (both arriving at massive ammounts and rates).
+We show that state-of-the-art main-memory (non-adaptive) indexing methods require too much time 
+and workload knowledge in order to go through the preparation phase for a new batch of data, i.e., in order to 
+create a main-memory tailored tree (or trie) structure or to sort a main-memory resident array.
+Adaptive indexing solves this problem by avoiding expensive initialization costs and incrementally refining indexes; however, 
+we show that state-of-the-art adaptive indexing methods are not resilient, i.e., they fail to maintain their adaptive properties
+when they are phased with massive sequences of queries and updates.
+As a result no current method can support efficient reads and writes.
+
+We intentify the root of the problem at the rigid design of indexing methods so far.
+We observe that for each stage at a workload there is a different indexing design which is the best fit.
+In this paper, we present Trimmer, a new main-memory indexing approach that we call transitive indexing.
+Trimmer changes each shape as the workload evolves.
+Initially, an index is a collection of unordered vectors. 
+As more queries arrive, during query processing, Trimmer refines the hot vectors and  starts
+inducing order and structure. Gradually, query after query, Trimmer morphs into a Trie structure
+for the hot part of the data. 
+As a result Trimmer can absorb massive updates while at the samme time it provides 
+fast lookup times and it does not need any initialization cost.
+A detailed experimental analysis on both synthetic and real-life scenarios from the astronomy domain shows that Trimmer
+successfully overcomes the limitations of existing adaptive and non-adaptive main-memory indexing -- it enables resilient, adaptive 
+and interactive data exploration under massive updates.
+
+%As we enter the era of data deluge, there is an increasing pressure 
+%to deal with data by quickly reacting to both queries and new data.
+%This phenomenon appears increasingly both in sciences and in businesses where in many cases
+%we receive new data every few minutes, summing up to the order of Terabytes daily, while
+%we still want to maintain the ability to pose queries with good performance all the time. 
+%The main characteristic of such workloads is that there is little (if at all) idle time and workload knowledge
+%to do any workload analysis and index tuning to achieve good performance.
+%
+%Such scenarios call for adaptive approaches to continuously match the workload.
+%However, as we show, existing adaptive indexing approaches cannot sufficiently deal 
+%with the data deluge challenges; they can handle relatively static scenarios, where most data has arrived up-front, but falter as the size of queries issued and updates performed exceeds the volume of the original data.
+%
+%
+%In this paper, we propose Comb, a new adaptive indexing approach geared towards interactive data exploration.
+%Similarly to past adaptive indexing, Comb is designed for main-memory column-stores
+%and it incrementally and adaptively reacts to new data and queries, continuously refining the indexes
+%and continuously improving the query performance with zero preparation and tuning costs. 
+%The innovation in the design of Comb, is that it breaks a single column into multiple disjoint pieces
+%and each piece is indexed, accessed and updated independently, while data flows from piece to piece in an adaptive way
+%when the index needs to be balanced. 
+%A detailed experimental analysis on both synthetic and real-life scenarios from the astronomy domain shows that Comb
+%successfully overcomes the limitations of existing adaptive indexing -- it enables resilient, adaptive 
+%and interactive data exploration.
+
+\end{abstract}
+
+
+

@@ -1,0 +1,67 @@
+\begin{figure}[t]
+\begin{minipage}{4in}
+{\small
+\begin{tabbing}
+16 16\= 16 \= 16 \= 16 \= 16 \= 16 \= 16 \= 16 \= 16 \= \kill
+{\bf Algorithm} $\mathsf{Fusion::split\_chain}($root index $i$, pivot value $v)$\\
+1.\>$chain$ = $Pointer(R_i)$\\
+2.\>$left\_chain$ = new bucket chain\\
+3.\>$right\_chain$ = new bucket chain\\
+4.\>$p$ = -1, $q$ = -1 {\it// are the left and right bucket number respectively}\\
+5.\>$hi$ = new array {\it// list of indexes of tuples in $B_p$ that are $\ge$ $v$}\\
+6.\>$lo$ = new array {\it// list of indexes of tuples in $B_q$ that are $< v$}\\
+7.\>{\bf while} (true) {\bf do}\\
+8.\>\>{\bf if} (both $hi$ and $lo$ are not empty) {\bf do} {\it// fuse $B_p$ and $B_q$ using $lo$ and $hi$}\\
+9.\>\>\>$a$ = $Column(B_p)$, $b$ = $Column(B_q)$\\
+10.\>\>\>{\bf for} ($m$ = min($|hi|$, $|lo|$); $m>0$; $m$-{}-) {\bf do}\\
+11.\>\>\>\>$r$ = $hi$.pop\_back() {\it// index of the tuple in $B_p$ to be moved to $B_q$}\\
+12.\>\>\>\>$s$ = $lo$.pop\_back() {\it// index of the tuple in $B_q$ to be moved to $B_p$}\\
+13.\>\>\>\>swap($a_r$, $b_s$) {\it// swap tuples between the left and right bucket}\\
+15.\>\>\>{\bf if} ($hi$ is empty) $left\_chain$.append\_bucket($B_p$), $p$ = -1\\
+16.\>\>\>{\bf if} ($lo$ is empty) $right\_chain$.append\_bucket($B_q$), $q$ = -1\\
+17.\>\>{\bf else if} ($p$ == -1)\\
+18.\>\>\>{\bf if} ($chain$ is empty) {\bf break; else} $p$ = $chain$.pop\_front()\\
+19.\>\>{\bf else if} ($hi$ is empty)\\
+20.\>\>\>{\bf for} ($j=0$; $j<|B_p|$; $j$++) {\it// no branch prediction}\\
+21.\>\>\>\>$hi_{|hi|}$ = $j$, $|hi|$ = $|hi| + (Column(B_p)_j \ge v)$\\
+22.\>\>\>{\bf if} ($hi$ is empty) $left\_chain$.append\_bucket($B_p$), $p$ = -1\\
+23.\>\>{\bf else if} ($q$ == -1)\\
+24.\>\>\>{\bf if} ($chain$ is empty) {\bf break; else} $q$ = $chain$.pop\_front()\\
+25.\>\>{\bf else if} ($lo$ is empty)\\
+26.\>\>\>{\bf for} ($j=0$; $j<|B_q|$; $j$++) {\it// no branch prediction}\\
+27.\>\>\>\>$lo_{|lo|}$ = $j$, $|lo| = |lo| + (Column(B_q)_j < v)$\\
+28.\>\>\>{\bf if} ($lo$ is empty) $right\_chain$.append\_bucket($B_q$), $q$ = -1\\
+29.\>{\bf if} ($q$ != -1) $p$ = $q$;\\
+30.\>{\bf if} ($p$ != -1)\\
+31.\>\>{\bf if} ($B_p$ is empty) free bucket $B_p$\\
+32.\>\>{\bf else}\\
+33.\>\>\>pos = std::partition($Column(B_p)$, $v$)\\
+34.\>\>\>{\bf if} (pos == 0) $right\_chain$.append\_bucket($B_p$)\\
+35.\>\>\>{\bf else if} (pos == $|B_p|$) $left\_chain$.append\_bucket($B_p$)\\
+36.\>\>\>{\bf else}\\
+37.\>\>\>\>$q$ = create new bucket\\
+38.\>\>\>\>move tuples at positions [$pos$,$|B_p|$) in $Column(B_p)$ to $B_q$\\
+39.\>\>\>\>$left\_chain$.append\_bucket($B_p$)\\
+40.\>\>\>\>$right\_chain$.append\_bucket($B_q$)\\
+41.\>$Pointer(R_i)$ = $left\_chain$\\
+42.\>$Pointer(R_{i+1})$ = $right\_chain$
+\end{tabbing}
+}
+\end{minipage}
+\vspace{-1em}
+\caption{Fusion algorithm.}\label{algo:fusion}
+\vspace{-2.5em}
+\end{figure}
+
+%             // generate a list of indexes of tuples \\
+%  // which value is >= P in the left bucket.\\
+% / store the indexes in hi[] temporary array.\\
+%  // there is no branch prediction here.\\
+%  // this loop work better with -funroll-loops enabled.\\
+
+
+%              // generate a list of indexes of tuples\\
+%   // which value is < P in the right bucket.\\
+% // store the indexes in lo[] temporary array.\\
+%   // there is no branch prediction here.\\
+%   // this loop work better with -funroll-loops enabled.\\

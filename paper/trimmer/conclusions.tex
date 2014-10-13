@@ -1,0 +1,9 @@
+\section{Conclusions}
+\label{sec:conclusion}
+Modern applications require quick inspection of data as soon as they arrive and exploratory analysis is becoming more and more valuable. Up-front workload knowledge and idle time for tuning are scarce resources. In such environments, adaptive approaches to classic database problems are especially promising, i.e., being able to adapt data structures and strategies to the running workload. A number of techniques have been proposed in the context of adaptive indexing, providing continuous and incremental index creation. However, we show that the attractive properties of state-of-the-art adaptive indexing techniques are not resilient to new scenarios where systems are confronted with a continuous injection of new data and exploratory queries. As the sequence of data and queries evolves, adaptive indexing fails to maintain its adaptive properties and good performance in terms of quick data access.
+
+This paper proposes Comb, a new adaptive indexing method specifically tailored for dynamic and continuously changing workloads. Based on building indexes over chains of malleable buckets, Comb maintains the beneficial properties of existing adaptive indexing approaches, while it is also resilient in those cases where current adaptive indexing fails, i.e., long strings of queries and updates. Experiments on synthetic and real workloads reveal a benefit of multiple orders of magnitude in response times.
+
+The area of adaptive indexing is becoming progressively more mature over the years. Still there are significant future work directions towards database systems with adaptive indexing as a first-class citizen. External processing, exploitation of modern hardware such as flash disks and multi-cores, application of adaptive indexing ideas to modern row-store and hybrid architectures are a few of the open directions.
+ 
+

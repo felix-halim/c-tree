@@ -1,0 +1,30 @@
+\begin{figure}[t]
+\begin{minipage}{4in}
+{\small
+\begin{tabbing}
+16 16\= 16 \= 16 \= 16 \= 16 \= 16 \= 16 \= 16 \= 16 \= \kill
+{\bf Algorithm} $\mathsf{DDC}(C,a,b)$\\
+Crack array $C$ on bounds $a$, $b$.\\
+1.\>$positionLow$  = ddc\_crack($C,a$)\\
+2.\>$positionHigh$ = ddc\_crack($C,b$)\\
+3.\>$result$ = createView($C$,$positionLow, positionHigh$)\\
+\\
+{\bf function} $\mathsf{ddc\_crack}(C,v)$\\
+4.\>Find the piece $Piece$ that contains value $v$\\
+5.\>$pLow$ = $Piece$.firstPosition()\\
+6.\>$pHgh$ = $Piece$.lastPosition()\\
+7.\>{\bf while} ($pHgh$ - $pLow$ $>$ $\mathsf{CRACK\_SIZE}$)\\
+8.\>\>$pMiddle$ = ($pLow$+$pHgh$) / 2;    \\
+9.\>\>Introduce crack at $pMiddle$\\
+10.\>\>{\bf if} ($v$ $<$ $C$[$pMiddle$]) $pHgh$ = $pMiddle$\\
+11.\>\>{\bf else} $pLow$ = $pMiddle$\\
+12.\>$position$=crack($C[pLow,pHgh]$,$v$)\\
+13.\>$result$=$position$\\
+\end{tabbing}
+}
+\end{minipage}
+\vspace{-2em}
+\caption{The {DDC} algorithm.}\label{fig:ddc}
+\vspace{-2.5em}
+\end{figure}
+

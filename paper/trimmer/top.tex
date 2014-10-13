@@ -1,0 +1,79 @@
+\documentclass{acm_proc_article-sp}
+%\documentclass{sig-alternate}
+
+\usepackage[ruled, noend]{algorithm2e}
+%\usepackage{pslatex}
+\usepackage{graphicx}
+%\usepackage{times}
+\usepackage{amsmath}
+\usepackage{multiFloats}
+\usepackage{url}
+\usepackage{wrapfig}
+\usepackage{hyphenat} % handle hyphenations with \hyp{}
+%\setlength{\textfloatsep}{.4\textfloatsep}
+
+\newtheorem{dfn}{Definition}
+\newtheorem{eg}{Example}
+\newtheorem{thm}{Theorem}
+\newtheorem{lem}{Lemma}
+
+\hyphenation{da-ta-ba-se}
+\hyphenation{light-weight}
+
+\newcommand{\T}{\mathcal{T}}
+\newcommand{\DB}{\mathcal{DB}}
+\usepackage{xcolor}
+\newcommand\todo[1]{\textcolor{red}{#1}}
+
+\newcommand{\hide}[1]{}
+
+\def\sharedaffiliation{
+\end{tabular}
+\begin{tabular}{c}}
+
+\pdfpagewidth=8.5in
+\pdfpageheight=11in
+
+\begin{document}
+
+\title{TRIMMER: Transitive Indexing in Main-Memory Systems}
+
+%% Double-Blind for SIGMOD
+
+% \author{
+% Felix Halim$^\star$\and
+% Stratos Idreos$^\dag$\and
+% Panagiotis Karras$^\lozenge$\and
+% Roland H. C. Yap$^\star$\and
+% %\affaddr{halim@comp.nus.edu.sg} \and
+% %\affaddr{idreos@cwi.nl} \and
+% %\affaddr{karras@business.rutgers.edu} \and
+% %\affaddr{ryap@comp.nus.edu.sg} \and
+% \affaddr{$^\star$National University of Singapore}\\
+% \affaddr{\{halim, ryap\}@comp.nus.edu.sg}
+% \and
+% \affaddr{$^\dag$Harvard University}\\
+% \affaddr{stratos@seas.harvard.edu}
+% \and
+% \affaddr{$^\lozenge$Rutgers University}\\
+% \affaddr{karras@business.rutgers.edu}
+% }
+
+\maketitle
+%\pagenumbering{arabic}
+
+\input{abstract}
+\input{introduction}
+%\input{related}
+%\input{problem}
+%\input{cracke}
+%\input{experiments}
+%\input{conclusions}
+
+
+\bibliographystyle{abbrv}
+%\scriptsize
+\bibliography{references}
+
+%\balancecolumns
+\end{document}
