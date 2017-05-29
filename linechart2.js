@@ -6,7 +6,7 @@
 - Streaming insert
 - Also memory usage
 - different selectivity for scrack
-
+- optimize near sorted input
 */
 function renderLinecharts() {
   var charts = document.getElementsByClassName('chart');
@@ -20,36 +20,23 @@ function parse_div(div, ith_div) {
 }
 
 function to_data(lines) {
-  var ret = [], field = lines.fields;
-  for (var i = 0; i < data.length; i++) {
-    var d = data[i];
-    var values = lines.values;
-    for (var j = 0; j < values.length; j++) {
-      var value = values[j].value, ok = true;
-      for (var k = 0; ok && k < field.length; k++) {
-        if (d[field[k]] != value[k]) ok = false;
-      }
+  var group = {};
+  for (var label in lines) if (lines.hasOwnProperty(label)) {
+    var arr = [], filter = lines[label].filter;
+    for (var i = 0; i < data.length; i++) {
+      var d = data[i], ok = true;
+      for (var key in filter) if (filter.hasOwnProperty(key) && d[key] != filter[key]) ok = false;
       if (ok) {
-        d['__color'] = values[j].color || 'black';
-        d['__line'] = values[j].line || '-';
-        ret.push(d);
-        break;
+        d['__color'] = lines[label].color || 'black';
+        d['__line'] = lines[label].line || '-';
+        arr.push(d);
       }
     }
+    group[label] = arr;
   }
-  return ret;
+  return group;
 }
 
-
-function filter(filters) {
-  var ret = data;
-  filters.forEach(function (filter) {
-    ret = ret.filter(function (d) {
-      return filter.values.indexOf(d[filter.attr]) != -1;
-    });
-  });
-  return ret;
-}
 function group(arr, by) {
   var keys = {}, groups = [];
   arr.forEach(function (d) {
@@ -58,8 +45,6 @@ function group(arr, by) {
   });
   return keys;
 }
-
-  function ticksPow10(d) { return 10 + formatPower(Math.round(Math.log(d) / Math.LN10)); }
 
 function linechart(div, opts) {
   opts.width = opts.width || 400;
@@ -74,21 +59,20 @@ function linechart(div, opts) {
   function formatPower(d) { return (d + "").split("").map(function(c) { return superscript[c]; }).join(""); };
   function ticksPow10(d) { return 10 + formatPower(Math.round(Math.log(d) / Math.LN10)); }
 
-  var algos = opts.data = group(to_data(opts.lines), opts.lines.group_by);
+  var group = to_data(opts.lines);
 
-  populate_graph_data(algos);
+  populate_graph_data(group);
 
-  // console.log(algos);
   if (opts.base) {
-    var base = algos[opts.base];
+    var base = group[opts.base];
     if (!base) alert('base not found: ' + opts.base);
-    for (var algo in algos) if (algos.hasOwnProperty(algo)) {
-      var arr = algos[algo];
-      for (var i = 0; i < base.length; i++) {
+    for (var algo in group) if (group.hasOwnProperty(algo)) {
+      var arr = group[algo];
+      for (var i = 0; i < base.length && i < arr.length; i++) {
         arr[i].ratio = arr[i][opts.yAxis.attr] / base[i][opts.yAxis.attr];
       }
     }
-    // delete algos[opts.base];
+    // delete group[opts.base];
     for (var i = 0; i < base.length; i++) {
       base[i].ratio = 1.0;
     }
@@ -96,11 +80,11 @@ function linechart(div, opts) {
   }
 
   if (opts.xAxis.domain) {
-    for (var algo in algos) if (algos.hasOwnProperty(algo)) {
-      var arr = algos[algo].filter(function (a) {
+    for (var algo in group) if (group.hasOwnProperty(algo)) {
+      var arr = group[algo].filter(function (a) {
         return opts.xAxis.domain[0] <= a[opts.xAxis.attr] && a[opts.xAxis.attr] <= opts.xAxis.domain[1];
       });
-      algos[algo] = arr;
+      group[algo] = arr;
     }
   }
   var width = opts.width - (opts.margin.left + opts.margin.right);
@@ -129,12 +113,11 @@ function linechart(div, opts) {
   svg = svg.append("g").attr("transform", "translate(" + opts.margin.left + "," + opts.margin.top + ")");
 
   var color_map = {};
-  for (var i = 0; i < opts.lines.values.length; i++) {
-    var value = opts.lines.values[i];
-    var label = value.label;
-    var legendG = svg.append("g").attr('transform', "translate(" + label[1] + ", " + label[2] + ")");
-    for (var j = 0; j < opts.lines.fields.length; j++) if (opts.lines.fields[j] == opts.lines.group_by) color_map[value.value[j]] = value.color;
-    legendG.append("text").attr({ fill : value.color, style : "font-size:14px", "alignment-baseline": 'middle' }).text(label[0]);
+  for (var label in opts.lines) if (opts.lines.hasOwnProperty(label)) {
+    var value = opts.lines[label];
+    var legendG = svg.append("g").attr('transform', "translate(" + value.x + ", " + value.y + "), rotate(" + (value.r || 0) + ")");
+    color_map[label] = value.color;
+    legendG.append("text").attr({ fill : value.color, style : "font-size:14px", "alignment-baseline": 'middle' }).text(label);
     if (value.line && value.line[0])
       legendG.append("path").attr({ stroke: value.color, d: "M" + (-20) + " " + 0 + " L" + (-1) + " " + 0, });
     if (value.line && value.line[1])
@@ -143,12 +126,12 @@ function linechart(div, opts) {
 
   // var color = d3.scale.category10();
   var color = d3.scale.ordinal();
-  color.domain(d3.keys(algos));
+  color.domain(d3.keys(group));
   color.range(color.domain().map(function (key) {
     return color_map[key] ? color_map[key] : 'black';
   }));
 
-  var algo_arr = color.domain().map(function(key) { return { key: key, values: algos[key] }; });
+  var algo_arr = color.domain().map(function(key) { return { key: key, values: group[key] }; });
   function extreme(f, arr, attr) { return f(arr, function (a) { return f(a.values, function (d) { return d[attr]; }); }); }
   // x.domain(d3.extent(data, function(d) { return d.Q; }));
   x.domain(opts.xAxis.domain || [ extreme(d3.min, algo_arr, opts.xAxis.attr), extreme(d3.max, algo_arr, opts.xAxis.attr) ]);
@@ -158,7 +141,7 @@ function linechart(div, opts) {
 
 
   var arr = [];
-  color.domain().map(function(key) { arr = arr.concat(algos[key]); });
+  color.domain().map(function(key) { arr = arr.concat(group[key]); });
   svg.selectAll("path.dot")
      .data(arr)
      .enter().append("path")
@@ -223,17 +206,21 @@ function linechart(div, opts) {
   yRightAxisG.selectAll("path").attr({"fill": "none", "stroke":"black"});
   yRightAxisG.selectAll("line").attr({"fill": "none", "stroke":"black"});
 
-  var lines = svg.selectAll(".lines").data(algo_arr).enter().append("g").attr("class", "lines");
-  lines.append("path")
-      .attr("class", "line")
-      .attr("d", function(d) { return line(d.values); })
-      .style("stroke", function(d) { return color(d.key); });
+  var lines = svg.append("g");
 
-  svg.selectAll(".line").attr({
-    "fill": "none",
-    "stroke": "steelblue",
-    "stroke-width": "1.5px",
-  });
+  lines
+    .append("clipPath").attr('id', 'graph-clip')
+    .append('rect').attr("width", width).attr("height", height);
+
+  for (var label in group) if (group.hasOwnProperty(label)) {
+    lines.append("path").attr({
+      "d": line(group[label]),
+      "clip-path": "url(#graph-clip)",
+      "fill": "none",
+      "stroke": color_map[label],
+      "stroke-width": "1.5px",
+    })
+  }
 
   // lines.append("text")
   //     .datum(function(d) { return { key: d.key, value: d.values[d.values.length - 1] }; })

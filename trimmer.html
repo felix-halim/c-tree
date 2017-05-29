@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style type="text/css">
+text.cell, text.root_index {
+  text-anchor: middle;
+  alignment-baseline: central;
+  font-size: 18px;
+}
+</style>
+<script src="d3.v3.min.js"></script>
+<script src="trimmer.js?3"></script>
+</head>
+
+<body>
+<table>
+<tr><th align="left">TRIMMER<td>Best viewed using Chrome<td rowspan="6" valign="top">
+<div id="query_log" style="overflow-y:scroll; height:150px; width: 400px; background-color:#EEE; margin-left:15px; display:none">
+asdf<br>
+asdf<br>
+asdf<br>
+asdf<br>
+asdf<br>
+asdf<br>
+asdf<br>
+asdf<br>
+asdf<br>
+asdf<br>
+asdf<br>
+asdf<br>
+asdf<br>
+</div>
+<tr class="input"><td>Query: <td><input type="text" value="14" size="3" id="query_text">
+    <input id="query_submit" type="button" value="Query" onclick="lower_bound(parseInt(qt.value, 10))">
+    <input id="random_query_submit" type="button" value="Random Query" onclick="random_lower_bound()">
+<tr class="input"><td>Delete: <td><input type="text" value="14" size="3" id="delete_text">
+    <input id="delete_submit" type="button" value="Delete" onclick="erase(parseInt(dt.value, 10))">
+    <input id="random_delete_submit" type="button" value="Random Delete" onclick="random_delete()">
+<tr class="input"><td>Insert: <td><input type="text" value="14" size="3" id="insert_text">
+    <input id="insert_submit" type="button" value="Insert" onclick="insert([parseInt(it.value, 10)])">
+    <input id="random_insert_submit" type="button" value="Random Insert" onclick="random_insert()">
+<tr><td>Animation Speed: <td><input type="range" id="animation_speed" min="1" max="100" value="2">
+        <input id="play_btn" type="button" value="Play" disabled>
+<tr><td>Play Step <span id="play_step_i"></span> <td><input type="range" id="play_step" min="0" max="0" style="width:0px" value="0">
+</table>
+
+<svg id="trimmer" width="1200" height="700"></svg>
+
+<br><br><br>
+
+<script>
+var qt = document.getElementById("query_text");
+var dt = document.getElementById("delete_text");
+var it = document.getElementById("insert_text");
+var last_operation = 'query';
+
+var c = NewTrimmer();
+var DURATION = 1000;
+insert(generate_data(100, 91));
+
+qt.focus();
+
+// setTimeout(function () {
+//   lower_bound(14);
+// }, 1000);
+
+document.getElementById("animation_speed").onchange = function(e) {
+  DURATION = 2000 / this.value;
+};
+
+qt.onkeypress = function(e) { if (e.keyCode == 13) lower_bound(parseInt(qt.value, 10)); };
+dt.onkeypress = function(e) { if (e.keyCode == 13) erase(parseInt(dt.value, 10)); };
+it.onkeypress = function(e) { if (e.keyCode == 13) insert([parseInt(it.value, 10)]); };
+
+function random_lower_bound() {
+  var r = random_value(1, 99);
+  qt.value = r;
+  lower_bound(r);
+}
+
+function random_insert() {
+  var candidates = [];
+  for (var i = 1; i < 100; i++) if (!c.has_value(i)) candidates.push(i);
+  if (candidates.length == 0) alert('Container is full, cannot insert anymore.');
+  else {
+    var r = candidates[random_value(0, candidates.length - 1)];
+    it.value = r;
+    insert([r]);
+  }
+}
+
+function random_delete() {
+  var candidates = [];
+  for (var i = 1; i < 100; i++) if (c.has_value(i)) candidates.push(i);
+  if (candidates.length == 0) alert('Container is empty, nothing to delete.');
+  else {
+    var r = candidates[random_value(0, candidates.length - 1)];
+    dt.value = r;
+    erase(r);
+  }
+}
+
+function random_value(lo, hi) {
+  return lo + Math.floor(Math.random() * (hi - lo + 1));
+}
+
+function generate_data(n, length) {
+  var data = [];
+  for (var i = 1; i < n; i++) {
+    data[i - 1] = i;
+  }
+  var seed = 1;
+  for (var i = 0; i < data.length; i++) {
+    seed = seed * 13 + i * 7 + 5;
+    var j = seed % data.length;
+    var t = data[j];
+    data[j] = data[i];
+    data[i] = t;
+  }
+  data.length = length;
+  return data;
+}
+
+function erase(value) {
+  last_operation = 'delete';
+  lower_bound(value, true);
+}
+
+function insert(data) {
+  if (!data.length) {
+    it.focus();
+    return render(snapshot());
+  }
+  last_operation = 'insert';
+  var v = data.pop();
+  var ok = c.insert(v);
+  if (!ok) alert('This demo only supports unique values.\nThe inserted value ' + v + ' already exists.');
+  insert(data);
+  // setTimeout(function () { insert(data); }, 1);
+}
+
+function lower_bound(v, delete_it) {
+  var p = document.getElementById('play_step');
+  var pi = document.getElementById('play_step_i');
+  var b = document.getElementById('play_btn');
+
+  var snapshots = [ snapshot() ];
+  var play_id = null;
+
+  p.onchange = function () {
+    var i = parseInt(this.value, 10);
+    set_step(i);
+    stop_playing();
+  }
+
+  b.onclick = play_it;
+
+  function stop_playing() {
+    if (play_id) {
+      b.disabled = '';
+      clearTimeout(play_id);
+      play_id = null;
+      disable_all(false);
+      switch (last_operation) {
+        case 'query': qt.focus(); break;
+        case 'delete': dt.focus(); break;
+        case 'insert': it.focus(); break;
+      }
+    }
+  }
+
+  function set_step(i) {
+    pi.innerHTML = i;
+    p.value = i;
+    render(snapshots[i]);
+  }
+
+  function play_it() {
+    var i = parseInt(pi.innerHTML);
+    stop_playing();
+    if (++i < snapshots.length) {
+      set_step(i);
+      disable_all(true);
+      play_id = setTimeout(play_it, DURATION);
+    } else {
+      disable_all(false);
+    }
+  }
+
+  function disable_all(yes) {
+    var txt = yes ? 'disabled' : '';
+    var arr = document.querySelectorAll('tr.input input');
+    [].forEach.call(arr, function (el) { el.disabled = txt; });
+  }
+
+  function callback(action, resume) {
+    if (action.type == 'fusion') {
+      snapshots.push(snapshot(action.root_i, action.pivot, action.chain, action.message));
+      resume();
+    } else if (delete_it && action.type == 'end') {
+      resume(true);
+    } else {
+      pi.innerHTML = '0';
+      p.max = snapshots.length - 1;
+      p.style.width = Math.min(180, snapshots.length * 15) + 'px';
+      play_it();
+      if (delete_it) {
+        console.log('focus delete');
+        dt.focus();
+      } else {
+        console.log('focus query');
+        qt.focus();
+      }
+    }
+  }
+
+  if (delete_it) {
+    c.erase(v, callback);
+  } else {
+    c.lower_bound(v, callback);
+  }
+}
+
+function render(s) {
+  var svg = d3.select("#trimmer");
+  draw_root_text(svg, s.root_text);
+  draw_root_triangle(svg, s.root_triangle);
+  draw_root_index(svg, s.root_data, s.child_start_pos);
+  draw_leaf_buckets(svg, s.leaf_data);
+  draw_leaf_connectors(svg, s.leaf_connectors);
+  draw_cell_values(svg, s.cell_values, s.crack_pos);
+}
+
+function snapshot(fusion_i, fusion_pivot, fusion_chain, fusion_message) {
+  var s = {};
+  c.traverse(function (type, root_index, root_pointer) {
+    assert(type == 'root_index');
+    var bucket_y = 180, width = 0;
+    s.child_start_pos = [ { x: 20, y: bucket_y } ];
+    for (var i = 0; i < root_pointer.length; i++) {
+      var p = s.child_start_pos[s.child_start_pos.length - 1];
+      var bwidth = (!root_pointer[i]) ? (CELL_W * 3) :
+                    (root_pointer[i].n_chains() * (CELL_W * 2) + CELL_W);
+
+      if (fusion_chain && i == fusion_i) {
+        bwidth += Math.max(2, fusion_chain.n_chains()) * (CELL_W * 2) + CELL_W;
+      }
+
+      var c = { x: p.x + bwidth, y: p.y };
+      s.child_start_pos.push(c);
+      if (root_pointer.length == 1 || i + 1 < root_pointer.length)
+        width += bwidth;
+    }
+
+    s.cell_values = [];
+    var root_width = CELL_W * Math.max(1, root_index.length);
+    var sx = (width - root_width) / 2, sy = 75, root_y = 20;
+
+    s.root_data = [];
+    for (var i = 0; i < root_pointer.length; i++) {
+      var attr = { id: (i < root_index.length) ? root_index[i] : 1000000000, x: sx + CELL_W * i, y: sy, color: 'blue' };
+      s.root_data.push(attr);
+      if (i < root_index.length) s.cell_values.push(attr);
+    }
+
+    s.root_text = [
+      { x: sx + root_width / 2, y: root_y, id: 'Sorted Root Index'},
+      { x: sx + root_width / 2, y: root_y + 15, 
+        id: fusion_message ? fusion_message.text : 'The root index can be implemented using ART, BTree, etc..',
+        color: fusion_message ? fusion_message.color : null }
+    ];
+
+    var text_height = 30;
+    s.root_triangle = [ {id: 1, triangle: [
+      { x: sx + root_width / 2, y: root_y + text_height },
+      { x: sx + root_width, y: root_y + CELL_H + text_height },
+      { x: sx, y: root_y + CELL_H + text_height },
+      { x: sx + root_width / 2, y: root_y + text_height }
+    ]}];
+
+    s.leaf_data = [];
+    s.leaf_connectors = [];
+    s.crack_pos = [];
+    for (var i = 0; i < root_pointer.length; i++) {
+      var pos = s.child_start_pos[i];
+      if (root_pointer[i]) root_pointer[i].traverse(function (type, ith, id, data, index, has_next) {
+        var attr = { id: id, x : pos.x + ith * (CELL_W * 2), y : bucket_y };
+        s.leaf_data.push(attr);
+        if (has_next) s.leaf_connectors.push(attr);
+        for (var i = 0, j = 0; i < data.length; i++) {
+          attr = { id: data[i], x : pos.x + ith * (CELL_W * 2), y : bucket_y + i * CELL_H };
+          if (j < index.length && index[j].pos <= i) {
+            s.crack_pos.push({ id: id * 100 + index[j].pos, x: attr.x, y: attr.y });
+            j++;
+          }
+          if (j >= index.length) {
+            if (j > 0) attr.color = 'orange';
+          } else {
+            var k = index[j];
+            assert(i <= k.pos);
+            attr.color = k.sorted ? 'blue' : null;
+          }
+          s.cell_values.push(attr);
+        }
+        // console.log(j + ' ' + JSON.stringify(index[j]) + ' ' + data.length );
+      });
+    }
+
+    if (fusion_chain) {
+      var pos = s.child_start_pos[fusion_i];
+      fusion_chain.traverse(function (type, ith, id, data, index, has_next) {
+        var attr = { id: id, x : pos.x + ith * (CELL_W * 2), y : 200 + CELL_H * LEAF_CAPACITY };
+        s.leaf_data.push(attr);
+        for (var i = 0; i < data.length; i++) {
+          s.cell_values.push({
+            id: data[i], x : pos.x + ith * (CELL_W * 2), y : attr.y + i * CELL_H,
+            color: (ith < 2) ? ((data[i] < fusion_pivot) ? 'red' : 'blue') : 'black',
+            fill: (ith < 2) ? ((data[i] < fusion_pivot) ? '#FBB' : '#BBF') : 'none',
+          });
+        }
+      });
+    }
+  });
+  return s;
+}
+
+function x(d) { return d.x; }
+function y(d) { return d.y; }
+
+function draw_root_triangle(svg, data) {
+  function lineDataNext(d) { return d3.svg.line().x(x).y(y).interpolate("linear")(d.triangle); }
+  var paths = svg.selectAll("path.root_triangle").data(data, function (d) { return d.id; });
+  var attr = { class: "root_triangle", d: lineDataNext, stroke: 'black', 'stroke-width': 0, fill: 'blue', };
+  paths.enter().append("path").attr(attr);
+  paths.transition().duration(DURATION).attr(attr).attr('stroke-width', 1);
+  paths.exit().remove();
+}
+
+function draw_root_text(svg, data) {
+  var texts = svg.selectAll("text.root_index").data(data, function (d) { return d.id; });
+  var attr = {
+    class : 'root_index', x : x, y : y,
+    style: function (d) { return 'font-size: 15px'; },
+    fill: function (d) { return d.color; }
+  };
+  texts.enter().append("text").attr(attr);
+  texts.transition().duration(DURATION).text(function (d) { return d.id; }).attr(attr);
+  texts.exit().remove();
+}
+
+function draw_root_index(svg, data, child_pos) {
+  if (data.length == 1) {
+    var rects = svg.selectAll("rect.root_rectangle").data(data, function (d) { return d.id; });
+    var attr = { class: "root_rectangle", width: CELL_W, height: CELL_H, x: x, y: y, 'stroke-width': 0, stroke: 'black', fill: 'none', };
+    rects.enter().append("rect").attr(attr);
+    rects.transition().duration(DURATION).attr(attr).attr('stroke-width', 1);
+    rects.exit().remove();
+  } else {
+    var rects = svg.selectAll("rect.root_rectangle").data([], function (d) { return d.id; });
+    rects.exit().remove();
+  }
+
+  // Connector to leaf buckets.
+  function childLine(d, i) {
+    var p = child_pos[i];
+    return d3.svg.line().x(x).y(y).interpolate("basis")([
+      {x: d.x, y: d.y + CELL_H },
+      {x: d.x, y: (d.y + p.y) / 2.5 + CELL_H },
+      {x: p.x + CELL_W / 2, y: (d.y + p.y) / 2},
+      {x: p.x + CELL_W / 2, y: p.y}
+    ]);
+  }
+
+  var circles = svg.selectAll('circle.children').data(data, function (d) { return d.id; });
+  var attr = { class: 'children', cx: x, cy: function (d) { return d.y + CELL_H; }, r: 3, fill: 'none', };
+  circles.enter().append("circle").attr(attr);
+  circles.transition().duration(DURATION).attr(attr).attr('fill', 'black');
+  circles.exit().remove();
+
+  var paths = svg.selectAll('path.children').data(data, function (d) { return d.id; });
+  var attr = { class: 'children', d: childLine, 'stroke-width': 0, stroke: 'black', fill: 'none' };
+  paths.enter().append("path").attr(attr);
+  paths.transition().duration(DURATION).attr(attr).attr('stroke-width', 1);
+  paths.exit().remove();
+}
+
+
+function draw_leaf_buckets(svg, data, index) {
+  var rects = svg.selectAll("rect.leaf").data(data, function (d) { return d.id; });
+  var attr = { class: "leaf", width: CELL_W, height: CELL_H * LEAF_CAPACITY, x: x, y: y, 'stroke-width': 0, stroke: 'black', fill: 'none', };
+  rects.transition().duration(DURATION).attr(attr).attr('stroke-width', 1);
+  rects.enter().append("rect").attr(attr);
+  rects.transition().duration(DURATION).attr(attr).attr('stroke-width', 1);
+  rects.exit().remove();
+}
+
+function draw_leaf_connectors(svg, data) {
+  function lineDataNext(d) {
+    return d3.svg.line().x(x).y(y).interpolate("basis")([
+      { "x": d.x + CELL_W * 0.5,  "y": d.y + CELL_H * LEAF_CAPACITY },
+      { "x": d.x + CELL_W * 0.5,  "y": d.y + CELL_H * (LEAF_CAPACITY + 0.5) },
+      { "x": d.x + CELL_W * 1.5,  "y": d.y + CELL_H * (LEAF_CAPACITY + 0.5) },
+      { "x": d.x + CELL_W * 1.5,  "y": d.y + -CELL_H * 0.5 },
+      { "x": d.x + CELL_W * 2.0,  "y": d.y + -CELL_H * 0.5 },
+      { "x": d.x + CELL_W * 2.5,  "y": d.y + -CELL_H * 0.5 },
+      { "x": d.x + CELL_W * 2.5,  "y": d.y },
+    ]);
+  }
+  var paths = svg.selectAll("path.leaf").data(data, function (d) { return d.id; });
+  var attr = { class: "leaf", d: lineDataNext, stroke: 'black', 'stroke-width': 0, fill: 'none', };
+  paths.enter().append("path").attr(attr);
+  paths.transition().duration(DURATION).attr(attr).attr('stroke-width', 1);
+  paths.exit().remove();
+}
+
+function draw_cell_values(svg, data, crack_data) {
+  var rects = svg.selectAll("rect.cell").data(data, function (d) { return d.id; });
+  var attr = { class: "cell", width: CELL_W, height: CELL_H, x: x, y: y, 'stroke-width': 0, stroke: 'black',
+    fill: function (d) { return d.fill ? d.fill : 'none'}, };
+  rects.enter().append("rect").attr(attr);
+  rects.transition().duration(DURATION).attr(attr).attr('stroke-width', 1);
+  rects.exit().remove();
+
+  var lines = svg.selectAll("path.crack").data(crack_data, function (d) { return d.id; });
+  function crack_line(d) {
+    return d3.svg.line().x(x).y(y).interpolate("basis")([
+      { "x": d.x - 10,  "y": d.y },
+      { "x": d.x + CELL_W + 10,  "y": d.y },
+    ]);
+  }
+  var attr = { class: "crack", d: crack_line, 'stroke-width': 0, stroke: 'black' };
+  lines.enter().append("path").attr(attr);
+  lines.transition().duration(DURATION).attr(attr).attr('stroke-width', 1);
+  lines.exit().remove();
+
+
+  var texts = svg.selectAll("text.cell").data(data, function (d) { return d.id; });
+  var attr = {
+    class : 'cell',
+    x : function (d) { return d.x + CELL_W * 0.5; },
+    y : function (d) { return d.y + CELL_H * 0.5; },
+    color: function (d) { return d.color ? d.color : 'black'; },
+    fill: 'white',
+    style: function (d) { return 'font-size: 15px; ' + (d.color ? 'font-weight:bold' : ''); },
+  };
+  texts.enter().append("text").attr(attr);
+  texts.transition().duration(DURATION).text(function (d) { return d.id; }).attr(attr)
+    .attr('fill', function (d) { return d.color; });
+  texts.exit().remove();
+}
+</script>
+</body>
+</html>

@@ -2,13 +2,6 @@
 
 #define REP(i, n) for (int i = 0, _n = n; i < _n; i++)
 
-template<typename F>
-static double time_it(F f) {
-  auto t0 = high_resolution_clock::now();
-  f();
-  auto t1 = high_resolution_clock::now();
-  return duration_cast<microseconds>(t1 - t0).count() * 1e-6;
-}
 
 static char* parse_algorithm_name(char *prog) {
   while (true) {

@@ -2,8 +2,8 @@
 
 mkdir bin 2> /dev/null
 mkdir res 2> /dev/null
-N=data/100000000.data
-Q=1000000000
+N=data/10000000.data
+Q=10000000
 out=results.js
 
 case $1 in
@@ -285,7 +285,7 @@ batch_ctree)  ./run.sh noup ctree_32_32 | tee -a $out
               ;;
 
 fhnet2)
-              scp graphs.html linechart2.js results.csv jquery-2.0.3.min.js felixhalim@felix-halim.net:~/public_html/research/ctree/
+              scp graphs.html linechart2.js results.csv jquery-2.0.3.min.js trimmer.html trimmer.js felixhalim@felix-halim.net:~/public_html/research/ctree/
               ;;
 
 fhnet)        scp experiments.html felixhalim@felix-halim.net:~/public_html/research/ctree/

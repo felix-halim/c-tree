@@ -7,6 +7,11 @@
 #include <vector>
 #include <random>
 
+#ifndef SKEW_X
+  #define SKEW_X 0
+  #define SKEW_Y 0
+#endif
+
 using namespace std;
 
 const char* workload_name[18] = {
@@ -157,7 +162,7 @@ class Workload {
   bool zoom_in_w() {
     static unsigned L; if (!I) L = N / 3;
     static unsigned R; if (!I) R = 2 * N / 3;
-    if (L >= R || L < 0 || R > N) return false;
+    if (L >= R || R > N) return false;
     a = L; L += 100;  // make the range smaller
     b = R; R -= 100;
     return true;

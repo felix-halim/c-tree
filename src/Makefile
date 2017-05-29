@@ -1,9 +1,10 @@
 CXX      = g++
+CXX      = clang++
 ODIR     = ../bin
 DEPFILE  = .depends
-CXXFLAGS = -O3 -g -DNDEBUGx -std=c++0x# -stdlib=libc++
+CXXFLAGS = -O3 -g -DNDEBUG -std=c++11 -stdlib=libc++
 # CXXFLAGS = -O0 -g -pg -std=c++0x# -stdlib=libc++
-FLAGS    = -I. -DSELECT_QUERY
+FLAGS    = -I. -DSELECT_QUERYx
 
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Linux)
@@ -20,6 +21,7 @@ all: \
 	$(ODIR)/art_crack \
 	$(ODIR)/crack \
 	$(ODIR)/comb \
+	$(ODIR)/multiset \
 	$(ODIR)/ctree \
 	$(ODIR)/ctree_eager \
 	$(ODIR)/ctree_with_crack \
@@ -52,6 +54,9 @@ $(ODIR)/split: split.cc update.h
 
 $(ODIR)/comb: comb.cc comb.h test.h update.h query.h util.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DCOMB6400 -Wall -o $@ $<
+
+$(ODIR)/multiset: multiset.cc multiset.h memory_manager.h multiset_util.h multiset_node.h test.h update.h query.h util.h
+	$(CXX) -std=c++11 $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
 
 $(ODIR)/comb3: comb3.cc comb3.h test.h update.h query.h util.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DCOMB6400 -Wall -o $@ $<

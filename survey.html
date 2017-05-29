@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+</head>
+
+<body>
+<script>
+var survey = [
+  { team: 'FSM', solved:'ADF',     understand:'1321213333', find:'1321213444', impl:'1431214444', best:'F', least:'J', note:'Too many graphic problems' },
+  { team: '',    solved:'ACDFGIJ', understand:'2222222222', find:'1512533445', impl:'1512532535', best:'I', least:'H', note:'' },
+  { team: '',    solved:'ACDF',      understand:'1211211111', find:'1411312333', impl:'1411312334', best:'I', least:'J', note:'' },
+  { team: 'koalabiru', solved:'ACD',     understand:'1211011213', find:'1411033355', impl:'1011030000', best:'GH', least:'F', note:'Good, keep it up!' },
+  { team: 'Sandal Jaya', solved:'ACDFG', understand:'1322523535', find:'2421533555', impl:'2532533555', best:'G', least:'H', note:'' },
+  { team: 'ADMU0TLE', solved:'ADF',      understand:'1111311112', find:'1441513234', impl:'1441513345', best:'H', least:'C', note:'It is very hard :( if you do not have the data structure in team notebook' },
+  { team: 'cassavakid', solved:'ACDF',    understand:'1011121030', find:'2021514030', impl:'1021524040', best:'F', least:'J', note:'Problem too hard, please nerf. Especially J, J too DP.' },
+  { team: 'Young Phoenix', solved:'AFGI', understand:'1511111515', find:'1533311515', impl:'1555511515', best:'A', least:'B', note:'Make the problem set in 3 different language in Chinese, English, and Indonesia.' },
+  { team: 'Hahaha', solved:'A', understand:'1553515555', find:'2553535555', impl:'3531525555', best:'A', least:'I', note:'' },
+  { team: 'Redemption', solved:'', understand:'3533533555', find:'2554553555', impl:'1555553555', best:'', least:'', note:'Make it Harder' },
+  { team: 'WhoAreWe?', solved:'DF', understand:'2521511515', find:'3332511535', impl:'5443514555', best:'D', least:'J', note:'' },
+  { team: 'Kirino :P', solved:'ACDFGHI', understand:'1211111114', find:'2511511232', impl:'2511512345', best:'E', least:'I', note:'Good problemset!' },
+  { team: 'Holy Shot', solved:'AF',      understand:'2532311325', find:'2552512555', impl:'2555515555', best:'F', least:'J', note:'Not bad. But too much graph question.' },
+  { team: 'Panda Shu', solved:'ACDF',    understand:'5422423555', find:'1422524555', impl:'1411535555', best:'D', least:'H', note:'' },
+  { team: 'PC FURION', solved:'ACD',     understand:'1111111313', find:'1511535555', impl:'1521535555', best:'C', least:'F', note:'Please no more palindrom and alien' },
+  { team: 'newRocket', solved:'F',       understand:'2323223555', find:'2535434445', impl:'4535534555', best:'F', least:'J', note:'It should uses less words unless its words will pretend like a confusing naration that actually do not explain about the problem itself' },
+  { team: 'UKDW2', solved:'ADF',         understand:'1311313333', find:'2342353333', impl:'3343343333', best:'C', least:'J', note:':) already good!' },
+  { team: 'UKDW1', solved:'',            understand:'1231113315', find:'2332323345', impl:'3334333355', best:'C', least:'J', note:'More geometry problem' },
+  { team: 'BisaJadiKeWF', solved:'AF',   understand:'2022010000', find:'4000010000', impl:'0000020000', best:'D', least:'A', note:'' },
+  { team: 'Meaw::getYes()', solved:'ACDFH', understand:'1211112223', find:'1522514345', impl:'1422422225', best:'H', least:'G', note:'No' },
+  { team: 'UMN0Alpha', solved:'ACDF',       understand:'1331211425', find:'2431434345', impl:'1541415455', best:'D', least:'F', note:'Testcase soal F LEMAH!!! Pake cara dengan kompleksitas O(N^2) masih AC. Sangat menguntungkan yang hoki, sangat merugikan yang kelamaan mikir cara pinter.' },
+  { team: 'ApalahArtiSebuahNama', solved:'AF', understand:'3554535455', find:'3554535455', impl:'3554535455', best:'F', least:'J', note:'' },
+  { team: 'GaPakeNama', solved:'ADF', understand:'3432111415', find:'2551535435', impl:'2545534455', best:'A', least:'J', note:'' },
+  { team: 'MicroHolic', solved:'ACDF', understand:'1031021000', find:'2043025000', impl:'1045023000', best:'D', least:'J', note:'no comment' },
+  { team: 'A0Team', solved:'A', understand:'2522423225', find:'5533522445', impl:'1554534555', best:'A', least:'J', note:'GG Thx :)' },
+  { team: 'UC1', solved:'ADF', understand:'1533514555', find:'2533514555', impl:'1553545555', best:'D', least:'F', note:'' },
+  { team: 'Runes of Champion', solved:'ACDFGHI', understand:'1311522343', find:'0000000000', impl:'0000000000', best:'I', least:'B', note:'See you in future 0 with the same problems, should be fine for us.' },
+  { team: 'Absolvent Brzy', solved:'ACDFGI', understand:'1321212525', find:'1521513535', impl:'2531512515', best:'I', least:'E', note:'nice problemset!' },
+  { team: 'AlHubBayNamQu', solved:'ACDF', understand:'0000005500', find:'0000000040', impl:'4043010000', best:'C', least:'A', note:'' },
+  { team: 'Naik', solved:'AD', understand:'1021010000', find:'3052040000', impl:'4052050000', best:'A', least:'F', note:'' },
+  { team: 'AfatuAlIlmi', solved:'ADF', understand:'1322414515', find:'3444414555', impl:'3543515555', best:'F', least:'J', note:'The problems really suited the contest.' },
+  { team: 'CanYouCanACan', solved:'ACDFH', understand:'1211222314', find:'1021534450', impl:'1011025200', best:'A', least:'J', note:'It is quite good' },
+  { team: 'NCUBless', solved:'ADF', understand:'1221014310', find:'3443025540', impl:'3043020000', best:'D', least:'F', note:'' },
+  { team: 'Walking Wombat Warrior', solved:'AF', understand:'1311211515', find:'1421514555', impl:'1431515555', best:'A', least:'J', note:'Add more DP problems. No exhaustive search problem. More variant on ad0hoc problem.' },
+  { team: 'SAS', solved:'', understand:'1532511355', find:'3534423555', impl:'4533544455', best:'F', least:'J', note:'Not enough backtracking problem.' },
+  { team: 'Alien Frogmen', solved:'ACDFG', understand:'1111111113', find:'2522534455', impl:'2223033455', best:'H', least:'J', note:'Very very nice, interesting, well0designed' },
+  { team: 'ThanQ', solved:'ABCDFGHI', understand:'2332332223', find:'2432035550', impl:'2432021430', best:'I', least:'H', note:'' },
+  { team: 'Neptune', solved:'ABCDFHI', understand:'1111111151', find:'1311520335', impl:'1211020130', best:'B', least:'G', note:'Nice!!' },
+  { team: 'TCRhodensa', solved:'ACDF', understand:'5055555055', find:'5055050000', impl:'5055050000', best:'E', least:'B', note:'Make it easier, please! LOL' },
+  { team: 'NXC', solved:'AD', understand:'1012222010', find:'3032032030', impl:'1002032000', best:'G', least:'F', note:'I hate palindrome :D' },
+  { team: 'Badak Timur', solved:'ADGI', understand:'2421513314', find:'3552554545', impl:'3553553545', best:'A', least:'F', note:'Nice Problem... Enjoying to solve it!' },
+  { team: 'Circumflex', solved:'', understand:'3141125405', find:'5423335505', impl:'2535555505', best:'A', least:'J', note:'' },
+  { team: 'Doa Ibu', solved:'ADF', understand:'1522522325', find:'3542525455', impl:'2002030000', best:'I', least:'J', note:'' },
+  { team: 'Asudegrass', solved:'AD', understand:'2041030000', find:'2031040000', impl:'2001000000', best:'D', least:'FC', note:'Tahun depan di Binus lagi ya.' },
+  { team: 'DigiD', solved:'ADF', understand:'1522122535', find:'2031010000', impl:'1043020000', best:'F', least:'J', note:'too many graph problems' },
+  { team: 'CimbelCoder', solved:'ACDFH', understand:'1111311113', find:'2522524355', impl:'1522522455', best:'D', least:'J', note:'Next time should have the softcopy of the problem also, or at least provide a copy0paste able sample input.' },
+  { team: 'OZ', solved:'ADF', understand:'1522325445', find:'1541545300', impl:'1533035500', best:'D', least:'J', note:'' },
+  { team: 'Delapan 3GP', solved:'ACDFG', understand:'1211111214', find:'1411531335', impl:'1411521245', best:'I', least:'F', note:'Please explain why does O(N^2) solution passes the F problem?' },
+  { team: 'Miyavi', solved:'ACDF', understand:'1111311215', find:'3533333355', impl:'1515511455', best:'A', least:'J', note:'' },
+  { team: 'Algoritymyst', solved:'ACDF', understand:'1211122323', find:'1521513434', impl:'1511534445', best:'A', least:'G', note:'' },
+  { team: 'Vidina 2.0', solved:'ACDFGJ', understand:'1222211423', find:'1511523553', impl:'1511532555', best:'J', least:'H', note:'Give a very easy problem, because there are teams who did not solve anything. Another suggestion, please make sure the test case strong enough, problem F is quite weak O(N^2) can pass the time limit. I heard that problem J should be solved with BIT data structure, not segment tree why?? Both of them are O(log N). Besides, we used long long in the solution, and got TLE. It is just a constant factor, so, IMO it should be AC0ed.' },
+  { team: 'Sepiring Bertiga (UI)', solved:'ACDFG', understand:'1211112215', find:'1422433545', impl:'1312424335', best:'G', least:'J', note:'Please add more medium0difficulty problems :). Good problem set, clear description. KYA' },
+  { team: 'Badak Depok', solved:'ACDF', understand:'2011020000', find:'2031030000', impl:'2041030000', best:'H', least:'D', note:'Nice' },
+  { team: '+1 Saklar Lhompat', solved:'ACDFH', understand:'1321123325', find:'2521525455', impl:'1032020500', best:'G', least:'F', note:'Why can many teams solve F with N^2 solutions?? :( Last year we also had problem like this (J)' },
+  { team: 'CodeBringer', solved:'ACDF', understand:'1421412515', find:'2531435555', impl:'2542535555', best:'F', least:'J', note:'Nice problem sets :)' },
+  { team: 'Bug Hunter', solved:'ADF', understand:'1511515555', find:'3553515555', impl:'2533535555', best:'D', least:'J', note:'Exciting' },
+  { team: 'Full Machine Turing', solved:'ACDF', understand:'2521213435', find:'2522524545', impl:'1532543555', best:'G', least:'F', note:'Problem F is solvable in O(N^2) but its constraint seems cant solvable in O(N^2). We spent many times to find O(N) solution.' },
+  { team: 'GGG', solved:'ADF', understand:'1521225555', find:'2532335555', impl:'2552525555', best:'D', least:'J', note:'Good' },
+  { team: 'Codevore', solved:'ADF', understand:'1221223334', find:'1532534345', impl:'2522522355', best:'D', least:'C', note:'' },
+  { team: 'ASK', solved:'ACD', understand:'1521212325', find:'1532514455', impl:'1522525555', best:'G', least:'F', note:'' },
+  { team: 'Jssagi', solved:'AF', understand:'2342314325', find:'1422414445', impl:'2444334445', best:'C', least:'J', note:'Keep it up!' },
+];
+
+
+var best = [], least = [], found = [], understand = [], implemented = [], notes = [];
+
+for (var i = 0; i < 10; i++) {
+  var p = String.fromCharCode(65 + i);
+  best[p] = least[p] = found[p] = understand[p] = implemented[p] = 0;
+}
+
+for (var i = 0; i < survey.length; i++) {
+  var s = survey[i];
+
+  // if (s.solved.length < 5) continue;
+  best[s.best[0]]++;
+  least[s.least[0]]++;
+  for (var j = 0; j < 10; j++) {
+    var p = String.fromCharCode(65 + j);
+    understand[p] += s.understand.charCodeAt(j) - 48;
+    found[p] += s.find.charCodeAt(j) - 48;
+    implemented[p] += s.impl.charCodeAt(j) - 48;
+  }
+  if (s.note) notes.push('<li><b>' + s.team + "</b>: " + s.note);
+}
+
+document.write("<table>");
+document.write("<tr><th>Problem<th>Understand<th>GotSolution<th>Implemented<th>Best<th>Least");
+for (var i = 0; i < 10; i++) {
+  var p = String.fromCharCode(65 + i);
+  document.write("<tr><td>" + p + "<td>" + understand[p] + "<td>" + found[p] + "<td>" + implemented[p] + "<td>" + best[p] + "<td>" + least[p]);
+}
+document.write("</table>");
+
+document.write("<ul>");
+document.write(notes.join(''));
+document.write("</ul>");
+
+</script>
+</body>
