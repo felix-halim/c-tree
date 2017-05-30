@@ -25,8 +25,24 @@ long long count(long long a, long long b);
 long long sum(long long a, long long b);
 
 static long long read_ll() {
-  long long a;
-  return scanf("%lld", &a) != EOF ? a : 0;
+  static char buf[1 << 20];
+  static int i = 1 << 20;
+  static int len = 1 << 20;
+  if (i > (1 << 20) - 100) {
+    for (int j = i; j < len; j++) {
+      buf[j - i] = buf[j];
+    }
+    len -= i;
+    i = 0;
+    size_t read = fread(buf + len, sizeof(char), sizeof(buf) - len, stdin);
+    len += read;
+  }
+
+  while (i < len && !isdigit(buf[i])) i++;
+  // the_end = i >= len;
+  long long a = 0;
+  while (i < len && isdigit(buf[i])) a = a * 10 + (buf[i++] - '0');
+  return a;
 }
 
 static vector<pair<long long, vector<long long>>> read_batch_by_op(

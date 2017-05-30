@@ -1,51 +1,44 @@
 #include <cstdio>
-#include <cassert>
 #include "multiset.h"
-#include "test.h"
+#include "tester.h"
 
-using namespace trimmer;
+trimmer::multiset<unsigned, std::less<unsigned>, Mallocator> s;
 
-trimmer::multiset<unsigned, std::less<unsigned>, Mallocator> c;
-
-void init(unsigned *arr, unsigned N) {
-  c.insert(arr, arr + N);
+// op = 1: inserts the value.
+void insert(long long value) {
+  s.insert(value);
 }
 
-void insert(unsigned value) {
-  c.insert(value);
+// op = 2: deletes the value. The value guaranteed to exists.
+bool erase(long long value) {
+  return s.erase(value);
 }
 
-void erase(unsigned value) {
-  fprintf(stderr, "erase %d\n", value);
-  #ifdef NDEBUG
-    c.erase(value);
-  #else
-    bool ok = c.erase(value);
-    assert(ok);
-  #endif
+// op = 3: count values in range [a, b).
+long long count(long long a, long long b) {
+  // auto it1 = s.lower_bound(a);
+  // auto it2 = s.lower_bound(b);
+  return 0; // it2 - it1;
 }
 
-unsigned lower_bound(unsigned value) {
-  auto it = c.lower_bound(value);
-  // printf("%d (%d)\n", value, value);
-  // return 0;
-  return it == c.end() ? 0 : *it;
+// op = 4: sum values in range [a, b).
+long long sum(long long a, long long b) {
+  auto it1 = s.lower_bound(a);
+  return *it1;
+  // auto it2 = s.lower_bound(b);
+  // long long sum = 0;
+  // while (!(it1 == it2)) {
+  //   sum += *(it1++);
+  // }
+  // return sum;
 }
 
-unsigned select(unsigned a, unsigned b) {
-  return lower_bound(a) + lower_bound(b);
-}
+// s.insert(arr, arr + N);
 
-unsigned count(unsigned a, unsigned b) {
-  return 0;
-}
-
-void results(Statistics &s) {
-  // assert(c.check());
-  // s.n_index = c.root_size();
-  // s.n_bytes = c.num_of_buckets() * c.bucket_size() * sizeof(unsigned);
-  // s.n_leaf = c.num_of_buckets();
-  // s.n_slack_int = c.slack();
-  // s.n_large = c.bucket_size();
-  // c.alloc_sizes(s.ia_free, s.ia_size, s.la_free, s.la_size);
-}
+// assert(s.check());
+// s.n_index = s.root_size();
+// s.n_bytes = s.num_of_buckets() * s.bucket_size() * sizeof(unsigned);
+// s.n_leaf = s.num_of_buckets();
+// s.n_slack_int = s.slack();
+// s.n_large = s.bucket_size();
+// s.alloc_sizes(s.ia_free, s.ia_size, s.la_free, s.la_size);

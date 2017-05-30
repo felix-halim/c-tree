@@ -1,21 +1,40 @@
-CXX  = clang++ -O2 -std=c++11
+CXX  = clang++ -O2 -std=c++11 -Wall
 BDIR = ./bin
 SDIR = ./src
 IDIR = ./inputs
 ODIR = ./outputs
 
-$(BDIR)/igen_sorted: $(SDIR)/igen_sorted.cc
-	$(CXX) -Wall -o $@ $<
+$(BDIR)/igen_sorted: $(SDIR)/igen_sorted.cc $(SDIR)/common.h
+	$(CXX) -o $@ $<
 
-$(BDIR)/std_multiset: $(SDIR)/std_multiset.cc
-	$(CXX) -Wall -o $@ $<
+$(BDIR)/std_multiset: $(SDIR)/std_multiset.cc $(SDIR)/tester.h $(SDIR)/common.h
+	$(CXX) -o $@ $<
 
-$(IDIR)/sorted_10000_1000.gz: $(BDIR)/igen_sorted
-	$(BDIR)/igen_sorted 10000 1000 | gzip > $(IDIR)/sorted_10000_1000.gz
+$(IDIR)/sorted_1000000_1000.gz: $(BDIR)/igen_sorted
+	$(BDIR)/igen_sorted 1000000 1000 | gzip > $(IDIR)/sorted_1000000_1000.gz
 
-$(ODIR)/std_multiset_sorted_10000_1000: $(IDIR)/sorted_10000_1000.gz $(BDIR)/std_multiset
-	gunzip -c $(IDIR)/sorted_10000_1000.gz | $(BDIR)/std_multiset
+$(IDIR)/sorted_100000000_1000.gz: $(BDIR)/igen_sorted
+	$(BDIR)/igen_sorted 100000000 1000 | gzip > $(IDIR)/sorted_100000000_1000.gz
 
+$(ODIR)/std_multiset_sorted_100000000_1000: $(IDIR)/sorted_100000000_1000.gz $(BDIR)/std_multiset
+	gunzip -c $(IDIR)/sorted_100000000_1000.gz | $(BDIR)/std_multiset > $@
+
+
+$(BDIR)/multiset: $(SDIR)/multiset.cc $(SDIR)/tester.h $(SDIR)/common.h
+	$(CXX) -DNDEBUG -o $@ $<
+
+$(ODIR)/multiset_sorted_100000000_1000: $(IDIR)/sorted_100000000_1000.gz $(BDIR)/multiset
+	gunzip -c $(IDIR)/sorted_100000000_1000.gz | $(BDIR)/multiset > $@
+
+$(ODIR)/multiset_sorted_1000000_1000: $(IDIR)/sorted_1000000_1000.gz $(BDIR)/multiset
+	gunzip -c $(IDIR)/sorted_1000000_1000.gz | $(BDIR)/multiset > $@
+
+
+$(BDIR)/comb1600: $(SDIR)/comb.cc $(SDIR)/comb.h $(SDIR)/tester.h $(SDIR)/common.h
+	$(CXX) -DNDEBUG -DCOMB1600 -o $@ $<
+
+$(ODIR)/comb1600_sorted_100000000_1000: $(IDIR)/sorted_100000000_1000.gz $(BDIR)/comb1600
+	gunzip -c $(IDIR)/sorted_100000000_1000.gz | $(BDIR)/comb1600 > $@
 
 
 all: \
