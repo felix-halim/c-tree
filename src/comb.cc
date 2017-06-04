@@ -9,10 +9,12 @@
   Comb<unsigned, std::less<unsigned>, false, 1600, 62, 25> c(100000000);
 #elif defined(COMB3200)
   Comb<unsigned, std::less<unsigned>, false, 3200, 125, 50> c(100000000);
-#elif defined(COMB6400)
+#else
   Comb<unsigned> c(100000000);
 #endif
 
+void initexp() {}
+void destroyexp() {}
 
 // op = 1: inserts the value.
 void insert(long long value) {

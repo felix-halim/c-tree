@@ -1,14 +1,25 @@
-CXX  = clang++ -O2 -std=c++11 -Wall
-BDIR = ./bin
-SDIR = ./src
-IDIR = ./inputs
-ODIR = ./outputs
+CXX = clang++
+CXX_FLAGS = -std=c++11 -O2 -DNDEBUG \
+-Wfatal-errors -Wall -Wextra \
+-Wpedantic -Wshadow -Wconversion \
+-Wno-unused-parameter \
+-Wno-sign-conversion
 
-$(BDIR)/igen_sorted: $(SDIR)/igen_sorted.cc $(SDIR)/common.h
-	$(CXX) -o $@ $<
+BDIR = ./build
+CPP = $(wildcard src/*.cc)
+OBJ = $(CPP:%.cc=$(BDIR)/%.o)
+DEP = $(OBJ:%.o=%.d)
 
-$(BDIR)/std_multiset: $(SDIR)/std_multiset.cc $(SDIR)/tester.h $(SDIR)/common.h
-	$(CXX) -o $@ $<
+$(BDIR)/% : $(BDIR)/src/%.o
+	$(CXX) $(CXX_FLAGS) $^ -o $@
+
+-include $(DEP)
+
+$(BDIR)/%.o : %.cc
+	@mkdir -p $(@D)
+	$(CXX) $(CXX_FLAGS) -MMD -c $< -o $@
+
+
 
 $(IDIR)/sorted_1000000_1000.gz: $(BDIR)/igen_sorted
 	$(BDIR)/igen_sorted 1000000 1000 | gzip > $(IDIR)/sorted_1000000_1000.gz
@@ -19,16 +30,11 @@ $(IDIR)/sorted_100000000_1000.gz: $(BDIR)/igen_sorted
 $(ODIR)/std_multiset_sorted_100000000_1000: $(IDIR)/sorted_100000000_1000.gz $(BDIR)/std_multiset
 	gunzip -c $(IDIR)/sorted_100000000_1000.gz | $(BDIR)/std_multiset > $@
 
-
-$(BDIR)/multiset: $(SDIR)/multiset.cc $(SDIR)/tester.h $(SDIR)/common.h
-	$(CXX) -DNDEBUG -o $@ $<
-
 $(ODIR)/multiset_sorted_100000000_1000: $(IDIR)/sorted_100000000_1000.gz $(BDIR)/multiset
 	gunzip -c $(IDIR)/sorted_100000000_1000.gz | $(BDIR)/multiset > $@
 
 $(ODIR)/multiset_sorted_1000000_1000: $(IDIR)/sorted_1000000_1000.gz $(BDIR)/multiset
 	gunzip -c $(IDIR)/sorted_1000000_1000.gz | $(BDIR)/multiset > $@
-
 
 $(BDIR)/comb1600: $(SDIR)/comb.cc $(SDIR)/comb.h $(SDIR)/tester.h $(SDIR)/common.h
 	$(CXX) -DNDEBUG -DCOMB1600 -o $@ $<
@@ -428,7 +434,8 @@ $(ODIR)/ctree3: ctree3.cc ctree3.h test.h update.h query.h util.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DINTERNAL_BSIZE=32 -Wall -o $@ $<
 
 
+.PRECIOUS: $(BDIR)/%.o
 .PHONY: clean
 
 clean:
-	-@rm $(ODIR)/* 2> /dev/null || true
+	-@rm -fr $(BDIR)/*

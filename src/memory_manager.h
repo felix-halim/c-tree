@@ -21,7 +21,7 @@ class memory_manager {
 
   bool is_zero(T* p) {
     char* b = (char*) p;
-    for (int i = 0; i < sizeof(T); i++)
+    for (unsigned i = 0; i < sizeof(T); i++)
       if (b[i]) return false;
     return true;
   }
@@ -77,7 +77,7 @@ class memory_manager {
   }
 
   int index_of(T* p) const {
-    int index = p - arr;
+    int index = int(p - arr);
     assert(index >= 0 && index < arr_len());
     return index;
   }

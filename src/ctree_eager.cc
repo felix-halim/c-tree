@@ -4,9 +4,9 @@
 #include "ctree_eager.h"
 
 #ifdef NOUP
-  #include "test_noup.h"
+  // #include "test_noup.h"
 #else
-  #include "test_lfhv.h"
+  // #include "test_lfhv.h"
 #endif
 
 using namespace std;

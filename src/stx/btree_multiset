@@ -34,6 +34,6 @@
 #ifndef _STX_BTREE_MULTISET_
 #define _STX_BTREE_MULTISET_
 
-#include <stx/btree_multiset.h>
+#include "btree_multiset.h"
 
 #endif // _STX_BTREE_MULTISET_

@@ -12,6 +12,9 @@
 using namespace std;
 using namespace std::chrono;
 
+void initexp();
+void destroyexp();
+
 // op = 1: inserts the value.
 void insert(long long value);
 
@@ -46,7 +49,7 @@ static long long read_ll() {
 }
 
 static vector<pair<long long, vector<long long>>> read_batch_by_op(
-    long long &prev_op, int &prev_size, const int n) {
+    long long &prev_op, unsigned &prev_size, const int n) {
   vector<pair<long long, vector<long long>>> ret;
   vector<long long> arr;
   for (long long i = 0; i < n; i++) {
@@ -118,11 +121,12 @@ static double run(long long op, const vector<long long> &arr, long long &chk) {
 }
 
 int main(int argc, char *argv[]) {
-  int nth = 0, batch_size = 1;
+  unsigned nth = 0, batch_size = 1;
   long long op = -1, chk = 0;
   double tot_runtime = 0;
+  initexp();
   while (true) {
-    auto batches = read_batch_by_op(op, batch_size, 10000);
+    auto batches = read_batch_by_op(op, batch_size, 100000);
     if (batches.size() == 0) break;
     for (auto batch : batches) {
       double runtime = run(batch.first, batch.second, chk);
@@ -131,4 +135,5 @@ int main(int argc, char *argv[]) {
       printf("%d %.6lf %lld\n", nth, tot_runtime, chk);
     }
   }
+  destroyexp();
 }

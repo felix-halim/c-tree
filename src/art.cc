@@ -1,108 +1,89 @@
 #include <cstdio>
 #include <cassert>
-#include <algorithm>
 #include "art.h"
-#include "test.h"
+#include "tester.h"
 
-inline uintptr_t getLeafValue(Node* node) {
-   // The the value stored in the pseudo-leaf
-   return reinterpret_cast<uintptr_t>(node)>>1;
+art_tree t;
+
+void initexp() {
+  fprintf(stderr, "init art\n");
+  int res = art_tree_init(&t);
+  assert(res == 0);
 }
 
-using namespace std;
+void destroyexp() {
+  fprintf(stderr, "destroy art\n");
+  // int res = art_tree_destroy(&t);
+  // assert(res == 0);
+}
 
-Node* tree = NULL;
+static unsigned char* get_key(long long val) {
+  static unsigned char key[8];
+  key[7] = val & 0xFF; val >>= 8;
+  key[6] = val & 0xFF; val >>= 8;
+  key[5] = val & 0xFF; val >>= 8;
+  key[4] = val & 0xFF; val >>= 8;
+  key[3] = val & 0xFF; val >>= 8;
+  key[2] = val & 0xFF; val >>= 8;
+  key[1] = val & 0xFF; val >>= 8;
+  key[0] = val & 0xFF;
+  return key;
+}
 
-void init(unsigned *arr, unsigned N) {
-  for (int i = 0; i < (int) N; i++) {
-    insert(arr[i]);
+static long long decode_key(unsigned char *key) {
+  long long k = 0;
+  for (int i = 0; i < 8; i++) {
+    k = (k << 8) | key[i];
   }
-  // fprintf(stderr, "hash = %llu\n", (unsigned long long) hash_tree(tree));
-  // art_debug = 1;
+  return k;
 }
 
-void insert(unsigned value64) {
-  uint8_t key[8];
-  loadKey(value64, key);
-  if (!lookup(tree,key,8,0,8)) {
-    insert(tree,&tree,key,0,value64,8);
-  } else {
+// op = 1: inserts the value.
+void insert(long long value) {
+  void *old = art_insert(&t, get_key(value), 8, (void*) value);
+  if (old) {
     fprintf(stderr, "D"); // Duplicate.
   }
 }
 
-void erase(unsigned value) {
-  uint8_t key[8];
-  uint64_t value64 = value;
-  loadKey(value64, key);
-  // assert(lookup(tree,key,8,0,8));
-  erase(tree,&tree,key,8,0,8);
-  // assert(!lookup(tree,key,8,0,8));
+// op = 2: deletes the value. The value guaranteed to exists.
+bool erase(long long value) {
+  void *res = art_delete(&t, get_key(value), 8);
+  return res != NULL;
 }
 
-unsigned lower_bound(unsigned value64) {
-  uint8_t key[8];
-  loadKey(value64, key);
-   
-  Node* leaf=lower_bound(tree,key,8,0,8);
-  unsigned ret = 0;
-  if (isLeaf(leaf)) {
-    ret = getLeafValue(leaf);
-    // fprintf(stdout, "%lld (%lld)\n", ret, value);
-  }
-  return ret;
+
+long long sentinel;
+
+int count_cb(void *data, const unsigned char* key, uint32_t key_len, void *val) {
+  if (((long long)val) >= sentinel) return 1;
+  (*((long long*)data))++;
+  return 0;
 }
 
-unsigned select(unsigned a, unsigned b) {
-  return lower_bound(a) + lower_bound(b);
+// op = 3: count values in range [a, b).
+long long count(long long a, long long b) {
+  sentinel = b;
+  long long out = 0;
+  art_iter_lower(&t, (unsigned char*) &a, 8, count_cb, &out);
+  return out;
 }
 
-void results(Statistics &s) {
-  s.n_bytes = 0;
-  s.n_slack_int = 0;
-  s.n_internal = 0,
-  s.n_leaf = 0;
-  s.art_n4 = 0;
-  s.art_n16 = 0;
-  s.art_n48 = 0;
-  s.art_n256 = 0;
 
-  art_visit(tree, [&](Node *n) {
-    if (isLeaf(n)) {
-      s.n_leaf++;
-      s.n_bytes += sizeof(uintptr_t);
-    } else {
-      s.n_internal++;
-      switch (n->type) {
-        case NodeType4: {
-           Node4* node = static_cast<Node4*>(n);
-           s.n_slack_int += 4 - node->count;
-           s.art_n4++;
-           s.n_bytes += sizeof(NodeType4);
-           break;
-        }
-        case NodeType16: {
-           Node16* node=static_cast<Node16*>(n);
-           s.n_slack_int += 16 - node->count;
-           s.art_n16++;
-           s.n_bytes += sizeof(NodeType16);
-           break;
-        }
-        case NodeType48: {
-           Node48* node=static_cast<Node48*>(n);
-           s.n_slack_int += 48 - node->count;
-           s.art_n48++;
-           s.n_bytes += sizeof(NodeType48);
-           break;
-        }
-        case NodeType256: {
-           Node256* node=static_cast<Node256*>(n);
-           s.n_slack_int += 256 - node->count;
-           s.art_n256++;
-           s.n_bytes += sizeof(NodeType256);
-           break;
-        }
-      }
-    }
-  });
+int sum_cb(void *data, const unsigned char* key, uint32_t key_len, void *val) {
+  long long z = (long long) val;
+  long long &d = *((long long*) data);
+  if (z >= sentinel) return 1;
+  d += z;
+  return 0;
+}
+
+// op = 4: sum values in range [a, b).
+long long sum(long long a, long long b) {
+  sentinel = b;
+  long long out = 0;
+  // art_iter(&t, sum_cb, &out);
+  art_iter_lower(&t, get_key(a), 8, sum_cb, &out);
+  // fprintf(stderr, "sum %lld = %lld\n", a, out);
+  return out;
 }

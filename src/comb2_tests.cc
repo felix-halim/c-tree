@@ -5,7 +5,7 @@
 #include <functional>
 #include <algorithm>
 #include "comb2.h"
-#include "random.h"
+// #include "random.h"
 
 using namespace std;
 using namespace comb;

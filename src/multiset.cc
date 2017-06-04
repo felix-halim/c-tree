@@ -2,7 +2,10 @@
 #include "multiset.h"
 #include "tester.h"
 
-trimmer::multiset<unsigned, std::less<unsigned>, Mallocator> s;
+trimmer::multiset<long long, std::less<long long>, Mallocator> s;
+
+void initexp() {}
+void destroyexp() {}
 
 // op = 1: inserts the value.
 void insert(long long value) {
