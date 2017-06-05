@@ -2,15 +2,15 @@
 #include <cstdio>
 #include <cstring>
 #include <cstdlib>
+#include <cctype>
 
 #include <algorithm>
-#include <chrono>
 #include <vector>
 
 #include "common.h"
+#include "time_it.h"
 
 using namespace std;
-using namespace std::chrono;
 
 void initexp();
 void destroyexp();
@@ -83,14 +83,6 @@ static vector<pair<long long, vector<long long>>> read_batch_by_op(
     ret.push_back(make_pair(prev_op, arr));
   }
   return ret;
-}
-
-template<typename F>
-static double time_it(F f) {
-  auto t0 = high_resolution_clock::now();
-  f();
-  auto t1 = high_resolution_clock::now();
-  return duration_cast<microseconds>(t1 - t0).count() * 1e-6;
 }
 
 static double run(long long op, const vector<long long> &arr, long long &chk) {

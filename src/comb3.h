@@ -14,16 +14,7 @@ using namespace std;
 
 #include <sys/mman.h>
 
-class Random {
-  mt19937 gen;
-  uniform_int_distribution<> dis;
-
- public:
-  Random() : gen(140384) {}
-  Random(int seed) : gen(seed) {}
-  int nextInt() { return dis(gen); }
-  int nextInt(int N) { return dis(gen) % N; } // Poor I know.
-};
+#include "random.h"
 
 #define CRACK_AT max(32, LARGE_SIZE >> 5)
 #define DECRACK_AT max(15, LARGE_SIZE >> 6)

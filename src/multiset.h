@@ -11,6 +11,7 @@
 #include "mallocator.h"
 #include "multiset_util.h"
 #include "multiset_node.h"
+#include "random.h"
 
 namespace trimmer {
 

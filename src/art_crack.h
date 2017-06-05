@@ -6,6 +6,7 @@
 #include <cassert>
 #include <queue>
 #include <algorithm>
+#include "random.h"
 #include "art.h"
 
 using namespace std;
@@ -13,17 +14,6 @@ using namespace std;
 int nLeaves, nInternals, nCap, locked;
 
 namespace art_crack {
-
-class Random {
-  mt19937 gen;
-  uniform_int_distribution<> dis;
-
- public:
-  Random() : gen(140384) {}
-  Random(int seed) : gen(seed) {}
-  int nextInt() { return dis(gen); }
-  int nextInt(int N) { return dis(gen) % N; } // Poor I know.
-};
 
 #ifndef LEAF_BSIZE
   #define LEAF_BSIZE 128

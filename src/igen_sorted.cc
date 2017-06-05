@@ -4,6 +4,7 @@
 #include <cstring>
 
 #include "common.h"
+#include "random.h"
 
 using namespace std;
 
@@ -18,9 +19,10 @@ int main(int argc, char *argv[]) {
     printf("%d %d\n", INSERT, i + 1);
   }
 
+  Random r(140384);
   int q = atoi(argv[2]);
   for (int i = 0; i < q; i++) {
-    int j = rand() % n;
+    int j = r.nextInt(n);
     printf("%d %d %d\n", SUM, j, j + 1);
   }
 }

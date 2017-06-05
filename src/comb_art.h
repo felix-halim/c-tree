@@ -6,25 +6,14 @@
 #include <cstring>
 
 #include <functional>
-#include <random>
 #include <vector>
 #include <algorithm>
 #include <string>
 
 using namespace std;
 
+#include "random"
 #include "art.h"
-
-class Random {
-  mt19937 gen;
-  uniform_int_distribution<> dis;
-
- public:
-  Random() : gen(140384) {}
-  Random(int seed) : gen(seed) {}
-  int nextInt() { return dis(gen); }
-  int nextInt(int N) { return dis(gen) % N; } // Poor I know.
-};
 
 #define CRACK_AT (LARGE_SIZE >> 5)
 #define DECRACK_AT (LARGE_SIZE >> 6)

@@ -3,7 +3,6 @@
 #include <stdlib.h>
 #include <vector>
 #include <set>
-#include <random>
 #include <algorithm>
 
 using namespace std;
@@ -21,19 +20,8 @@ inline uintptr_t getLeafValue(Node* node) {
 
 ArtCrack<long long> c;
 
-class Randomr {
-  mt19937 gen;
-  uniform_int_distribution<> dis;
-
- public:
-  Randomr() : gen(140384) {}
-  Randomr(int seed) : gen(seed) {}
-  int nextInt() { return dis(gen); }
-  int nextInt(int N) { return dis(gen) % N; } // Poor I know.
-};
-
 int main() {
-  Randomr r;
+  Random r(140384);
   art_debug = 1;
   vector<long long> arr;
   for (int i = 1; i < 10000; i++) {

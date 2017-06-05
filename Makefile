@@ -1,11 +1,13 @@
 CXX = clang++
-CXX_FLAGS = -std=c++11 -O2 -DNDEBUG \
+CXX_FLAGS = -std=c++1y -stdlib=libc++ -O2 -DNDEBUG \
 -Wfatal-errors -Wall -Wextra \
 -Wpedantic -Wshadow -Wconversion \
 -Wno-unused-parameter \
 -Wno-sign-conversion
 
 BDIR = ./build
+IDIR = ./inputs
+ODIR = ./outputs
 CPP = $(wildcard src/*.cc)
 OBJ = $(CPP:%.cc=$(BDIR)/%.o)
 DEP = $(OBJ:%.o=%.d)
@@ -19,6 +21,18 @@ $(BDIR)/%.o : %.cc
 	@mkdir -p $(@D)
 	$(CXX) $(CXX_FLAGS) -MMD -c $< -o $@
 
+
+$(ODIR)/art: $(IDIR)/sorted_100000000_1000.gz $(BDIR)/art
+	gunzip -c $(IDIR)/sorted_100000000_1000.gz | $(BDIR)/art > $@
+
+$(ODIR)/multiset: $(IDIR)/sorted_100000000_1000.gz $(BDIR)/multiset
+	gunzip -c $(IDIR)/sorted_100000000_1000.gz | $(BDIR)/multiset > $@
+
+$(ODIR)/comb: $(IDIR)/sorted_100000000_1000.gz $(BDIR)/comb
+	gunzip -c $(IDIR)/sorted_100000000_1000.gz | $(BDIR)/comb > $@
+
+$(ODIR)/readonly: $(IDIR)/sorted_100000000_1000.gz $(BDIR)/readonly
+	gunzip -c $(IDIR)/sorted_100000000_1000.gz | $(BDIR)/readonly > $@
 
 
 $(IDIR)/sorted_1000000_1000.gz: $(BDIR)/igen_sorted
@@ -79,12 +93,6 @@ $(ODIR)/dataset_gen: dataset_gen.cc
 
 $(ODIR)/split: split.cc update.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DBSIZE=4096 -Wall -o $@ $<
-
-$(ODIR)/comb: comb.cc comb.h test.h update.h query.h util.h
-	$(CXX) $(CXXFLAGS) $(FLAGS) -DCOMB6400 -Wall -o $@ $<
-
-$(ODIR)/multiset: multiset.cc multiset.h memory_manager.h multiset_util.h multiset_node.h test.h update.h query.h util.h
-	$(CXX) -std=c++11 $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
 
 $(ODIR)/comb3: comb3.cc comb3.h test.h update.h query.h util.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DCOMB6400 -Wall -o $@ $<
@@ -292,9 +300,6 @@ $(ODIR)/mdd1r: mdd1r.cc crack.h test.h update.h query.h util.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
 
 $(ODIR)/dd1r: dd1r.cc crack.h test.h update.h query.h util.h
-	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
-
-$(ODIR)/art: art.cc art.h test.h update.h query.h util.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
 
 $(ODIR)/sort_art: sort_art.cc art.h test.h update.h query.h util.h

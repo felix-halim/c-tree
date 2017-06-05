@@ -1,7 +1,7 @@
 #todo: measure transition time, skew workload.
 
-mkdir bin 2> /dev/null
-mkdir res 2> /dev/null
+mkdir inputs 2> /dev/null
+mkdir outputs 2> /dev/null
 N=data/10000000.data
 Q=10000000
 out=results.js

@@ -5,26 +5,15 @@
 #include <cstring>
 #include <cassert>
 #include <queue>
-#include <chrono>
 #include <algorithm>
 
+#include "random.h"
+
 using namespace std;
-using namespace chrono;
 
 int nLeaves, nInternals, nCap, locked;
 
 namespace ctree {
-
-class Random {
-  mt19937 gen;
-  uniform_int_distribution<> dis;
-
- public:
-  Random() : gen(140384) {}
-  Random(int seed) : gen(seed) {}
-  int nextInt() { return dis(gen); }
-  int nextInt(int N) { return dis(gen) % N; } // Poor I know.
-};
 
 #ifndef INTERNAL_BSIZE
   #define INTERNAL_BSIZE 64

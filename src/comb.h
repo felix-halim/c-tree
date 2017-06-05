@@ -1,29 +1,19 @@
 #ifndef _COMB_H_
 #define _COMB_H_
 
-#include <stdio.h>
-#include <string.h>
+#include <cstdio>
+#include <cstring>
 
-#include <random>
 #include <functional>
 #include <vector>
 #include <algorithm>
 #include <string>
 
-using namespace std;
-
 #include <sys/mman.h>
 
-class Random {
-  mt19937 gen;
-  uniform_int_distribution<> dis;
+#include "random.h"
 
- public:
-  Random() : gen(140384) {}
-  Random(int seed) : gen(seed) {}
-  int nextInt() { return dis(gen); }
-  int nextInt(int N) { return dis(gen) % N; } // Poor I know.
-};
+using namespace std;
 
 template <typename T,
   typename CMP  = std::less<T>,
@@ -768,7 +758,7 @@ public:
     }
   };
 
-  Comb(int cap) {
+  Comb(int cap): rng(Random(140384)) {
     int nB = 2 * cap / BLOCK_SIZE;
     allocate(nB);
     set_num_of_buckets(nB);

@@ -1,12 +1,7 @@
 #ifndef CRACK_UTIL_H_
 #define CRACK_UTIL_H_
 
-#include <random>
-
 namespace trimmer {
-
-using std::mt19937;
-using std::uniform_int_distribution;
 
 constexpr int INTERNAL_NODE_BIT = 1 << 30;
 constexpr int EMPTY_NODE = -1;
@@ -27,17 +22,6 @@ static int sorted_lower_pos(T const data[], int n, T const &value, compare &lt) 
   while (pos < n && lt(data[pos], value)) pos++;
   return pos;
 }
-
-class Random {
-  mt19937 gen;
-  uniform_int_distribution<> dis;
-
- public:
-  Random() : gen(140384) {}
-  Random(int seed) : gen(seed) {}
-  int nextInt() { return dis(gen); }
-  int nextInt(int N) { return dis(gen) % N; } // Poor I know.
-};
 
 template<typename internal_type, typename leaf_type, template<class> class alloc>
 class node_manager {
