@@ -12,7 +12,17 @@ CPP = $(wildcard src/*.cc)
 OBJ = $(CPP:%.cc=$(BDIR)/%.o)
 DEP = $(OBJ:%.o=%.d)
 
+$(ODIR)/$(IN)/$(PROG): $(IDIR)/$(IN) $(BDIR)/$(PROG)
+	@mkdir -p $(@D)
+	gunzip -c $(IDIR)/$(IN) | $(BDIR)/$(PROG) > $@
+	tail -15 $@
+
+$(IDIR)/$(IN): $(BDIR)/input_generator/$(IN)
+	@mkdir -p $(@D)
+	$(BDIR)/input_generator/$(IN) | gzip > $@
+
 $(BDIR)/% : $(BDIR)/src/%.o
+	@mkdir -p $(@D)
 	$(CXX) $(CXX_FLAGS) $^ -o $@
 
 -include $(DEP)
@@ -21,40 +31,6 @@ $(BDIR)/%.o : %.cc
 	@mkdir -p $(@D)
 	$(CXX) $(CXX_FLAGS) -MMD -c $< -o $@
 
-
-$(ODIR)/art: $(IDIR)/sorted_100000000_1000.gz $(BDIR)/art
-	gunzip -c $(IDIR)/sorted_100000000_1000.gz | $(BDIR)/art > $@
-
-$(ODIR)/multiset: $(IDIR)/sorted_100000000_1000.gz $(BDIR)/multiset
-	gunzip -c $(IDIR)/sorted_100000000_1000.gz | $(BDIR)/multiset > $@
-
-$(ODIR)/comb: $(IDIR)/sorted_100000000_1000.gz $(BDIR)/comb
-	gunzip -c $(IDIR)/sorted_100000000_1000.gz | $(BDIR)/comb > $@
-
-$(ODIR)/readonly: $(IDIR)/sorted_100000000_1000.gz $(BDIR)/readonly
-	gunzip -c $(IDIR)/sorted_100000000_1000.gz | $(BDIR)/readonly > $@
-
-
-$(IDIR)/sorted_1000000_1000.gz: $(BDIR)/igen_sorted
-	$(BDIR)/igen_sorted 1000000 1000 | gzip > $(IDIR)/sorted_1000000_1000.gz
-
-$(IDIR)/sorted_100000000_1000.gz: $(BDIR)/igen_sorted
-	$(BDIR)/igen_sorted 100000000 1000 | gzip > $(IDIR)/sorted_100000000_1000.gz
-
-$(ODIR)/std_multiset_sorted_100000000_1000: $(IDIR)/sorted_100000000_1000.gz $(BDIR)/std_multiset
-	gunzip -c $(IDIR)/sorted_100000000_1000.gz | $(BDIR)/std_multiset > $@
-
-$(ODIR)/multiset_sorted_100000000_1000: $(IDIR)/sorted_100000000_1000.gz $(BDIR)/multiset
-	gunzip -c $(IDIR)/sorted_100000000_1000.gz | $(BDIR)/multiset > $@
-
-$(ODIR)/multiset_sorted_1000000_1000: $(IDIR)/sorted_1000000_1000.gz $(BDIR)/multiset
-	gunzip -c $(IDIR)/sorted_1000000_1000.gz | $(BDIR)/multiset > $@
-
-$(BDIR)/comb1600: $(SDIR)/comb.cc $(SDIR)/comb.h $(SDIR)/tester.h $(SDIR)/common.h
-	$(CXX) -DNDEBUG -DCOMB1600 -o $@ $<
-
-$(ODIR)/comb1600_sorted_100000000_1000: $(IDIR)/sorted_100000000_1000.gz $(BDIR)/comb1600
-	gunzip -c $(IDIR)/sorted_100000000_1000.gz | $(BDIR)/comb1600 > $@
 
 
 all: \
