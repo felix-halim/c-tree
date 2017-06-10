@@ -1,3 +1,238 @@
+// TODO: break this down into separate files.
+#include <cassert>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+
+#include <algorithm>
+#include <random>
+
+using namespace std;
+
+const char* update_workload[10] = {
+  "NOUP",    // 0. Read only queries.
+  "LFHV",    // 1. Update 1000 tuples every 1000 queries.
+  "HFLV",    // 2. Update 10 tuples every 10 queries.
+  "QUEUE",   // 3. Remove the largest value, insert new smaller value than any existing value.
+  "TRASH",   // 4. Insert values in the middle of the domain.
+  "DELETE",  // 5. Delete 1000 tuples every 1000 queries.
+  "APPENDB", // 6. Insert 100K tuples every query. 
+  "SKEW",    // 7. LFHV but on 20% domain only.
+};
+
+class Update {
+  vector<unsigned> arr;
+  FILE *in;
+  unsigned next_smallest;
+  unsigned max_value;
+  int U, W;
+  std::function<void(unsigned)> update_max_cb;
+
+  mt19937 gen;
+  uniform_int_distribution<> dis;
+
+ public:
+
+  Update(char *fn, int u, int w, std::function<void(unsigned)> on_update_max):
+      max_value(0), U(u), W(w), update_max_cb(on_update_max), gen(81188) {
+
+    next_smallest = 1080000000;
+    in = fopen(fn, "rb");
+    if (!in) { fprintf(stderr,"Error opening file %s\n", fn); exit(1); }
+
+    if (U == 6) {
+      load(100000);
+    } else {
+      load();
+      if (U == 3) prepare_queue();
+      // else if (U == 7) N = 100000;
+      // else if (U == 8) N = 10;
+    }
+
+    if (U == 5) {
+      prepare_deletion(0);
+      // MAXQ = min((long long) MAXQ);
+    }
+  }
+
+  unsigned* get_arr() { return &arr[0]; }
+  int get_n() { return min(1000000000, int((W == 0) ? arr.size() : (arr.size() / 2))); }
+  int size() { return arr.size(); }
+  void clear() { arr.clear(); }
+  void prepare_deletion(int N) { shuffle(arr.begin(), arr.begin() + N, gen); }
+  unsigned get_next_smallest() { return next_smallest; }
+
+  bool load(int amt = 1000000000) {
+    if (!in) return false; // Already loaded.
+    unsigned tmp[1024] = { 0 };
+    while (!feof(in)) {
+      int need = min(1024, amt - size());
+      if (need <= 0) break;
+      int N = fread(tmp, sizeof(unsigned), need, in);
+      for (int i = 0; i < N; i++) arr.push_back(tmp[i]);
+      max_value = max(max_value, *std::max_element(tmp, tmp + N));
+    }
+    if (ferror(in)) { fprintf(stderr,"Error reading file!\n"); exit(1); }
+    if (feof(in)) { fclose(in); in = NULL; }
+    update_max_cb(max_value);
+    return true;
+  }
+
+  void prepare_queue() {
+    int N = get_n();
+    sort(arr.begin(), arr.end());
+    for (int i = 0; i < N; i++) {
+      if (arr[i] > next_smallest)
+        fprintf(stderr, "%d %d\n", i, arr[i]);
+      assert(arr[i] <= next_smallest);
+      arr[i] += next_smallest;
+    }
+  }
+
+  void update_queue(unsigned &to_del, unsigned &to_add) {
+    static int qidx = -1;
+    if (qidx < 0) qidx = get_n() - 1;
+  // if ((i + 1) % 1000000 == 0)
+  //   fprintf(stderr, "arr[%d] = %d, next = %d\n", qidx,arr[qidx],next_smallest);
+    to_del = arr[qidx];
+    to_add = next_smallest;
+    arr[qidx--] = next_smallest--;
+    assert(next_smallest >= 0);
+  }
+
+  int update_delete() {
+    static int lastN = get_n();
+    assert(lastN > 0);
+    return arr[--lastN];
+  }
+
+  void update(unsigned &to_del, unsigned &to_add) {
+    int N = get_n();
+    int k = dis(gen) % N;
+    to_del = arr[k];
+    int l = N + dis(gen) % N;
+    assert(l < size());
+    swap(arr[k], arr[l]);
+    to_add = arr[k];
+  }
+
+  void update_skew(unsigned &to_del, unsigned &to_add, int start, int end) {
+    int N = end - start;
+    int k = start + dis(gen) % N;
+    to_del = arr[k];
+    int l = N + dis(gen) % N;
+    assert(l < size());
+    swap(arr[k], arr[l]);
+    to_add = arr[k];
+  }
+
+  string name() {
+    return update_workload[U];
+  }
+
+  int code() { return U; }
+
+  void execute(long long i,
+      std::function<void(unsigned)> insert,
+      std::function<void(unsigned)> erase,
+      std::function<void(double)> load_time_cb,
+      std::function<void(double)> update_time_cb) {
+
+    switch (U) {
+      // NOUP.
+      case 0: break;
+
+      // LFHV.
+      case 1: if (i % 1000 == 0)
+        update_time_cb(time_it([&] {
+          unsigned a, b;
+          REP(j, 1000) {
+            update(a, b);
+            erase(a);
+            insert(b);
+          }
+        }));
+        break;
+
+      // HFHV.
+      case 2: if (i % 10 == 0)
+        update_time_cb(time_it([&] {
+          unsigned a, b;
+          REP(j, 1000) {
+            update(a, b);
+            erase(a);
+            insert(b);
+          }
+        }));
+        break;
+
+      // QUEUE.
+      case 3: if (i % 10 == 0)
+        update_time_cb(time_it([&] {
+          unsigned a, b;
+          REP(j, 10) {
+            update_queue(a, b);
+            erase(a);
+            insert(b);
+          }
+        }));
+        break;
+
+      // TRASH.
+      case 4: if (i == 10000)
+        update_time_cb(time_it([&] {
+          unsigned *arr = get_arr();
+          int N = get_n();
+          REP(j, 1000000) {
+            insert(arr[N + j]);
+            // fprintf(stderr, "%d \n", arr[N + j]);
+          }
+        }));
+        break;
+
+      // DELETE.
+      case 5: if (i % 1000 == 0)
+        update_time_cb(time_it([&] {
+          REP(j, 1000) {
+            erase(update_delete());
+          }
+        }));
+        break;
+
+      // APPEND SKY SERVER.
+      case 6:
+        if (arr.size()) {
+          clear();
+          load_time_cb(time_it([&] { load(100000); }));
+          if (arr.size()) {
+            update_time_cb(time_it([&] {
+              unsigned *arr = get_arr();
+              REP(j, size()) insert(arr[j]);
+            }));
+          }
+        }
+        break;
+
+      // SKEW.
+      case 7:
+        update_time_cb(time_it([&] {
+          unsigned a, b;
+          if (i < 2000) {
+            REP(j, 1000) {
+              update(a, b);
+              erase(a);
+              insert(b);
+            }
+          }
+        }));
+        break;
+
+      default: break;
+    }
+  }
+};
+
+
 #include <cassert>
 #include <cstdio>
 #include <cstdlib>
@@ -357,3 +592,91 @@ public :
 
   double selectivity() { return s; }
 };
+
+
+void init(unsigned *arr, unsigned N);   // Initializes the initial values of N integers.
+unsigned lower_bound(unsigned value);   // Query for lower bound, returns 0 if not found.
+unsigned select(unsigned a, unsigned b);     // Select values from [a, b), without fetching the values.
+unsigned count(unsigned a, unsigned b);      // Count values in range [a, b).
+unsigned sum(unsigned a, unsigned b);        // Sum values in range [a, b).
+void insert(unsigned value);       // Inserts the value.
+void erase(unsigned value);        // Deletes the value. The value guaranteed to exists.
+void results(Statistics &s);  // Optionally fill in statistics.
+
+int main(int argc, char *argv[]) {
+  if (argc != 6) {
+    fprintf(stderr,
+      "usage: ./%s "        // 0
+      "input_file "         // 1
+      "num_of_queries "     // 2
+      "selectivity "        // 3
+      "query_workload "     // 4
+      "update_workload\n",  // 5
+      argv[0]);
+    exit(1);
+  }
+
+  long long MAXQ;
+  sscanf(argv[2], "%lld", &MAXQ);
+  double sel = atof(argv[3]);
+  int W = atoi(argv[4]);
+  int U = atoi(argv[5]);
+  Workload query_w(MAXQ, sel, W);
+  fprintf(stderr, "Loading ... ");
+  Update update(argv[1], U, W, [&](unsigned mx) { query_w.set_max(mx + 1); });
+  fprintf(stderr, "done. ");
+  Statistics s(parse_algorithm_name(argv[0]), query_w.name(), update.name());
+
+  fprintf(stderr, "N = %u, ", update.get_n());
+
+  sort(update.get_arr(), update.get_arr() + update.get_n());
+  double insert_time = time_it([&] { init(update.get_arr(), update.get_n()); });
+
+  fprintf(stderr, "I = %.3lf, Q = %lld\n", insert_time, query_w.maxq());
+
+  vector<long long> samples = generate_samples(query_w.maxq());
+  double total_query_time = 0, total_update_time = 0;
+  unsigned long long checksum = 0;
+  for (long long i = 1, *next_sample = &samples[0], Q = 0; ; ) {
+    double load_time = 0; // Should not be counted. It is time to load data from disk.
+    double update_time = 0;
+    double runtime = time_it([&] {
+      long long nQ = - *next_sample; nQ += *(++next_sample); Q += nQ;
+
+      for (unsigned a, b; nQ--; i++) {
+        bool ok = query_w.query(a,b); // get query endpoints based on the workload
+        assert(ok || W == 0);
+
+        checksum = checksum * 13 + 
+          #if defined(COUNT_QUERY)
+            count(a, b);
+          #elif defined(SUM_QUERY)
+            sum(a, b);
+          #elif defined(SELECT_QUERY)
+            select(a, b);
+          #else
+            lower_bound(a);
+          #endif
+
+        update.execute(i,
+          [](unsigned v){ insert(v); }, // insert.
+          [](unsigned v){ erase(v); }, // erase.
+          [&](double load_t) { load_time += load_t; },
+          [&](double update_t) { update_time += update_t; }
+        );
+      }
+    });
+    runtime -= load_time;
+    total_query_time += runtime - update_time;
+    total_update_time += update_time;
+
+    results(s);
+
+    s.print(Q, query_w.selectivity(), verify(update.code(), update.get_n(), Q, checksum),
+      insert_time, total_query_time, total_update_time, checksum);
+
+    if (Q >= query_w.maxq() || runtime > 3600 * 5) break;
+  }
+}
+
+    // fprintf(stderr, "\033[1;31mFAILED\033[0m checksum %llu != %llu\n", m[k], v);
