@@ -1,3 +1,7 @@
+add initial insert to clustered values then few queries
+add clustered update workload
+add large selectivity query, comb is fast due to locality
+
 - CTree evolves from database cracking, in the quest of finding efficient data structure to support incremental indexing as side effects of query processing.
 - CTree is immune to selectivity.
 - Compare with ART.

@@ -1,9 +1,10 @@
 CXX = clang++
-CXX_FLAGS = -std=c++1y -stdlib=libc++ -O2 -DNDEBUG \
+CXX_FLAGS = -std=c++1y -stdlib=libc++ -O2 \
 -Wfatal-errors -Wall -Wextra \
--Wpedantic -Wshadow -Wconversion \
+-Wpedantic -Wconversion \
 -Wno-unused-parameter \
 -Wno-sign-conversion
+# -Wshadow  -DNDEBUG
 
 BDIR = ./build
 IDIR = ./inputs

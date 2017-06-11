@@ -11,6 +11,17 @@ void initexp() {
   assert(res == 0);
 }
 
+int count_cb(void *data, const unsigned char* key, uint32_t key_len, void *val) {
+  (*((long long*)data))++;
+  return 0;
+}
+
+void count_size() {
+  long long out = 0;
+  art_iter(&t, count_cb, &out);
+  fprintf(stderr, "art size = %lld\n", out);
+}
+
 void destroyexp() {
   fprintf(stderr, "destroy art\n");
   // int res = art_tree_destroy(&t);
@@ -55,12 +66,6 @@ bool erase(long long value) {
 
 long long sentinel;
 
-int count_cb(void *data, const unsigned char* key, uint32_t key_len, void *val) {
-  if (((long long)val) >= sentinel) return 1;
-  (*((long long*)data))++;
-  return 0;
-}
-
 // op = 3: count values in range [a, b).
 long long count(long long a, long long b) {
   sentinel = b;
@@ -78,12 +83,17 @@ int sum_cb(void *data, const unsigned char* key, uint32_t key_len, void *val) {
   return 0;
 }
 
+int print_cb(void *data, const unsigned char* key, uint32_t key_len, void *val) {
+  long long z = (long long) val;
+  fprintf(stderr, "%lld\n", z);
+  return 0;
+}
+
 // op = 4: sum values in range [a, b).
 long long sum(long long a, long long b) {
   sentinel = b;
   long long out = 0;
-  // art_iter(&t, sum_cb, &out);
+  // art_iter(&t, print_cb, &out);
   art_iter_lower(&t, get_key(a), 8, sum_cb, &out);
-  // fprintf(stderr, "sum %lld = %lld\n", a, out);
   return out;
 }

@@ -4,13 +4,13 @@
 #include "tester.h"
 
 #if defined(COMB800)
-  Comb<unsigned, std::less<unsigned>, false, 800, 30, 12> c(100000000);
+  Comb<long long, std::less<long long>, false, 800, 30, 12> c(100000000);
 #elif defined(COMB1600)
-  Comb<unsigned, std::less<unsigned>, false, 1600, 62, 25> c(100000000);
+  Comb<long long, std::less<long long>, false, 1600, 62, 25> c(100000000);
 #elif defined(COMB3200)
-  Comb<unsigned, std::less<unsigned>, false, 3200, 125, 50> c(100000000);
+  Comb<long long, std::less<long long>, false, 3200, 125, 50> c(100000000);
 #else
-  Comb<unsigned> c(100000000);
+  Comb<long long> c(100000000);
 #endif
 
 void initexp() {}
@@ -36,16 +36,20 @@ long long count(long long a, long long b) {
 // op = 4: sum values in range [a, b).
 long long sum(long long a, long long b) {
   auto it1 = c.lower_bound(a);
-  auto it2 = c.lower_bound(b);
+  // Crack the lower bound so that it is in the correct position.
+  c.lower_bound(b);
   long long sum = 0;
-  while (it1 != it2) {
-    sum += *it1.next();
+  while (it1.has_next()) {
+    long long v = *it1.next();
+    if (v >= b) break;
+    // fprintf(stderr, "got %lld\n", v); 
+    sum += v;
   }
   return sum;
 }
 
 
-  // c.load(arr, N);
+  // c.load(arr, N); 
 
   // unsigned val = 0;
   // unsigned ret = c.lower_bound(value).next(val) ? val : 0;

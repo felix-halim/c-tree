@@ -146,7 +146,7 @@ class Comb {
       }
     }
 
-    void flush_pending_inserts(CMP &cmp){
+    void flush_pending_inserts(CMP &cmp) {
       assert(I<=N);              // Indexed index should be less than the number of elements
       if (!nC){ I = N; S1 = S2 = S3 = S4 = 0; return; }  // no index yet, all the elements are considered "inserted"
       assert(next_bidx == -1);        // Indexes only makes sense when there is no chain
@@ -191,7 +191,7 @@ class Comb {
       assert(R-L >= CRACK_AT);
       int ntry = 10;
       for (T *i=L, *j=R, *p; ntry--; ){
-        std::iter_swap(j-1, i + rng.nextInt(j-i));
+        std::iter_swap(j-1, i + rng.nextInt(int(j-i)));
         std::iter_swap(j-1, p = partition(i, j-1, *(j-1), cmp));
         if (p-L <= DECRACK_AT) i = p;
         else if (R-p <= DECRACK_AT) j = p;
@@ -211,7 +211,7 @@ class Comb {
       L = i==0? 0 : C[i-1];            // the left crack boundary
       R = i==nC? N : C[i];            // the right crack boundary
       while (R-L > CRACK_AT){            // narrow down the piece using DDR
-        int M = rough_middle_partition(D+L+(i?1:0), D+R, cmp, rng) - D;
+        int M = int(rough_middle_partition(D+L+(i?1:0), D+R, cmp, rng) - D);
         add_cracker_index(i,M);
 //        fprintf(stderr,"CRACKING %d %d, [%d %d]\n",M,D[M],L,R);
         if (cmp(v,D[M])) R=M; else L=M, i++;  // adjust the cracker index i
@@ -229,7 +229,7 @@ class Comb {
       L = i==0? 0 : C[i-1];          // the left crack
       R = i==nC? N : C[i];          // the right crack
       while (R-L > CRACK_AT){          // narrow down the piece using DDR
-        int M = rough_middle_partition(D+L+(i?1:0), D+R, cmp, rng) - D;
+        int M = int(rough_middle_partition(D+L+(i?1:0), D+R, cmp, rng) - D);
         add_cracker_index(i,M);
         if (idx < M) R=M; else L=M, i++;  // adjust the cracker index
       }
@@ -271,7 +271,7 @@ class Comb {
     int partition(T const &v, CMP &cmp){
       clear_indexes();
       assert(N>0 && N<=BLOCK_SIZE);
-      return partition(D,D+N,v,cmp) - D;
+      return int(partition(D,D+N,v,cmp) - D);
     }
 
     void fusion(Bucket &that, int *hi, int *lo, int &nhi, int &nlo){
@@ -355,7 +355,7 @@ class Comb {
       }
       // for (int pos = L; pos < R; pos++) if (!cmp(D[pos], v)) return pos;
       // return R;
-      return std::lower_bound(D+L, D+R, v, cmp) - D;    // find the element v using binary search
+      return int(std::lower_bound(D+L, D+R, v, cmp) - D);    // find the element v using binary search
     }
 
     bool erase(T const &v, CMP &cmp, Random &rng){
@@ -626,7 +626,7 @@ class Comb {
   // find the correct root index (binary search)
   int find_ridx(T const &v) const {
     if (root_size() <= 1) return 0;
-    int lo = 0, hi = Rcache.size() - 1, res = 0;
+    int lo = 0, hi = int(Rcache.size()) - 1, res = 0;
     while (lo <= hi) {
       int mid = lo + ((hi-lo)>>1);
       if (cmp(v, Rcache[mid])) hi = mid-1;
@@ -1060,7 +1060,7 @@ public:
 
   bool check(){
     for (int i=0,cnt=0; i<root_size(); i++){
-      T upper = (T){0};
+      T upper{0};
       if (i+1<root_size()) upper = R[i+1];
       if (USE_POS){
         cnt += size(i);

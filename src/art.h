@@ -590,11 +590,10 @@ static void add_child256(art_node256 *n, art_node **ref, unsigned char c, void *
 
 static void add_child48(art_node48 *n, art_node **ref, unsigned char c, void *child) {
     if (n->n.num_children < 48) {
-        int pos = 0;
-        while (n->children[pos]) pos++;
-        n->children[pos] = (art_node*)child;
-        n->keys[c] = pos + 1;
-        n->n.num_children++;
+        uint8_t &num = n->n.num_children;
+        n->children[num] = (art_node*)child;
+        n->keys[c] = (unsigned char) (num + 1);
+        num++;
     } else {
         art_node256 *new_node = (art_node256*)alloc_node(NODE256);
         for (int i=0;i<256;i++) {
@@ -611,40 +610,45 @@ static void add_child48(art_node48 *n, art_node **ref, unsigned char c, void *ch
 
 static void add_child16(art_node16 *n, art_node **ref, unsigned char c, void *child) {
     if (n->n.num_children < 16) {
-        unsigned mask = (1 << n->n.num_children) - 1;
-        
-        // support non-x86 architectures
-        #ifdef __i386__
-            __m128i cmp;
+        // unsigned mask = (1 << n->n.num_children) - 1;
 
-            // Compare the key to all 16 stored keys
-            cmp = _mm_cmplt_epi8(_mm_set1_epi8(c),
-                    _mm_loadu_si128((__m128i*)n->keys));
+        // Disable optimization due to _mm_cmplt_epi8 only works for signed int.
 
-            // Use a mask to ignore children that don't exist
-            unsigned bitfield = _mm_movemask_epi8(cmp) & mask;
-        #else
-        #ifdef __amd64__
-            __m128i cmp;
+        // // support non-x86 architectures
+        // #ifdef __i386__
+        //     __m128i cmp;
 
-            // Compare the key to all 16 stored keys
-            cmp = _mm_cmplt_epi8(_mm_set1_epi8(c),
-                    _mm_loadu_si128((__m128i*)n->keys));
+        //     // Compare the key to all 16 stored keys
+        //     cmp = _mm_cmplt_epi8(_mm_loadu_si128((__m128i*)n->keys),
+        //         _mm_set1_epi8(c));
 
-            // Use a mask to ignore children that don't exist
-            unsigned bitfield = _mm_movemask_epi8(cmp) & mask;
-        #else
-            // Compare the key to all 16 stored keys
-            unsigned bitfield = 0;
-            for (short i = 0; i < 16; ++i) {
-                if (c < n->keys[i])
-                    bitfield |= (1 << i);
-            }
+        //     // Use a mask to ignore children that don't exist
+        //     unsigned bitfield = _mm_movemask_epi8(cmp) & mask;
+        // #else
+        //     #ifdef __amd64__
+        //         __m128i cmp;
 
-            // Use a mask to ignore children that don't exist
-            bitfield &= mask;    
-        #endif
-        #endif
+        //         // Compare the key to all 16 stored keys
+        //         cmp = _mm_cmplt_epu8(_mm_set1_epi8(c),
+        //             _mm_loadu_si128((__m128i*)n->keys));
+
+        //         // Use a mask to ignore children that don't exist
+        //         unsigned bitfield = _mm_movemask_epi8(cmp) & mask;
+        //     #else
+                // Compare the key to all 16 stored keys
+                unsigned bitfield = 0;
+                for (short i = 0; i < n->n.num_children; ++i) {
+                    if (c < n->keys[i])
+                        bitfield |= (1 << i);
+                }
+
+                // Use a mask to ignore children that don't exist
+                // bitfield &= mask;    
+        //     #endif
+        // #endif
+
+        // Use a mask to ignore children that don't exist
+        // bitfield &= mask;    
 
         // Check if less than any
         unsigned idx;
@@ -668,7 +672,7 @@ static void add_child16(art_node16 *n, art_node **ref, unsigned char c, void *ch
         memcpy(new_node->children, n->children,
                 sizeof(void*)*n->n.num_children);
         for (int i=0;i<n->n.num_children;i++) {
-            new_node->keys[n->keys[i]] = i + 1;
+            new_node->keys[n->keys[i]] = (unsigned char) (i + 1);
         }
         copy_header((art_node*)new_node, (art_node*)n);
         *ref = (art_node*)new_node;
@@ -865,7 +869,7 @@ static void remove_child256(art_node256 *n, art_node **ref, unsigned char c) {
         for (int i=0;i<256;i++) {
             if (n->children[i]) {
                 new_node->children[pos] = n->children[i];
-                new_node->keys[i] = pos + 1;
+                new_node->keys[i] = (unsigned char) (pos + 1);
                 pos++;
             }
         }
@@ -888,7 +892,7 @@ static void remove_child48(art_node48 *n, art_node **ref, unsigned char c) {
         for (int i=0;i<256;i++) {
             pos = n->keys[i];
             if (pos) {
-                new_node->keys[child] = i;
+                new_node->keys[child] = (unsigned char) (i);
                 new_node->children[child] = n->children[pos - 1];
                 child++;
             }
@@ -898,7 +902,7 @@ static void remove_child48(art_node48 *n, art_node **ref, unsigned char c) {
 }
 
 static void remove_child16(art_node16 *n, art_node **ref, art_node **l) {
-    int pos = l - n->children;
+    int pos = int(l - n->children);
     memmove(n->keys+pos, n->keys+pos+1, n->n.num_children - 1 - pos);
     memmove(n->children+pos, n->children+pos+1, (n->n.num_children - 1 - pos)*sizeof(void*));
     n->n.num_children--;
@@ -914,7 +918,7 @@ static void remove_child16(art_node16 *n, art_node **ref, art_node **l) {
 }
 
 static void remove_child4(art_node4 *n, art_node **ref, art_node **l) {
-    int pos = l - n->children;
+    int pos = int(l - n->children);
     memmove(n->keys+pos, n->keys+pos+1, n->n.num_children - 1 - pos);
     memmove(n->children+pos, n->children+pos+1, (n->n.num_children - 1 - pos)*sizeof(void*));
     n->n.num_children--;
@@ -1161,8 +1165,7 @@ int art_iter_prefix(art_tree *t, const unsigned char *key, int key_len, art_call
     return 0;
 }
 
-
-int recursive_iter_lower(art_node *n, int depth, int &found,
+int recursive_iter_lower(art_node *n, int depth, int found,
     const unsigned char *key, int key_len, art_callback cb, void *data) {
 
     // Handle base cases
@@ -1187,6 +1190,7 @@ int recursive_iter_lower(art_node *n, int depth, int &found,
         case NODE4:
             for (int i=0; i < n->num_children; i++) {
                 if (!found && ((art_node4*)n)->keys[i] < key[depth]) continue;
+                found = found || ((art_node4*)n)->keys[i] > key[depth];
                 int res = recursive_iter_lower(((art_node4*)n)->children[i], depth + 1, found, key, key_len, cb, data);
                 if (res) return res;
             }
@@ -1195,6 +1199,7 @@ int recursive_iter_lower(art_node *n, int depth, int &found,
         case NODE16:
             for (int i=0; i < n->num_children; i++) {
                 if (!found && ((art_node16*)n)->keys[i] < key[depth]) continue;
+                found = found || ((art_node16*)n)->keys[i] > key[depth];
                 int res = recursive_iter_lower(((art_node16*)n)->children[i], depth + 1, found, key, key_len, cb, data);
                 if (res) return res;
             }
@@ -1204,8 +1209,8 @@ int recursive_iter_lower(art_node *n, int depth, int &found,
             for (int i=0; i < 256; i++) {
                 int idx = ((art_node48*)n)->keys[i];
                 if (!idx) continue;
-                if (!found && ((art_node48*)n)->keys[i] < key[depth]) continue;
-
+                if (!found && i < key[depth]) continue;
+                found = found || i > key[depth];
                 int res = recursive_iter_lower(((art_node48*)n)->children[idx-1], depth + 1, found, key, key_len, cb, data);
                 if (res) return res;
             }
@@ -1215,6 +1220,7 @@ int recursive_iter_lower(art_node *n, int depth, int &found,
             for (int i=0; i < 256; i++) {
                 if (!((art_node256*)n)->children[i]) continue;
                 if (!found && i < key[depth]) continue;
+                found = found || i > key[depth];
                 int res = recursive_iter_lower(((art_node256*)n)->children[i], depth + 1, found, key, key_len, cb, data);
                 if (res) return res;
             }
