@@ -38,10 +38,13 @@ long long count(long long a, long long b) {
 // op = 4: sum values in range [a, b).
 long long sum(long long a, long long b) {
   auto it1 = s.lower_bound(a);
-  auto it2 = s.lower_bound(b);
+  // auto it2 = s.lower_bound(b);
   long long sum = 0;
-  while (it1 != it2) {
-    sum += *(it1++);
+  while (it1 != s.end()) {
+    long long v = *(it1++);
+    if (v >= b) break;
+    // fprintf(stderr, "  %lld\n", *it1);
+    sum += v;
   }
   return sum;
 }

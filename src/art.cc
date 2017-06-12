@@ -51,7 +51,8 @@ static long long decode_key(unsigned char *key) {
 
 // op = 1: inserts the value.
 void insert(long long value) {
-  void *old = art_insert(&t, get_key(value), 8, (void*) value);
+  unsigned char *key = get_key(value);
+  void *old = art_insert(&t, key, 8, (void*) value);
   if (old) {
     fprintf(stderr, "D"); // Duplicate.
   }
@@ -77,9 +78,8 @@ long long count(long long a, long long b) {
 
 int sum_cb(void *data, const unsigned char* key, uint32_t key_len, void *val) {
   long long z = (long long) val;
-  long long &d = *((long long*) data);
   if (z >= sentinel) return 1;
-  d += z;
+  *((long long*) data) += z;
   return 0;
 }
 
@@ -91,9 +91,10 @@ int print_cb(void *data, const unsigned char* key, uint32_t key_len, void *val) 
 
 // op = 4: sum values in range [a, b).
 long long sum(long long a, long long b) {
+  unsigned char *key = get_key(a);
   sentinel = b;
   long long out = 0;
   // art_iter(&t, print_cb, &out);
-  art_iter_lower(&t, get_key(a), 8, sum_cb, &out);
+  art_iter_lower(&t, key, 8, sum_cb, &out);
   return out;
 }

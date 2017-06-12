@@ -9,7 +9,7 @@ CXX_FLAGS = -std=c++1y -stdlib=libc++ -O2 \
 BDIR = ./build
 IDIR = ./inputs
 ODIR = ./outputs
-CPP = $(wildcard src/*.cc)
+CPP = $(wildcard src/*.cc src/input_generator/*.cc)
 OBJ = $(CPP:%.cc=$(BDIR)/%.o)
 DEP = $(OBJ:%.o=%.d)
 
@@ -49,27 +49,6 @@ all: \
 	$(ODIR)/btree_stx \
 	$(ODIR)/sort \
 	$(ODIR)/ctree_tests
-
-$(ODIR)/dataset_gen: dataset_gen.cc
-	$(CXX) $(CXXFLAGS) -Wall -o $@ $<
-
-../data/1000000.data: $(ODIR)/dataset_gen
-	mkdir -p ../data
-	$(ODIR)/dataset_gen 1000000
-	mv 1000000.data ../data
-
-../data/10000000.data: $(ODIR)/dataset_gen
-	mkdir -p ../data
-	$(ODIR)/dataset_gen 10000000
-	mv 10000000.data ../data
-
-../data/100000000.data: $(ODIR)/dataset_gen
-	mkdir -p ../data
-	$(ODIR)/dataset_gen 100000000
-	mv 100000000.data ../data
-
-$(ODIR)/split: split.cc update.h
-	$(CXX) $(CXXFLAGS) $(FLAGS) -DBSIZE=4096 -Wall -o $@ $<
 
 $(ODIR)/comb3: comb3.cc comb3.h test.h update.h query.h util.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -DCOMB6400 -Wall -o $@ $<

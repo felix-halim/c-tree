@@ -12,8 +12,7 @@
 
 using namespace std;
 
-#include "random"
-#include "art.h"
+#include "random.h"
 
 #define CRACK_AT (LARGE_SIZE >> 5)
 #define DECRACK_AT (LARGE_SIZE >> 6)
@@ -641,7 +640,7 @@ class Comb {
 
 public:
 
-  Comb() { tree = NULL; }
+  Comb():rng(Random(1403)) { tree = NULL; }
 
   void insert_root(Bucket<T> *b) {
     uint8_t key[8];

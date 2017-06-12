@@ -1,42 +1,41 @@
 #include <cstdio>
 #include <cassert>
 #include "google/btree_set.h"
-#include "test.h"
+#include "tester.h"
 
-btree::btree_multiset<unsigned> b;
+btree::btree_multiset<long long> c;
 
-void init(unsigned *arr, unsigned N) {
-  for (int i = 0; i < N; i++)
-    b.insert(arr[i]);
+void initexp() {}
+void destroyexp() {}
+
+// op = 1: inserts the value.
+void insert(long long value) {
+  c.insert(value);
 }
 
-void insert(unsigned value) {
-  b.insert(value);
+// op = 2: deletes the value. The value guaranteed to exists.
+bool erase(long long value) {
+  return c.erase(value);
 }
 
-void erase(unsigned value) {
-  auto it = b.lower_bound(value);
-  assert(it != b.end());
-  b.erase(it);
+// op = 3: count values in range [a, b).
+long long count(long long a, long long b) {
+  auto it = c.lower_bound(a);
+  return (it == c.end()) ? 0 : *it;
 }
 
-unsigned lower_bound(unsigned value) {
-  auto it = b.lower_bound(value);
-  return (it == b.end()) ? 0 : *it;
+// op = 4: sum values in range [a, b).
+long long sum(long long a, long long b) {
+  long long sum = 0;
+  for (auto it = c.lower_bound(a); it != c.end(); it++) {
+    long long v = *it;
+    if (v >= b) break;
+    sum += v;
+  }
+  return sum;
 }
 
-unsigned select(unsigned lo, unsigned hi) {
-  auto it1 = b.lower_bound(lo);
-  auto it2 = b.lower_bound(hi);
-  unsigned ret1 = (it1 == b.end()) ? 0 : *it1;
-  unsigned ret2 = (it2 == b.end()) ? 0 : *it2;
-  // fprintf(stderr, "%d (%d)\n", ret, value);
-  return ret1 + ret2;
-}
-
-void results(Statistics &s) {
   // assert(c.check());
-  s.N = b.size();
   // s.n_leaves = c.num_of_buckets();
   // s.n_capacity = c.num_of_buckets() * c.bucket_size();
   // s.n_internals = 1;
@@ -45,4 +44,3 @@ void results(Statistics &s) {
   // s.in_size = c.root_size();
   // s.ln_size = c.bucket_size();
   // c.alloc_sizes(s.ia_free, s.ia_size, s.la_free, s.la_size);
-}
