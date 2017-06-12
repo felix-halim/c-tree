@@ -33,7 +33,7 @@ $(BDIR)/%.o : %.cc
 	$(CXX) $(CXX_FLAGS) -MMD -c $< -o $@
 
 # Used for Travis CI
-chk: \
+test: \
 	$(BDIR)/data_structures/art/art \
 	$(BDIR)/data_structures/comb/comb \
 	$(BDIR)/data_structures/google/btree \
