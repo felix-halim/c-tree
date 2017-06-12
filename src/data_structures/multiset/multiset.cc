@@ -1,6 +1,6 @@
 #include <cstdio>
 #include "multiset.h"
-#include "tester.h"
+#include "../../tester.h"
 
 trimmer::multiset<long long, std::less<long long>, Mallocator> s;
 
