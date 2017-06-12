@@ -1,7 +1,7 @@
 #include <cstdio>
 #include <cassert>
 #include "stx/btree_multiset"
-#include "tester.h"
+#include "../../tester.h"
 
 stx::btree_multiset<long long> s;
 

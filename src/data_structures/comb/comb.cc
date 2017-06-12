@@ -1,7 +1,7 @@
 #include <cstdio>
 #include <cassert>
 #include "comb.h"
-#include "tester.h"
+#include "../../tester.h"
 
 #if defined(COMB800)
   Comb<long long, std::less<long long>, false, 800, 30, 12> c(100000000);

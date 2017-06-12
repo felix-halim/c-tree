@@ -11,7 +11,7 @@
 
 #include <sys/mman.h>
 
-#include "random.h"
+#include "../../random.h"
 
 using namespace std;
 

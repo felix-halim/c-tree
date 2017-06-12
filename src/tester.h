@@ -128,4 +128,9 @@ int main(int argc, char *argv[]) {
     }
   }
   destroyexp();
+  if (argc == 2) {
+    long long expected;
+    sscanf(argv[1], "%lld", &expected);
+    assert(chk == expected);
+  }
 }

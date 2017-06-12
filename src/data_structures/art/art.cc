@@ -1,7 +1,7 @@
 #include <cstdio>
 #include <cassert>
 #include "art.h"
-#include "tester.h"
+#include "../../tester.h"
 
 art_tree t;
 

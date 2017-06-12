@@ -9,13 +9,13 @@ CXX_FLAGS = -std=c++1y -stdlib=libc++ -O2 \
 BDIR = ./build
 IDIR = ./inputs
 ODIR = ./outputs
-CPP = $(wildcard src/*.cc src/input_generator/*.cc)
+CPP = $(shell find src -name "*.cc")
 OBJ = $(CPP:%.cc=$(BDIR)/%.o)
 DEP = $(OBJ:%.o=%.d)
 
-$(ODIR)/$(IN)/$(PROG): $(IDIR)/$(IN) $(BDIR)/$(PROG)
+$(ODIR)/$(IN)/$(PROG): $(IDIR)/$(IN) $(BDIR)/data_structures/$(PROG)
 	@mkdir -p $(@D)
-	gunzip -c $(IDIR)/$(IN) | $(BDIR)/$(PROG) > $@
+	gunzip -c $(IDIR)/$(IN) | $(BDIR)/data_structures/$(PROG) > $@
 	tail -15 $@
 
 $(IDIR)/$(IN): $(BDIR)/input_generator/$(IN)
@@ -32,21 +32,29 @@ $(BDIR)/%.o : %.cc
 	@mkdir -p $(@D)
 	$(CXX) $(CXX_FLAGS) -MMD -c $< -o $@
 
+# Used for Travis CI
+chk: \
+	$(BDIR)/data_structures/art/art \
+	$(BDIR)/data_structures/comb/comb \
+	$(BDIR)/data_structures/google/btree \
+	$(BDIR)/data_structures/stx/btree
+	make $(IDIR)/random1m_noup1m IN=random1m_noup1m
+	gunzip -c $(IDIR)/random1m_noup1m | $(BDIR)/data_structures/art/art 711855270470843746
+	gunzip -c $(IDIR)/random1m_noup1m | $(BDIR)/data_structures/comb/comb 711855270470843746
+	gunzip -c $(IDIR)/random1m_noup1m | $(BDIR)/data_structures/google/btree 711855270470843746
+	gunzip -c $(IDIR)/random1m_noup1m | $(BDIR)/data_structures/stx/btree 711855270470843746
+
 
 
 all: \
-	$(ODIR)/art \
 	$(ODIR)/art_best \
 	$(ODIR)/art_crack \
 	$(ODIR)/crack \
-	$(ODIR)/comb \
 	$(ODIR)/multiset \
 	$(ODIR)/ctree \
 	$(ODIR)/ctree_eager \
 	$(ODIR)/ctree_with_crack \
 	$(ODIR)/ctree_exp_leafsize \
-	$(ODIR)/btree_google \
-	$(ODIR)/btree_stx \
 	$(ODIR)/sort \
 	$(ODIR)/ctree_tests
 
@@ -283,12 +291,6 @@ $(ODIR)/ctree_with_crack: ctree_with_crack.cc ctree_with_crack.h test.h update.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
 
 $(ODIR)/sort: sort.cc test.h update.h query.h util.h
-	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
-
-$(ODIR)/btree_google: btree_google.cc google/btree_set.h google/btree.h google/btree_container.h test.h update.h query.h util.h
-	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
-
-$(ODIR)/btree_stx: btree_stx.cc stx/btree_multiset stx/btree_multiset.h stx/btree.h test.h update.h query.h util.h
 	$(CXX) $(CXXFLAGS) $(FLAGS) -Wall -o $@ $<
 
 $(ODIR)/ctree_tests: ctree_tests.cc ctree.h random.h
