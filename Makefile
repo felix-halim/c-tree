@@ -13,14 +13,12 @@ CPP = $(shell find src -name "*.cc")
 OBJ = $(CPP:%.cc=$(BDIR)/%.o)
 DEP = $(OBJ:%.o=%.d)
 
-$(ODIR)/$(IN)/$(PROG): $(IDIR)/$(IN) $(BDIR)/data_structures/$(PROG)
+$(ODIR)/$(IN)/$(PROG): \
+	$(BDIR)/input_generator/$(IN) \
+	$(BDIR)/data_structures/$(PROG)
 	@mkdir -p $(@D)
-	gunzip -c $(IDIR)/$(IN) | $(BDIR)/data_structures/$(PROG) > $@
-	tail -15 $@
-
-$(IDIR)/$(IN): $(BDIR)/input_generator/$(IN)
-	@mkdir -p $(@D)
-	$(BDIR)/input_generator/$(IN) | gzip > $@
+	$(BDIR)/input_generator/$(IN) | $(BDIR)/data_structures/$(PROG) $(CHK) > $@
+	tail $@
 
 $(BDIR)/% : $(BDIR)/src/%.o
 	@mkdir -p $(@D)
@@ -33,19 +31,11 @@ $(BDIR)/%.o : %.cc
 	$(CXX) $(CXX_FLAGS) -MMD -c $< -o $@
 
 # Used for Travis CI
-test: \
-	$(BDIR)/data_structures/art/art \
-	$(BDIR)/data_structures/comb/comb \
-	$(BDIR)/data_structures/google/btree \
-	$(BDIR)/data_structures/stx/btree \
-	$(BDIR)/data_structures/multiset/multiset
-	make $(IDIR)/random1m_noup1m IN=random1m_noup1m
-	gunzip -c $(IDIR)/random1m_noup1m | $(BDIR)/data_structures/art/art 711855270470843746
-	gunzip -c $(IDIR)/random1m_noup1m | $(BDIR)/data_structures/comb/comb 711855270470843746
-	gunzip -c $(IDIR)/random1m_noup1m | $(BDIR)/data_structures/google/btree 711855270470843746
-	gunzip -c $(IDIR)/random1m_noup1m | $(BDIR)/data_structures/stx/btree 711855270470843746
-	gunzip -c $(IDIR)/random1m_noup1m | $(BDIR)/data_structures/multiset/multiset #711855270470843746
-
+test:
+	make IN=random1m_noup1m PROG=art/art CHK=711855270470843746
+	make IN=random1m_noup1m PROG=comb/comb CHK=711855270470843746
+	make IN=random1m_noup1m PROG=google/btree CHK=711855270470843746
+	make IN=random1m_noup1m PROG=stx/btree CHK=711855270470843746
 
 
 all: \
