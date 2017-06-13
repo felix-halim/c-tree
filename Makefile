@@ -32,10 +32,12 @@ $(BDIR)/%.o : %.cc
 
 # Used for Travis CI
 test:
-	make IN=random1m_noup1m PROG=art/art CHK=711855270470843746
-	make IN=random1m_noup1m PROG=comb/comb CHK=711855270470843746
-	make IN=random1m_noup1m PROG=google/btree CHK=711855270470843746
-	make IN=random1m_noup1m PROG=stx/btree CHK=711855270470843746
+	$(eval IN := random1m_noup1m)
+	$(eval CHK := 711855270470843746)
+	make IN=$(IN) CHK=$(CHK) PROG=art/art
+	make IN=$(IN) CHK=$(CHK) PROG=comb/comb
+	make IN=$(IN) CHK=$(CHK) PROG=google/btree
+	make IN=$(IN) CHK=$(CHK) PROG=stx/btree
 
 
 all: \
