@@ -1,3 +1,9 @@
+/*
+To run, go to the root folder and execute:
+
+make ctree_sort
+*/
+
 #include <cassert>
 #include <cstdio>
 

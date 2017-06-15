@@ -46,6 +46,9 @@ test:
 	make IN=$(IN) CHK=$(CHK) PROG=google/btree
 	make IN=$(IN) CHK=$(CHK) PROG=stx/btree
 
+ctree_sort: $(BDIR)/ctree_sort
+	$(BDIR)/ctree_sort
+
 
 all: \
 	$(ODIR)/art_best \

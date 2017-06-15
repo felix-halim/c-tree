@@ -1,4 +1,4 @@
-# Crack Tree (C-Tree) [![Build Status](https://travis-ci.org/felix-halim/indexing-benchmark.svg?branch=master)](https://travis-ci.org/felix-halim/indexing-benchmark)
+# Crack Tree (C-Tree) [![Build Status](https://travis-ci.org/felix-halim/c-tree.svg?branch=master)](https://travis-ci.org/felix-halim/c-tree)
 
 Crack Tree (C-Tree) is a container data structure inspired from Database Cracking philosophy (i.e., always do just enough). Like Cracking, C-Tree incrementally sorts the elements as a side effect of query processing. Unlike Cracking, C-Tree first laid out the elements in buckets that are chained together like a linked list and then later transitioned into a B-Tree (or other trees) like structure as the elements are touched by queries. See [this demo](https://felix-halim.github.io/c-tree/docs/trimmer.html).
 
@@ -17,6 +17,7 @@ marks elements in L to be swapped with R and vice versa,
 then it swaps only the marked elements.
 With this optimization, C-Tree is able to sort 10^8 random 64 bit signed integer
 about 20-30 percent faster than the standard STL sort.
+See [ctree_sort.cc](https://github.com/felix-halim/c-tree/blob/master/src/ctree_sort.cc).
 
 See [the comparisons](https://felix-halim.github.io/c-tree/docs/graphs.html)
 of C-Tree vs other data structures on point and range sum queries,
