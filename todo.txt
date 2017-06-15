@@ -1,6 +1,9 @@
 add initial insert to clustered values then few queries
 add clustered update workload
 add large selectivity query, comb is fast due to locality
+remove shapeshifting ?
+insert then iterate in sorted order. count number of data movement.
+
 
 - CTree evolves from database cracking, in the quest of finding efficient data structure to support incremental indexing as side effects of query processing.
 - CTree is immune to selectivity.

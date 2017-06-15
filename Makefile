@@ -6,6 +6,13 @@ CXX_FLAGS = -std=c++11 -O2 \
 -Wno-sign-conversion
 # -Wshadow  -DNDEBUG
 
+# CXX_FLAGS = -std=c++11 -O1 -g -fsanitize=address -fno-omit-frame-pointer \
+# -Wfatal-errors -Wall -Wextra \
+# -Wpedantic -Wconversion \
+# -Wno-unused-parameter \
+# -Wno-sign-conversion
+
+
 BDIR = ./build
 IDIR = ./inputs
 ODIR = ./outputs
