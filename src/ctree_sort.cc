@@ -181,6 +181,28 @@ pair<Bucket*, Bucket*> split_chain(Bucket* b) {
   return make_pair(left_chain, right_chain);
 }
 
+static void ctree_sort2(long long *arr, long long *tmp, int n) {
+  if (n < 30) {
+    sort(arr, arr + n);
+    return;
+  }
+
+  long long P = arr[rng.nextInt(n)];
+  int nlo = 0, nhi = n - 1;
+  for (int i = 0; i < n; i++) {
+    tmp[nlo] = tmp[nhi] = arr[i];
+    int j = arr[i] < P;
+    nhi -= 1 - j;
+    nlo += j;
+  }
+ 
+  ctree_sort2(tmp, arr, nlo);
+  ctree_sort2(tmp + nlo, arr + nlo, (n - nlo));
+
+  memcpy(arr, tmp, sizeof(long long) * nlo);
+  memcpy(arr + nlo, tmp + nlo, sizeof(long long) * (n - nlo));
+}
+
 void ctree_sort(long long arr[], int N) {
   Bucket *head = nullptr;
   int nbuckets = 0;
@@ -206,7 +228,9 @@ void ctree_sort(long long arr[], int N) {
     Bucket* chain = stk.back();
     stk.pop_back();
     if (!chain->next) {
-      sort(chain->arr, chain->arr + chain->n);
+      long long tmp[chain->n];
+      ctree_sort2(chain->arr, tmp, chain->n);
+      // sort(chain->arr, chain->arr + chain->n);
       memcpy(arr + N - chain->n, chain->arr, sizeof(long long) * chain->n);
       N -= chain->n;
       delete chain;
