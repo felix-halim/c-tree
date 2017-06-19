@@ -1,10 +1,18 @@
 language: cpp
 
-compiler: clang
+compiler:
+  - clang
+  - gcc
 
 addons:
   apt:
     packages:
+      # - g++-4.8
+      #- libc++1
       - libc++-dev
+      #- libc++abi1
+      #- libc++abi-dev
+      # - llvm-3.6-dev
+      # - clang-3.6
 
 script: make test
