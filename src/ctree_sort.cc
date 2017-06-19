@@ -11,6 +11,7 @@ make ctree_sort
 #include <algorithm>
 #include <vector>
 
+#include "ska_sort.h"
 #include "random.h"
 #include "time_it.h"
 
@@ -271,4 +272,5 @@ void test_sort(const char* name, std::function<void(long long[], int)> sort_algo
 int main() {
   test_sort("std::sort", [](long long arr[], int n){ sort(arr, arr + n); });
   test_sort("ctree_sort", [](long long arr[], int n){ ctree_sort(arr, n); });
+  test_sort("ska_sort", [](long long arr[], int n){ ska_sort(arr, arr + n); });
 }
