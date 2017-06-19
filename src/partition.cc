@@ -7,12 +7,12 @@ make ctree_sort
 #include <cassert>
 #include <cstdio>
 
-#include <functional>
 #include <algorithm>
+#include <functional>
 #include <vector>
 
-#include "ska_sort.h"
 #include "random.h"
+#include "ska_sort.h"
 #include "time_it.h"
 
 using namespace std;
@@ -42,7 +42,7 @@ static void ctree_sort(long long *arr, long long *tmp, int n, int depth) {
       arr[hi[i]] = arr[lo[j]];
     }
   }
- 
+
   ctree_sort(arr, tmp, nlo, depth + 1);
   ctree_sort(tmp + nlo, arr + nlo, (n - nlo), depth + 1);
   memcpy(arr + nlo, tmp + nlo, sizeof(long long) * (n - nlo));
@@ -63,7 +63,7 @@ static void ctree_sort2(long long *arr, long long *tmp, int n, int depth) {
     nhi -= 1 - j;
     nlo += j;
   }
- 
+
   ctree_sort2(tmp, arr, nlo, depth + 1);
   ctree_sort2(tmp + nlo, arr + nlo, (n - nlo), depth + 1);
 
@@ -91,7 +91,7 @@ static void ctree_sort3(long long *arr, int n, int depth) {
     // nhi += 1 - j;
     // nlo += j;
   }
- 
+
   ctree_sort3(lo, nlo, depth + 1);
   ctree_sort3(hi, nhi, depth + 1);
 
@@ -114,7 +114,7 @@ static void ctree_sort4(long long *arr, int n, int depth) {
     nhi -= 1 - j;
     nlo += j;
   }
- 
+
   ctree_sort4(tmp, nlo, depth + 1);
   ctree_sort4(tmp + nlo, (n - nlo), depth + 1);
 
@@ -122,52 +122,64 @@ static void ctree_sort4(long long *arr, int n, int depth) {
   memcpy(arr + nlo, tmp + nlo, sizeof(long long) * (n - nlo));
 }
 
-inline unsigned long long to_unsigned(long long l)
-{
-    return static_cast<unsigned long long>(l) + static_cast<unsigned long long>(1ll << (sizeof(long long) * 8 - 1));
+inline unsigned long long to_unsigned(long long l) {
+  return static_cast<unsigned long long>(l) +
+         static_cast<unsigned long long>(1ll << (sizeof(long long) * 8 - 1));
 }
 
-inline long long to_signed(unsigned long long l)
-{
-    return l - static_cast<unsigned long long>(1ll << (sizeof(long long) * 8 - 1));
+inline long long to_signed(unsigned long long l) {
+  return l -
+         static_cast<unsigned long long>(1ll << (sizeof(long long) * 8 - 1));
 }
 
-static void radix_sort(long long *arr, long long *tmp, int n, int depth) {
+static void radix_sort(long long *arr, int n, int depth) {
   if (n < 256) {
     sort(arr, arr + n);
     return;
   }
-  int occ[256] {0};
+
+  int occ[256]{0};
 
   int nshift = (7 - depth) * 8;
-  int n4 = (n/4) * 4;
-  for (int i = 0; i < n4; i+=4) {
-    occ[(to_unsigned(arr[i]) >> nshift) & 255]++;
-    occ[(to_unsigned(arr[i+1]) >> nshift) & 255]++;
-    occ[(to_unsigned(arr[i+2]) >> nshift) & 255]++;
-    occ[(to_unsigned(arr[i+3]) >> nshift) & 255]++;
+  int n16 = (n / 16) * 16;
+  for (int i = 0; i < n16; i+=16) {
+    for (int j = 0; j < 16; j++) {
+      occ[(to_unsigned(arr[i+j]) >> nshift) & 255]++;
+    }
   }
-  for (int i = n4; i < n; i++) {
+  for (int i = n16; i < n; i++) {
     occ[(to_unsigned(arr[i]) >> nshift) & 255]++;
   }
 
-  int idx[256] {0};
+  int idx[256]{0};
   for (int i = 1; i < 256; i++) {
     idx[i] = idx[i - 1] + occ[i - 1];
   }
-
-  for (int i = 0; i < n; i++) {
-    tmp[idx[(to_unsigned(arr[i]) >> nshift) & 255]++] = arr[i];
+  for (int i = 1; i < 256; i++) {
+    occ[i] += occ[i - 1];
   }
 
-  for (int i = 0, lo = 0; i < 256; i++) {
-    if (occ[i] > 1) {
-      radix_sort(tmp + lo, arr + lo, occ[i], depth + 1);
+  for (int p = 255; p >= 0; p--) {
+    while (idx[p] < occ[p]) {
+      int rem = occ[p] - idx[p];
+      // fprintf(stderr, "p = %d, rem = %d\n", p, rem);
+      for (int i = 0, j = idx[p]; i < rem; i++, j++) {
+        int k = (to_unsigned(arr[j]) >> nshift) & 255;
+        swap(arr[idx[k]++], arr[j]);
+      }
     }
-    lo += occ[i];
   }
 
-  memcpy(arr, tmp, sizeof(long long) * n);
+  for (int i = 0; i < 256; i++) {
+    // fprintf(stderr, "%d => %d %d\n", i, idx[i], occ[i]);
+    assert(idx[i] == occ[i]);
+    int prev = i == 0 ? 0 : occ[i - 1];
+    int sz = occ[i] - prev;
+    if (sz > 0) { 
+      radix_sort(arr + prev, sz, depth + 1);
+    }
+  }
+  // fprintf(stderr, "%d %d %d\n", cnt, n, depth);
 }
 
 // #define BSIZE 8192
@@ -175,74 +187,6 @@ static void radix_sort(long long *arr, long long *tmp, int n, int depth) {
 
 static long long arr[BSIZE];
 static long long tmp[BSIZE];
-
-struct fhitem {
-  unsigned char arr[8];
-  fhitem(){}
-  fhitem(long long num) {
-    unsigned long long t = to_unsigned(num);
-    for (int i = 0; i < 8; i++) {
-      arr[7 - i] = t & 255;
-      t >>= 8;
-    }
-  }
-  long long num() {
-    unsigned long long t = arr[0];
-    for (int i = 1; i < 8; i++) {
-      t = (t << 8) | arr[i];
-    }
-    return to_signed(t);
-  }
-  bool operator()(const fhitem const &that) const {
-    for (int i = 0; i < 8; i++) {
-      if (arr[i] != that.arr[i]) {
-        return arr[i] < that.arr[i];
-      }
-    }
-    return false;
-  }
-};
-
-bool fhitemcmp(const fhitem &a, const fhitem &b) {
-  for (int i = 0; i < 8; i++) {
-    if (a.arr[i] != b.arr[i]) {
-      return a.arr[i] < b.arr[i];
-    }
-  }
-  return false;
-}
-
-static void radix_fhitems_sort(fhitem *arr, fhitem *tmp, int n, int depth) {
-  if (n < 256) {
-    sort(arr, arr + n, fhitemcmp);
-    return;
-  }
-  int occ[256] {0};
-
-  int nshift = (7 - depth) * 8;
-  for (int i = 0; i < n; i++) {
-    occ[arr[i].arr[depth]]++;
-  }
-
-  int idx[256] {0};
-  for (int i = 1; i < 256; i++) {
-    idx[i] = idx[i - 1] + occ[i - 1];
-  }
-
-  for (int i = 0; i < n; i++) {
-    tmp[idx[arr[i].arr[depth]]] = arr[i];
-  }
-
-  for (int i = 0, lo = 0; i < 256; i++) {
-    if (occ[i] > 1) {
-      radix_fhitems_sort(tmp + lo, arr + lo, occ[i], depth + 1);
-    }
-    lo += occ[i];
-  }
-
-  memcpy(arr, tmp, sizeof(fhitem) * n);
-}
-
 
 int main() {
   Random rng(140384);
@@ -266,24 +210,7 @@ int main() {
 
       // ska_sort(arr, arr + BSIZE, [&](const long long &e) { return e; });
 
-      // fhitem *fhitems = new fhitem[BSIZE];
-      // fhitem *fhitems_tmp = new fhitem[BSIZE];
-      // for (int i = 0; i < BSIZE; i++) {
-      //   fhitems[i] = fhitem(arr[i]);
-      // }
-      // radix_fhitems_sort(fhitems, fhitems_tmp, BSIZE, 0);
-      // for (int i = 0; i < BSIZE; i++) {
-      //   arr[i] = fhitems[i].num();
-      // }
-
-      unsigned long long * uarr = new unsigned long long[BSIZE];
-      for (int i = 0; i < BSIZE; i++) {
-        uarr[i] = to_unsigned(arr[i]);
-      }
-      for (int i = 0; i < BSIZE; i++) {
-        arr[i] = to_signed(uarr[i]);
-      }
-      // radix_sort(arr, tmp, BSIZE, 0);
+      radix_sort(arr, BSIZE, 0);
 
       // ctree_sort3(arr, BSIZE, 0);
       // ctree_sort4(arr, BSIZE, 0);

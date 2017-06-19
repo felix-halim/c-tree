@@ -6,7 +6,7 @@ CXX_FLAGS = -std=c++1y -stdlib=libc++ -O2 \
 -Wno-sign-conversion
 # -Wshadow  -DNDEBUG
 
-# CXX_FLAGS = -std=c++11 -O1 -g -fsanitize=address -fno-omit-frame-pointer \
+# CXX_FLAGS = -std=c++1y -stdlib=libc++ -O1 -g -fsanitize=address -fno-omit-frame-pointer \
 # -Wfatal-errors -Wall -Wextra \
 # -Wpedantic -Wconversion \
 # -Wno-unused-parameter \
