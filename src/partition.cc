@@ -77,26 +77,29 @@ static void ctree_sort3(long long *arr, int n, int depth) {
     return;
   }
 
-  long long P = arr[rng.nextInt(n)];
-  long long lo[n], hi[n];
-  int nlo = 0, nhi = 0;
+  long long p1 = arr[rng.nextInt(n)];
+  long long p2 = arr[rng.nextInt(n)];
+  if (p1 > p2) swap(p1, p2);
+  int cnt[3] { 0 };
   for (int i = 0; i < n; i++) {
-    if (arr[i] < P) {
-      lo[nlo++] = arr[i];
-    } else {
-      hi[nhi++] = arr[i];
+    cnt[(arr[i] >= p1) + (arr[i] >= p2)]++;
+  }
+  assert(cnt[0] + cnt[1] + cnt[2] == n);
+
+  int idx[3] { 0, cnt[0], cnt[0] + cnt[1] };
+  for (int k = 0, cum = cnt[k]; k < 3; k++, cum += cnt[k]) {
+    while (idx[k] < cum) {
+      for (int i = idx[k]; i < cum; i++) {
+        int j = (arr[i] >= p1) + (arr[i] >= p2);
+        swap(arr[i], arr[idx[j]++]);
+      }
     }
-    // lo[nlo] = hi[nhi] = arr[i];
-    // int j = arr[i] < P;
-    // nhi += 1 - j;
-    // nlo += j;
+    assert(idx[k] == cum);
   }
 
-  ctree_sort3(lo, nlo, depth + 1);
-  ctree_sort3(hi, nhi, depth + 1);
-
-  memcpy(arr, lo, sizeof(long long) * nlo);
-  memcpy(arr + nlo, hi, sizeof(long long) * nhi);
+  ctree_sort3(arr, cnt[0], depth + 1);
+  ctree_sort3(arr + cnt[0], cnt[1], depth + 1);
+  ctree_sort3(arr + cnt[0] + cnt[1], cnt[2], depth + 1);
 }
 
 static void ctree_sort4(long long *arr, int n, int depth) {
@@ -206,13 +209,13 @@ int main() {
       //   return to_unsigned(a) < to_unsigned(b);
       // });
 
-      // ctree_sort2(arr, tmp, BSIZE, 0);
+      ctree_sort2(arr, tmp, BSIZE, 0);
+      // ctree_sort3(arr, BSIZE, 0);
 
       // ska_sort(arr, arr + BSIZE, [&](const long long &e) { return e; });
 
-      radix_sort(arr, BSIZE, 0);
+      // radix_sort(arr, BSIZE, 0);
 
-      // ctree_sort3(arr, BSIZE, 0);
       // ctree_sort4(arr, BSIZE, 0);
     });
     fprintf(stderr, "done\n");

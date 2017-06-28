@@ -1,17 +1,15 @@
 CXX = clang++
-CXX_FLAGS = -std=c++1y -O2 \
+CXX_FLAGS = -std=c++1y \
 -Wfatal-errors -Wall -Wextra \
--Wpedantic -Wconversion \
+-Wpedantic -Wconversion -Wshadow \
 -Wno-unused-parameter \
 -Wno-sign-conversion
-# -Wshadow  -DNDEBUG
 
-# CXX_FLAGS = -std=c++1y -O1 -g -fsanitize=address -fno-omit-frame-pointer \
-# -Wfatal-errors -Wall -Wextra \
-# -Wpedantic -Wconversion \
-# -Wno-unused-parameter \
-# -Wno-sign-conversion
-
+ifeq ($(DBG),true)
+	CXX_FLAGS += -O1 -g -fsanitize=address -fno-omit-frame-pointer
+else
+	CXX_FLAGS += -O2 # -DNDEBUG
+endif
 
 BDIR = ./build
 IDIR = ./inputs
@@ -48,6 +46,9 @@ test:
 
 ctree_sort: $(BDIR)/ctree_sort
 	$(BDIR)/ctree_sort
+
+partition: $(BDIR)/partition
+	$(BDIR)/partition
 
 
 all: \
