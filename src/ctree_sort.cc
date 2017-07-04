@@ -24,11 +24,13 @@ long long *allocate_elements(int size);
 
 Random rng(140384);
 
-#define BSIZE (1 << 12)
-
 #ifdef DBG
+#define MAXN (1 << 20)
+#define BSIZE (1 << 10)
 #define assert_dbg(x) assert(x)
 #else
+#define MAXN (1 << 26)
+#define BSIZE (1 << 12)
 #define assert_dbg(x) ((void)0)
 #endif
 
@@ -55,7 +57,6 @@ static void ctree_sort2(long long *arr, long long *tmp, int n) {
 }
 
 static int nswap = 0;
-static int inverted = 0;
 
 class Bucket {
  public:
@@ -107,7 +108,12 @@ class Bucket {
     assert(n > fromIdx);
     // Ensure the receiver has enough space.
     assert(to.n + n - fromIdx <= BSIZE);
-    // TODO: maintain sortedness if possible.
+
+    if (to.is_asc()) {
+      // TODO: maintain sortedness if possible.
+      // fprintf(stderr, "here\n");
+    }
+
     memcpy(to.arr + to.n, arr + fromIdx, (n - fromIdx) * sizeof(long long));
     to.n += n - fromIdx;
 
@@ -130,10 +136,10 @@ class Bucket {
 
   void copyTo(long long *target) { memcpy(target, arr, sizeof(long long) * n); }
 
-  int nhi(long long p) const {
-    int cnt = 0, i = n;
-    while (i) {
-      cnt += (arr[--i] >= p);
+  int sample_nhi(long long p) const {
+    int cnt = 0;
+    for (int i = 0; i < n && i < 10; i++) {
+      cnt += (arr[rng.nextInt(n)] >= p);
     }
     return cnt;
   }
@@ -155,6 +161,7 @@ class Bucket {
   // Returns a new bucket containing elements >= p from this bucket preserving
   // its order. Elements >= p is stably removed from this bucket.
   Bucket split(long long p) {
+    // fprintf(stderr, "s");
     assert(n > 0 && n <= BSIZE);
     if (is_desc()) {
       reverse(arr, arr + n);
@@ -324,20 +331,7 @@ class Chain {
         }
       }
 
-      int nhi = b.nhi(p);
-
-      if (nhi == 0) {
-        left_chain.append(b);
-        continue;
-      }
-
-      if (nhi == b.size()) {
-        right_chain.append(b);
-        continue;
-      }
-
-      assert_dbg(left_chain.is_less_than(p));
-      pending.push_back(make_pair(nhi, b));
+      pending.push_back(make_pair(b.sample_nhi(p), b));
     }
 
     assert_dbg(left_chain.is_less_than(p));
@@ -360,13 +354,25 @@ class Chain {
     int lo[BSIZE], hi[BSIZE];
     int nhi = 0, nlo = 0;
     int i = 0, j = int(pending.size());
-    Bucket *L, *R;
+    Bucket *L, *R = nullptr;
 
     while (true) {
       if (nhi == 0) {
         if (i < j) {
           L = &pending[i++].second;
           L->mark_hi(p, hi, nhi);
+
+          if (nhi == 0) {
+            left_chain.append(*L);
+            continue;
+          }
+
+          if (nhi == L->size()) {
+            right_chain.append(*L);
+            nhi = 0;
+            continue;
+          }
+
           // TODO: separate out minor outliers, keep sortedness.
         } else {
           break;
@@ -377,6 +383,18 @@ class Chain {
         if (i < j) {
           R = &pending[--j].second;
           R->mark_lo(p, lo, nlo);
+
+          if (nlo == 0) {
+            right_chain.append(*R);
+            continue;
+          }
+
+          if (nlo == R->size()) {
+            left_chain.append(*R);
+            nlo = 0;
+            continue;
+          }
+
         } else {
           break;
         }
@@ -427,10 +445,12 @@ class Chain {
       assert(b.n == nhi);
       assert_dbg(L->check_n_flipped());
       assert_dbg(b.check_n_flipped());
-      assert(!L->empty());
-      assert(!b.empty());
-      left_chain.append(*L);
-      right_chain.append(b);
+      if (!L->empty()) {
+        left_chain.append(*L);
+      }
+      if (!b.empty()) {
+        right_chain.append(b);
+      }
     }
 
     if (nlo) {
@@ -443,8 +463,12 @@ class Chain {
       assert_dbg(b.check_n_flipped());
       assert(!R->empty());
       assert(!b.empty());
-      left_chain.append(*R);
-      right_chain.append(b);
+      if (!R->empty()) {
+        left_chain.append(*R);
+      }
+      if (!b.empty()) {
+        right_chain.append(b);
+      }
     }
 
     assert_dbg(left_chain.is_less_than(p));
@@ -468,7 +492,7 @@ void ctree_sort(long long arr[], long long tmp[], int N) {
       c.buckets.back().count_n_flipped();
     }
   });
-  nswap = inverted = 0;
+  nswap = 0;
   size_t csize = c.buckets.size();
 
   assert_dbg(c.distinct());
@@ -513,12 +537,9 @@ void ctree_sort(long long arr[], long long tmp[], int N) {
   }
   assert(N == 0);
 
-  fprintf(stderr,
-          "BSIZE = %d, chains = %lu, in %.3lf, nswap = %9d, inverted = %5d; ",
-          BSIZE, csize, it, nswap, inverted);
+  fprintf(stderr, "BSIZE = %d, chains = %lu, in %.3lf, nswap = %9d; ", BSIZE,
+          csize, it, nswap);
 }
-
-#define MAXN (1 << 26)
 
 long long arr[MAXN], tmp[MAXN * 20];
 int n_allocated;
