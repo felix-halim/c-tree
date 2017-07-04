@@ -9,9 +9,10 @@ make ctree_sort
 
 #include <algorithm>
 #include <functional>
-#include <thread>
+#include <set>
 #include <vector>
 
+#include "parallel_sort.h"
 #include "random.h"
 #include "ska_sort.h"
 #include "time_it.h"
@@ -25,244 +26,11 @@ Random rng(140384);
 
 #define BSIZE (1 << 12)
 
-class Bucket {
- public:
-  long long *arr;
-  int n;
-  Bucket *next;
-  int n_flipped;
-  bool original;
-
-  Bucket(long long *a, int sz, int nf)
-      : arr(a), n(sz), next(nullptr), n_flipped(nf), original(sz > 0) {
-    for (int i = 1; i < sz; i++) {
-      n_flipped += arr[i - 1] > arr[i];
-    }
-  }
-
-  bool is_asc() const { return n_flipped == 0; }
-
-  bool is_desc() const { return n < 2 || n_flipped == n - 1; }
-
-  long long get_random_pivot() const { return arr[rng.nextInt(n)]; }
-
-  long long *data() { return arr; }
-
-  int size() const { return n; }
-
-  int slack() const { return BSIZE - n; }
-
-  void moveToFromIdx(Bucket *to, int fromIdx) {
-    // Ensure there's something to move.
-    assert(n > fromIdx);
-    // Ensure the receiver has enough space.
-    assert(to->n + n - fromIdx <= BSIZE);
-    memmove(to->arr + to->n, arr + fromIdx, (n - fromIdx) * sizeof(long long));
-    to->n += n - fromIdx;
-    to->n_flipped = is_asc() ? 0 : -1;
-    n = fromIdx;
-  }
-
-  void safe_edit() {
-    if (original) {
-      long long *src = arr;
-      arr = allocate_elements(BSIZE);
-      memcpy(arr, src, n * sizeof(long long));
-      original = false;
-    }
-  }
-
-  int partition(long long v) {
-    assert(n > 0 && n <= BSIZE);
-    safe_edit();
-    n_flipped = -1;
-    return int(
-        std::partition(arr, arr + n, [&](long long x) { return (x < v); }) -
-        arr);
-  }
-
-  void mark_hi(long long P, int *hi, int &nhi) const {
-    for (int i = 0; i < n; i++) {
-      hi[nhi] = i;
-      nhi += (arr[i] >= P);
-    }
-  }
-
-  void mark_lo(long long P, int *lo, int &nlo) const {
-    for (int i = 0; i < n; i++) {
-      lo[nlo] = i;
-      nlo += (arr[i] < P);
-    }
-  }
-};
-
-static void fusion(long long *Lp, long long *Rp, int *hi, int *lo, int &nhi,
-                   int &nlo) {
-  int m = std::min(nhi, nlo);
-  assert(m > 0);
-  int *hip = hi + nhi - 1, *lop = lo + nlo - 1;
-  nhi -= m;
-  nlo -= m;
-  while (m--) std::swap(Lp[*(hip--)], Rp[*(lop--)]);
-}
-
-class Chain {
- public:
-  Bucket *head, *tail;
-  int length;
-
-  Chain() : head(nullptr), tail(nullptr), length(0) {}
-
-  void append(Bucket *b) {
-    assert(!b->next);
-
-    if (!b->size()) {
-      delete b;
-      return;
-    }
-
-    if (!head) {        // the root chain is empty.
-      head = tail = b;  // b is the head of the chain.
-      length = 1;
-      return;
-    }
-
-    assert(!tail->next);
-    assert(head == tail || !head->slack());
-    if (tail->slack()) {
-      b->moveToFromIdx(tail, b->size() - std::min(b->size(), tail->slack()));
-    }
-
-    if (!b->size()) {
-      delete b;
-      return;
-    }
-
-    tail->next = b;
-    tail = b;
-    length++;
-  }
-
-  long long get_random_pivot() {
-    long long p = head->arr[0];
-    int cnt = 1;
-    for (Bucket *b = head->next; b; b = b->next) {
-      if (rng.nextInt(++cnt) == 0) {
-        p = b->arr[0];
-      }
-    }
-    return p;
-  }
-
-  Bucket *quick_split(Bucket *b, long long p, Chain &left_chain,
-                      Chain &right_chain) {
-    assert(b->n);
-
-    if (b->is_desc()) {
-      b->safe_edit();
-      reverse(b->arr, b->arr + b->n);
-      b->n_flipped = 0;
-    }
-
-    if (b->is_asc()) {
-      if (b->arr[0] >= p) {
-        right_chain.append(b);
-        return nullptr;
-      }
-      if (b->arr[b->n - 1] < p) {
-        left_chain.append(b);
-        return nullptr;
-      }
-      return b;
-    }
-    return b;
-  }
-
-  // TODO: split chain should use vector and selective split up to X buffers
-  pair<Chain, Chain> split_chain() {
-    long long p = get_random_pivot();
-
-    Chain left_chain;
-    Chain right_chain;
-    Bucket *Lb = nullptr, *Rb = nullptr;
-    int hi[BSIZE], lo[BSIZE];
-    int nhi = 0, nlo = 0;
-
-    while (true) {
-      if (nhi && nlo) {
-        assert(Lb && Rb);
-        fusion(Lb->data(), Rb->data(), hi, lo, nhi, nlo);
-        Lb->safe_edit();
-        Rb->safe_edit();
-        Lb->n_flipped = Rb->n_flipped = -1;
-        if (!nhi) {
-          left_chain.append(Lb);
-          Lb = nullptr;
-        }
-        if (!nlo) {
-          right_chain.append(Rb);
-          Rb = nullptr;
-        }
-      } else if (!Lb) {
-        if (!head) break;
-        Lb = head;
-        head = head->next;
-        Lb->next = nullptr;
-        Lb = quick_split(Lb, p, left_chain, right_chain);
-      } else if (!nhi) {
-        assert(Lb);
-        Lb->mark_hi(p, hi, nhi);
-        if (!nhi) {
-          left_chain.append(Lb);
-          Lb = nullptr;
-        }
-      } else if (!Rb) {
-        if (!head) break;
-        Rb = head;
-        head = head->next;
-        Rb->next = nullptr;
-        Rb = quick_split(Rb, p, left_chain, right_chain);
-      } else if (!nlo) {
-        assert(Rb);
-        Rb->mark_lo(p, lo, nlo);
-        if (!nlo) {
-          right_chain.append(Rb);
-          Rb = nullptr;
-        }
-      } else {
-        assert(0);
-      }
-    }
-
-    if (Rb) {
-      assert(!Lb);
-      Lb = Rb;
-    }
-    if (Lb) {
-      if (Lb->size()) {
-        int i = Lb->partition(p);
-        if (i == 0) {
-          right_chain.append(Lb);
-        } else if (i == Lb->size()) {
-          left_chain.append(Lb);
-        } else {
-          Rb = new Bucket(allocate_elements(BSIZE), 0, -1);
-          Lb->moveToFromIdx(Rb, i);
-          assert(Rb->n);
-          assert(Lb->n);
-          left_chain.append(Lb);
-          right_chain.append(Rb);
-        }
-      } else {
-        delete Lb;
-      }
-    }
-
-    // assert(left_chain);
-    assert(right_chain.length);
-    return make_pair(left_chain, right_chain);
-  }
-};
+#ifdef DBG
+#define assert_dbg(x) assert(x)
+#else
+#define assert_dbg(x) ((void)0)
+#endif
 
 static void ctree_sort2(long long *arr, long long *tmp, int n) {
   if (n < 30) {
@@ -286,117 +54,462 @@ static void ctree_sort2(long long *arr, long long *tmp, int n) {
   memcpy(arr + nlo, tmp + nlo, sizeof(long long) * (n - nlo));
 }
 
+static int count_n_flipped(long long *a, int sz) {
+  int cnt = 0;
+  for (int i = 1; i < sz; i++) {
+    cnt += a[i - 1] > a[i];
+  }
+  return cnt;
+}
+
+static int nswap = 0;
+static int inverted = 0;
+
+class Bucket {
+ public:
+  long long *arr;
+  int n;
+  int n_flipped;
+
+  Bucket(long long *a, int sz) : arr(a), n(sz) {}
+
+  bool is_asc() const { return n_flipped == 0; }
+
+  bool is_desc() const { return n > 0 && n_flipped == n - 1; }
+
+  bool is_sorted() const { return !is_asc() && !is_desc(); }
+
+  long long get_random_pivot() const { return arr[rng.nextInt(n)]; }
+
+  long long *data() { return arr; }
+
+  int size() const { return n; }
+
+  bool empty() const { return n == 0; }
+
+  int slack() const { return BSIZE - n; }
+
+  long long first() const { return arr[0]; }
+
+  long long last() const { return arr[n - 1]; }
+
+  void moveToFromIdx(Bucket &to, int fromIdx) {
+    assert_dbg(check_n_flipped());
+    assert_dbg(to.check_n_flipped());
+    // Ensure there's something to move.
+    assert(n > fromIdx);
+    // Ensure the receiver has enough space.
+    assert(to.n + n - fromIdx <= BSIZE);
+    // TODO: maintain sortedness if possible.
+    memmove(to.arr + to.n, arr + fromIdx, (n - fromIdx) * sizeof(long long));
+    to.n_flipped = is_asc() && to.empty() ? 0 : -1;
+    to.n += n - fromIdx;
+    n = fromIdx;
+    assert_dbg(check_n_flipped());
+    assert_dbg(to.check_n_flipped());
+  }
+
+  void copyTo(long long *target) { memcpy(target, arr, sizeof(long long) * n); }
+
+  int nhi(long long p) const {
+    int cnt = 0, i = n;
+    while (i) {
+      cnt += (arr[--i] >= p);
+    }
+    return cnt;
+  }
+
+  void mark_hi(long long P, int *hi, int &nhi) const {
+    for (int i = 0; i < n; i++) {
+      hi[nhi] = i;
+      nhi += (arr[i] >= P);
+    }
+  }
+
+  void mark_lo(long long P, int *lo, int &nlo) const {
+    for (int i = 0; i < n; i++) {
+      lo[nlo] = i;
+      nlo += (arr[i] < P);
+    }
+  }
+
+  int partition(long long v, int nlo) {
+    assert(n > 0 && n <= BSIZE);
+    if (is_desc()) {
+      reverse(arr, arr + n);
+      n_flipped = 0;
+    }
+    if (is_asc()) {
+      assert_dbg(check_n_flipped());
+      int i = int(lower_bound(arr, arr + n, v) - arr);
+      assert(i == nlo);
+      return i;
+    }
+    return int(
+        std::partition(arr, arr + n, [&](long long x) { return (x < v); }) -
+        arr);
+  }
+
+  void sort(long long *tmp) {
+    if (is_desc()) {
+      reverse(arr, arr + n);
+    } else if (!is_asc()) {
+      if (n_flipped * 4 > n && n_flipped * 4 < n * 3) {
+        ctree_sort2(arr, tmp, n);
+      } else {
+        vergesort::vergesort(arr, arr + n);
+        // std::sort(arr, arr + n);
+      }
+    }
+    // vergesort::vergesort(arr, arr + n);
+
+    n_flipped = 0;
+    assert_dbg(count_n_flipped(arr, n) == 0);
+  }
+
+  bool is_less_than(long long p) {
+    for (int i = 0; i < n; i++) {
+      if (arr[i] >= p) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  bool is_at_least(long long p) {
+    for (int i = 0; i < n; i++) {
+      if (arr[i] < p) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  bool check_n_flipped() {
+    if (is_asc()) {
+      return count_n_flipped(arr, n) == 0;
+    }
+    if (is_desc()) {
+      return count_n_flipped(arr, n) == n - 1;
+    }
+    return true;
+  }
+};
+
+class Chain {
+ public:
+  vector<Bucket> buckets;
+
+  void append(Bucket b) {
+    if (b.empty()) return;
+
+    if (!buckets.empty() && buckets.back().slack()) {
+      Bucket &tail = buckets.back();
+      if (b.slack() < tail.slack()) {
+        swap(b, tail);
+      }
+      if (tail.slack()) {
+        b.moveToFromIdx(tail, b.size() - std::min(b.size(), tail.slack()));
+      }
+      if (b.empty()) return;
+    }
+
+    buckets.push_back(b);
+  }
+
+  bool is_less_than(long long p) {
+    for (Bucket b : buckets) {
+      if (!b.is_less_than(p)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  bool is_at_least(long long p) {
+    for (Bucket b : buckets) {
+      if (!b.is_at_least(p)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  bool check_n_flipped() {
+    for (Bucket b : buckets) {
+      if (!b.check_n_flipped()) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  bool distinct() {
+    set<long long> s;
+    for (Bucket b : buckets) {
+      auto it = s.insert(b.arr[0]);
+      if (!it.second) return false;
+    }
+    return true;
+  }
+
+  pair<Chain, Chain> split_chain() {
+    assert(!buckets.empty());
+    long long p = buckets[rng.nextInt(int(buckets.size()))].arr[0];
+
+    Chain left_chain;
+    Chain right_chain;
+
+    // for (Bucket b : buckets) {
+    //   if (left_chain.buckets.size() > right_chain.buckets.size()) {
+    //     right_chain.append(b);
+    //   } else {
+    //     left_chain.append(b);
+    //   }
+    // }
+    // return make_pair(left_chain, right_chain);
+
+    vector<pair<int, Bucket>> pending;
+    for (Bucket &b : buckets) {
+      assert_dbg(b.check_n_flipped());
+
+      if (b.is_desc()) {
+        reverse(b.arr, b.arr + b.n);
+        b.n_flipped = 0;
+      }
+
+      if (b.is_asc()) {
+        if (b.first() >= p) {
+          right_chain.append(b);
+          continue;
+        }
+        if (b.last() < p) {
+          left_chain.append(b);
+          continue;
+        }
+      }
+
+      int nhi = b.nhi(p);
+
+      if (nhi == 0) {
+        left_chain.append(b);
+        continue;
+      }
+
+      if (nhi == b.size()) {
+        right_chain.append(b);
+        continue;
+      }
+
+      assert_dbg(left_chain.is_less_than(p));
+      pending.push_back(make_pair(nhi, b));
+    }
+
+    assert_dbg(left_chain.is_less_than(p));
+    assert_dbg(left_chain.check_n_flipped());
+
+    assert_dbg(right_chain.is_at_least(p));
+    assert_dbg(right_chain.check_n_flipped());
+
+    sort(pending.begin(), pending.end(),
+         [](const auto &a, const auto &b) { return a.first < b.first; });
+
+    // if (int(pending.size()) > 0) {
+    //   fprintf(stderr, "npending = %lu, nswap = %d\n", pending.size(), nswap);
+    //   for (auto p : pending) {
+    //     fprintf(stderr, "%d ", p.first);
+    //   }
+    //   fprintf(stderr, "\n");
+    // }
+
+    int lo[BSIZE], hi[BSIZE];
+    int nhi = 0, nlo = 0;
+    int i = 0, j = int(pending.size());
+    Bucket *L, *R;
+
+    while (true) {
+      if (nhi == 0) {
+        if (i < j) {
+          L = &pending[i++].second;
+          L->mark_hi(p, hi, nhi);
+          // TODO: separate out minor outliers, keep sortedness.
+        } else {
+          break;
+        }
+      }
+
+      if (nlo == 0) {
+        if (i < j) {
+          R = &pending[--j].second;
+          R->mark_lo(p, lo, nlo);
+        } else {
+          break;
+        }
+      }
+
+      int m = std::min(nhi, nlo);
+      // fprintf(stderr, "m = %d\n", m);
+      assert(m > 0);
+
+      nswap += m;
+
+      long long *Lp = L->arr;
+      long long *Rp = R->arr;
+      int *hip = hi + nhi - 1;
+      int *lop = lo + nlo - 1;
+      L->n_flipped = -1;
+      R->n_flipped = -1;
+
+      for (int k = m; k--;) std::swap(Lp[*(hip--)], Rp[*(lop--)]);
+
+      nhi -= m;
+      nlo -= m;
+
+      if (nhi == 0) {
+        assert_dbg(left_chain.is_less_than(p));
+        left_chain.append(*L);
+        assert_dbg(left_chain.is_less_than(p));
+      }
+
+      if (nlo == 0) {
+        assert_dbg(right_chain.is_at_least(p));
+        right_chain.append(*R);
+        assert_dbg(right_chain.is_at_least(p));
+      }
+    }
+
+    assert_dbg(left_chain.is_less_than(p));
+    assert_dbg(left_chain.check_n_flipped());
+
+    assert_dbg(right_chain.is_at_least(p));
+    assert_dbg(right_chain.check_n_flipped());
+
+    if (nhi) {
+      assert_dbg(L->check_n_flipped());
+      Bucket b(allocate_elements(BSIZE), 0);
+      // fprintf(stderr, "L %d %d %d\n", L->n_flipped, L->size(), nhi);
+      L->moveToFromIdx(b, L->partition(p, L->size() - nhi));
+      // assert(0);
+      assert_dbg(L->check_n_flipped());
+      assert_dbg(b.check_n_flipped());
+      assert(!L->empty());
+      assert(!b.empty());
+      left_chain.append(*L);
+      right_chain.append(b);
+    }
+
+    if (nlo) {
+      // fprintf(stderr, "here %d / %d\n", i, ab->bucket.size());
+      Bucket b(allocate_elements(BSIZE), 0);
+      assert_dbg(R->check_n_flipped());
+      // fprintf(stderr, "R %d %d %d\n", R->n_flipped, R->size(), nhi);
+      R->moveToFromIdx(b, R->partition(p, nlo));
+      assert_dbg(R->check_n_flipped());
+      assert_dbg(b.check_n_flipped());
+      assert(!R->empty());
+      assert(!b.empty());
+      left_chain.append(*R);
+      right_chain.append(b);
+    }
+
+    assert_dbg(left_chain.is_less_than(p));
+    assert_dbg(left_chain.check_n_flipped());
+
+    assert_dbg(right_chain.is_at_least(p));
+    assert_dbg(right_chain.check_n_flipped());
+
+    // fprintf(stderr, "split %lu %lu\n", left_chain.buckets.size(),
+    //         right_chain.buckets.size());
+
+    return make_pair(left_chain, right_chain);
+  }
+};
+
 void ctree_sort(long long arr[], long long tmp[], int N) {
-  long long *bucket_tmp = allocate_elements(BSIZE);
   Chain c;
   double it = time_it([&]() {
     for (int i = 0; i < N; i += BSIZE) {
-      c.append(new Bucket(arr + i, min(BSIZE, N - i), 0));
+      Bucket b(allocate_elements(BSIZE), min(BSIZE, N - i));
+      memcpy(b.arr, arr + i, sizeof(long long) * b.size());
+      b.n_flipped = count_n_flipped(b.arr, b.n);
+      assert_dbg(b.check_n_flipped());
+      c.append(b);
     }
   });
-  fprintf(stderr, "BSIZE = %d, chains = %d, in %.3lf; ", BSIZE, c.length, it);
+  nswap = inverted = 0;
+  size_t csize = c.buckets.size();
 
+  assert_dbg(c.distinct());
+
+  long long *bucket_tmp = allocate_elements(BSIZE);
   vector<Chain> stk;
   stk.push_back(c);
   while (stk.size()) {
     c = stk.back();
     stk.pop_back();
 
-    // fprintf(stderr, "stdk sz = %u\n", stk.size());
-    if (!c.head->next) {
-      if (!c.head->is_asc()) {
-        // sort(c.head->arr, c.head->arr + c.head->n);
-        ctree_sort2(c.head->arr, bucket_tmp, c.head->n);
-      }
-      if (arr + N - c.head->n != c.head->arr) {
-        memcpy(arr + N - c.head->n, c.head->arr, sizeof(long long) * c.head->n);
-      }
-      // fprintf(stderr, "block %d\n", c.head->n);
-      // for (int i = c.head->n - 1; i >= 0; i--) {
-      //   int j = N - c.head->n + i;
+    // fprintf(stderr, "Stack = %lu\n", stk.size());
+    if (c.buckets.size() == 1) {
+      Bucket b = c.buckets[0];
+      b.sort(bucket_tmp);
+      b.copyTo(arr + N - b.size());
+
+      // fprintf(stderr, "block %d\n", b.n);
+      // for (int i = b.n - 1; i >= 0; i--) {
+      //   int j = N - b.n + i;
       //   if (arr[j] != j) {
-      //     fprintf(stderr, "arr[%d] = %lld, %lld\n", j, arr[j],
-      //     c.head->arr[i]);
+      //     fprintf(stderr, "arr[%d] = %lld, %lld\n", j, arr[j], b.arr[i]);
       //     assert(arr[j] == j);
       //   }
       // }
-      N -= c.head->n;
-      delete c.head;
+
+      N -= b.size();
       continue;
     }
 
     auto p = c.split_chain();
-    if (p.first.length) {
-      assert(p.first.head->n);
+    if (!p.first.buckets.empty()) {
+      assert_dbg(p.first.distinct());
+      assert(!p.first.buckets[0].empty());
       stk.push_back(p.first);
     }
-    if (p.second.length) {
-      assert(p.second.head->n);
+    if (!p.second.buckets.empty()) {
+      assert_dbg(p.second.distinct());
+      assert(!p.second.buckets[0].empty());
       stk.push_back(p.second);
     }
   }
   assert(N == 0);
+
+  fprintf(stderr,
+          "BSIZE = %d, chains = %lu, in %.3lf, nswap = %9d, inverted = %5d; ",
+          BSIZE, csize, it, nswap, inverted);
 }
 
-void merge(long long a[], int na, long long b[], int nb, long long c[]) {
-  int i = 0, j = 0, k = 0;
-  while (i < na && j < nb) {
-    if (a[i] < b[j]) {
-      c[k++] = a[i++];
-    } else {
-      c[k++] = b[j++];
-    }
-  }
-  while (i < na) {
-    c[k++] = a[i++];
-  }
-  while (j < nb) {
-    c[k++] = b[j++];
-  }
-  assert(k == na + nb);
-}
+#define MAXN (1 << 26)
 
-void psort(long long arr[], long long tmp[], int N) {
-  int q = N / 4;
-  thread t0([&]() { sort(arr, arr + q); });
-  thread t1([&]() { sort(arr + q, arr + q * 2); });
-  thread t2([&]() { sort(arr + q * 2, arr + q * 3); });
-  thread t3([&]() { sort(arr + q * 3, arr + N); });
-  t0.join();
-  t1.join();
-  t2.join();
-  t3.join();
-
-  thread t4([&]() { merge(arr, q, arr + q, q, tmp); });
-  thread t5(
-      [&]() { merge(arr + 2 * q, q, arr + 3 * q, N - 3 * q, tmp + 2 * q); });
-  t4.join();
-  t5.join();
-
-  merge(tmp, 2 * q, tmp + 2 * q, N - 2 * q, arr);
-}
-
-#define MAXN (1 << 25)
-
-long long arr[MAXN], tmp[MAXN * 4];
+long long arr[MAXN], tmp[MAXN * 20];
 int n_allocated;
 
 long long *allocate_elements(int size) {
   long long *t = tmp + n_allocated;
   n_allocated += size;
-  assert(n_allocated < MAXN * 4);
+  assert(n_allocated < MAXN * 20);
   return t;
 }
 
 void test_sort(const char *name,
                std::function<void(long long[], int)> sort_algo) {
   fprintf(stderr, "%s (N = %d):\n", name, MAXN);
-  Random rng(140384);
-  for (int percent_sorted = 100; percent_sorted >= 50; percent_sorted -= 10) {
+  Random random(140384);
+  for (int percent_sorted = 100000, m = 1;;) {
+    percent_sorted = max(0, percent_sorted);
+    int misplaced = 0;
     for (int i = 0; i < MAXN; i++) {
       arr[i] = i;
-      if (rng.nextInt(100) < 100 - percent_sorted) {
-        swap(arr[i], arr[rng.nextInt(i + 1)]);
+      if (random.nextInt(100000) < 100000 - percent_sorted) {
+        swap(arr[i], arr[random.nextInt(i + 1)]);
+        misplaced++;
       }
     }
 
@@ -407,21 +520,26 @@ void test_sort(const char *name,
     for (int i = 0; i < MAXN; i++) {
       chk = chk * 13 + arr[i];
     }
-    fprintf(stderr, "%3d%% sorted: %10.6lf s, chk = %20lld\n", percent_sorted,
-            sort_time, chk);
+    fprintf(stderr, "%7.3lf%% sorted: %10.6lf s, nrswap = %8d, chk = %20lld\n",
+            percent_sorted / 1000.0, sort_time, misplaced, chk);
+
+    if (percent_sorted <= 0) break;
+    percent_sorted -= m;
+    m *= 2;
   }
   fprintf(stderr, "\n");
 }
 
 int main() {
+  for (int i = 0; i < MAXN; i++) {
+    tmp[i] = rng.nextInt();
+  }
+  test_sort("std::sort", [](long long arr[], int n) { sort(arr, arr + n); });
   test_sort("ctree_sort",
             [](long long arr[], int n) { ctree_sort(arr, tmp, n); });
-  test_sort("std::sort", [](long long arr[], int n) { sort(arr, arr + n); });
-  // test_sort("std::psort", [](long long arr[], int n) { psort(arr, tmp, n);
-  // });
+  test_sort("std::parallel_sort",
+            [](long long arr[], int n) { parallel_sort(arr, tmp, n); });
   test_sort("vergesort",
-            [](long long arr[], int n) { vergesort::vergesort(arr, arr + n);
-            });
-  // test_sort("ska_sort", [](long long arr[], int n) { ska_sort(arr, arr + n);
-  // });
+            [](long long arr[], int n) { vergesort::vergesort(arr, arr + n); });
+  test_sort("ska_sort", [](long long arr[], int n) { ska_sort(arr, arr + n); });
 }

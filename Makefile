@@ -6,7 +6,7 @@ CXX_FLAGS = -std=c++1y \
 -Wno-sign-conversion
 
 ifeq ($(DBG),true)
-	CXX_FLAGS += -O1 -g -fsanitize=address -fno-omit-frame-pointer
+	CXX_FLAGS += -O1 -g -fsanitize=address -fno-omit-frame-pointer -DDBG
 else
 	CXX_FLAGS += -O2 # -DNDEBUG
 endif
