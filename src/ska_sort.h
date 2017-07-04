@@ -896,7 +896,7 @@ struct UnsignedInplaceSorter {
   static constexpr size_t ShiftAmount = (((NumBytes - 1) - Offset) * 8);
   template <typename T>
   inline static uint8_t current_byte(T &&elem, void *sort_data) {
-    return CurrentSubKey::sub_key(elem, sort_data) >> ShiftAmount;
+    return uint8_t(CurrentSubKey::sub_key(elem, sort_data) >> ShiftAmount);
   }
   template <typename It, typename ExtractKey>
   static void sort(It begin, It end, std::ptrdiff_t num_elements,
@@ -928,7 +928,7 @@ struct UnsignedInplaceSorter {
       partitions[i].offset = total;
       total += count;
       partitions[i].next_offset = total;
-      remaining_partitions[num_partitions] = i;
+      remaining_partitions[num_partitions] = (uint8_t) i;
       ++num_partitions;
     }
     if (num_partitions > 1) {
@@ -967,8 +967,8 @@ struct UnsignedInplaceSorter {
       size_t start_offset = 0;
       It partition_begin = begin;
       for (uint8_t *it = remaining_partitions,
-                   *end = remaining_partitions + num_partitions;
-           it != end; ++it) {
+                   *last = remaining_partitions + num_partitions;
+           it != last; ++it) {
         size_t end_offset = partitions[*it].next_offset;
         It partition_end = begin + end_offset;
         std::ptrdiff_t num_elements = end_offset - start_offset;
@@ -1004,7 +1004,7 @@ struct UnsignedInplaceSorter {
       if (count) {
         partitions[i].offset = total;
         total += count;
-        remaining_partitions[num_partitions] = i;
+        remaining_partitions[num_partitions] = (uint8_t) i;
         ++num_partitions;
       }
       partitions[i].next_offset = total;

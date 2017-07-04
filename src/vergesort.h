@@ -412,7 +412,7 @@ std::pair<RandomAccessIterator, bool> partition_right_branchless(
   }
 
   int l_size = 0, r_size = 0;
-  int unknown_left = (last - first) - ((num_r || num_l) ? block_size : 0);
+  int unknown_left = int((last - first) - ((num_r || num_l) ? block_size : 0));
   if (num_r) {
     // Handle leftover block by assigning the unknown elements to the other
     // block.
@@ -702,7 +702,7 @@ void pdqsort(RandomAccessIterator begin, RandomAccessIterator end,
                is_default_compare<typename std::decay<Compare>::type>::value &&
                    std::is_arithmetic<typename std::iterator_traits<
                        RandomAccessIterator>::value_type>::value>(
-      begin, end, comp, log2(end - begin));
+      begin, end, comp, (int) log2(end - begin));
 #else
   pdqsort_loop<RandomAccessIterator, Compare, false>(begin, end, comp,
                                                      log2(end - begin));

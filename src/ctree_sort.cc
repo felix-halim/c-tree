@@ -54,14 +54,6 @@ static void ctree_sort2(long long *arr, long long *tmp, int n) {
   memcpy(arr + nlo, tmp + nlo, sizeof(long long) * (n - nlo));
 }
 
-static int count_n_flipped(long long *a, int sz) {
-  int cnt = 0;
-  for (int i = 1; i < sz; i++) {
-    cnt += a[i - 1] > a[i];
-  }
-  return cnt;
-}
-
 static int nswap = 0;
 static int inverted = 0;
 
@@ -71,11 +63,17 @@ class Bucket {
   int n;
   int n_flipped;
 
-  Bucket(long long *a, int sz) : arr(a), n(sz) {}
+  Bucket(int sz) : arr(allocate_elements(BSIZE)), n(sz) { assert(n <= BSIZE); }
+
+  Bucket(long long *a, int sz)
+      : arr(allocate_elements(BSIZE)), n(sz), n_flipped(-1) {
+    assert(n <= BSIZE);
+    memcpy(arr, a, n * sizeof(long long));
+  }
 
   bool is_asc() const { return n_flipped == 0; }
 
-  bool is_desc() const { return n > 0 && n_flipped == n - 1; }
+  bool is_desc() const { return n == 0 || n_flipped == n - 1; }
 
   bool is_sorted() const { return !is_asc() && !is_desc(); }
 
@@ -93,7 +91,16 @@ class Bucket {
 
   long long last() const { return arr[n - 1]; }
 
+  int count_n_flipped() {
+    n_flipped = 0;
+    for (int i = 1; i < n; i++) {
+      n_flipped += arr[i - 1] > arr[i];
+    }
+    return n_flipped;
+  }
+
   void moveToFromIdx(Bucket &to, int fromIdx) {
+    assert(arr != to.arr);
     assert_dbg(check_n_flipped());
     assert_dbg(to.check_n_flipped());
     // Ensure there's something to move.
@@ -101,10 +108,22 @@ class Bucket {
     // Ensure the receiver has enough space.
     assert(to.n + n - fromIdx <= BSIZE);
     // TODO: maintain sortedness if possible.
-    memmove(to.arr + to.n, arr + fromIdx, (n - fromIdx) * sizeof(long long));
-    to.n_flipped = is_asc() && to.empty() ? 0 : -1;
+    memcpy(to.arr + to.n, arr + fromIdx, (n - fromIdx) * sizeof(long long));
     to.n += n - fromIdx;
+
+    if (is_asc() && to.empty()) {
+      to.n_flipped = 0;
+    } else {
+      // TOOD: may be expensive.
+      to.count_n_flipped();
+    }
+
     n = fromIdx;
+    if (n_flipped > 0) {
+      // TODO: may be expensive.
+      count_n_flipped();
+    }
+
     assert_dbg(check_n_flipped());
     assert_dbg(to.check_n_flipped());
   }
@@ -133,7 +152,9 @@ class Bucket {
     }
   }
 
-  int partition(long long v, int nlo) {
+  // Returns a new bucket containing elements >= p from this bucket preserving
+  // its order. Elements >= p is stably removed from this bucket.
+  Bucket split(long long p) {
     assert(n > 0 && n <= BSIZE);
     if (is_desc()) {
       reverse(arr, arr + n);
@@ -141,13 +162,27 @@ class Bucket {
     }
     if (is_asc()) {
       assert_dbg(check_n_flipped());
-      int i = int(lower_bound(arr, arr + n, v) - arr);
-      assert(i == nlo);
-      return i;
+      int old_n = n;
+      n = int(lower_bound(arr, arr + n, p) - arr);
+      return Bucket(arr + n, old_n - n);
     }
-    return int(
-        std::partition(arr, arr + n, [&](long long x) { return (x < v); }) -
-        arr);
+    Bucket b(0);
+    long long *a = arr;
+    int i = n;
+    n = 0;
+    for (; i--; a++) {
+      int is_less = *a < p;
+      arr[n] = *a;
+      n += is_less;
+      b.arr[b.n] = *a;
+      b.n += !is_less;
+    }
+    count_n_flipped();
+    assert(!b.empty());
+    b.count_n_flipped();
+    assert_dbg(check_n_flipped());
+    assert_dbg(b.check_n_flipped());
+    return b;
   }
 
   void sort(long long *tmp) {
@@ -164,7 +199,7 @@ class Bucket {
     // vergesort::vergesort(arr, arr + n);
 
     n_flipped = 0;
-    assert_dbg(count_n_flipped(arr, n) == 0);
+    assert_dbg(count_n_flipped() == 0);
   }
 
   bool is_less_than(long long p) {
@@ -187,10 +222,10 @@ class Bucket {
 
   bool check_n_flipped() {
     if (is_asc()) {
-      return count_n_flipped(arr, n) == 0;
+      return count_n_flipped() == 0;
     }
     if (is_desc()) {
-      return count_n_flipped(arr, n) == n - 1;
+      return n == 0 || count_n_flipped() == n - 1;
     }
     return true;
   }
@@ -386,10 +421,10 @@ class Chain {
 
     if (nhi) {
       assert_dbg(L->check_n_flipped());
-      Bucket b(allocate_elements(BSIZE), 0);
-      // fprintf(stderr, "L %d %d %d\n", L->n_flipped, L->size(), nhi);
-      L->moveToFromIdx(b, L->partition(p, L->size() - nhi));
-      // assert(0);
+      int n = L->size();
+      Bucket b = L->split(p);
+      assert(b.n + L->size() == n);
+      assert(b.n == nhi);
       assert_dbg(L->check_n_flipped());
       assert_dbg(b.check_n_flipped());
       assert(!L->empty());
@@ -399,11 +434,11 @@ class Chain {
     }
 
     if (nlo) {
-      // fprintf(stderr, "here %d / %d\n", i, ab->bucket.size());
-      Bucket b(allocate_elements(BSIZE), 0);
       assert_dbg(R->check_n_flipped());
-      // fprintf(stderr, "R %d %d %d\n", R->n_flipped, R->size(), nhi);
-      R->moveToFromIdx(b, R->partition(p, nlo));
+      int n = R->size();
+      Bucket b = R->split(p);
+      assert(b.n + R->size() == n);
+      assert(R->size() == nlo);
       assert_dbg(R->check_n_flipped());
       assert_dbg(b.check_n_flipped());
       assert(!R->empty());
@@ -429,11 +464,8 @@ void ctree_sort(long long arr[], long long tmp[], int N) {
   Chain c;
   double it = time_it([&]() {
     for (int i = 0; i < N; i += BSIZE) {
-      Bucket b(allocate_elements(BSIZE), min(BSIZE, N - i));
-      memcpy(b.arr, arr + i, sizeof(long long) * b.size());
-      b.n_flipped = count_n_flipped(b.arr, b.n);
-      assert_dbg(b.check_n_flipped());
-      c.append(b);
+      c.append(Bucket(arr + i, min(BSIZE, N - i)));
+      c.buckets.back().count_n_flipped();
     }
   });
   nswap = inverted = 0;
@@ -538,7 +570,7 @@ int main() {
   test_sort("ctree_sort",
             [](long long arr[], int n) { ctree_sort(arr, tmp, n); });
   test_sort("std::parallel_sort",
-            [](long long arr[], int n) { parallel_sort(arr, tmp, n); });
+            [](long long arr[], int n) { parallel_sort(arr, n); });
   test_sort("vergesort",
             [](long long arr[], int n) { vergesort::vergesort(arr, arr + n); });
   test_sort("ska_sort", [](long long arr[], int n) { ska_sort(arr, arr + n); });
