@@ -1,57 +1,31 @@
 #include <cassert>
 #include <cstdio>
-#include <cstring>
 #include <cstdlib>
+#include <cstring>
 
 #include <algorithm>
 #include <functional>
+#include <set>
 #include <stack>
-#include <set>
-#include <set>
 #include <vector>
-#include <chrono>
 
-#include "update.h"
+#include "random.h"
+#include "time_it.h"
 
 using namespace std;
-using namespace std::chrono;
 
-#define REP(i, n) for (int i = 0, _n = n; i < _n; i++)
+#ifdef DBG
+#define assert_dbg(x) assert(x)
+#else
+#define assert_dbg(x) ((void)0)
+#endif
 
-template<typename Func>
-double time_it(Func f) {
-  auto t0 = high_resolution_clock::now();
-  f();
-  auto t1 = high_resolution_clock::now();
-  return duration_cast<microseconds>(t1 - t0).count() * 1e-6;
-}
-
-struct Bucket {
-  int arr[BSIZE], n;
-  Bucket *next;
-  Bucket(): n(0), next(0) {}
-  int slack() { return BSIZE - n; }
-};
-
-pair<int, int> count_lower(Bucket *B, int P) {
-  int cnt = 0, sum = 0;
-  while (B) {
-    REP(i, B->n) if (B->arr[i] < P) cnt++, sum += B->arr[i];
-    B = B->next;
-  }
-  return make_pair(cnt, sum);
-}
-
-static void chain(Bucket *&B, Bucket *next) {
-  if (B) B->next = next;
-  B = next;
-  B->next = NULL;
-}
-
+/*
 // Count only using std::partition, without actually moving the data.
 Bucket* hypothetical_partition(Bucket *B, int P) {
   for (; B; B = B->next) {
-    int pos = partition(B->arr, B->arr + B->n, bind2nd(less<int>(), P)) - B->arr;
+    int pos = partition(B->arr, B->arr + B->n, bind2nd(less<int>(), P)) -
+B->arr;
     assert(pos >= 0 && pos <= B->n);
   }
   return NULL;
@@ -92,7 +66,8 @@ Bucket* use_partition(Bucket *B, int P) {
   // int nL = 0;
   for (Bucket *next; B; B = next) {
     next = B->next;
-    int pos = partition(B->arr, B->arr + B->n, bind2nd(less<int>(), P)) - B->arr;
+    int pos = partition(B->arr, B->arr + B->n, bind2nd(less<int>(), P)) -
+B->arr;
     if (L->slack() >= pos) {
       memmove(L->arr + L->n, B->arr, sizeof(int) * pos);
       L->n += pos;
@@ -137,7 +112,8 @@ Bucket* use_partition_minimize_move(Bucket *B, int P) {
   vector<pair<int, Bucket*> > L, R;
   for (Bucket *next; B; B = next) {
     next = B->next;
-    int pos = partition(B->arr, B->arr + B->n, bind2nd(less<int>(), P)) - B->arr;
+    int pos = partition(B->arr, B->arr + B->n, bind2nd(less<int>(), P)) -
+B->arr;
     if (pos * 2 > B->n) L.push_back(make_pair(pos, B));
     else R.push_back(make_pair(pos, B));
   }
@@ -170,7 +146,8 @@ Bucket* use_partition_minimize_move(Bucket *B, int P) {
     int *b = pR.second->arr, &j = pR.first;
     int m = min(pL.second->n - i, j);
     while (m--) swap(a[i++], b[--j]);
-    if (i >= pL.second->n){ k++; nL += BSIZE; assert(pL.second->n == BSIZE); chain(ret, pL.second); }
+    if (i >= pL.second->n){ k++; nL += BSIZE; assert(pL.second->n == BSIZE);
+chain(ret, pL.second); }
     if (j == 0) L.pop_back();
   }
 
@@ -186,14 +163,14 @@ Bucket* use_partition_minimize_move(Bucket *B, int P) {
     int *b = pR.second->arr, &j = pR.first;
     int m = min(i, pR.second->n - j);
     while (m--) swap(a[--i], b[j++]);
-    if (j >= pR.second->n){ R.pop_back(); nL += BSIZE; assert(pR.second->n == BSIZE); chain(ret, pR.second); }
+    if (j >= pR.second->n){ R.pop_back(); nL += BSIZE; assert(pR.second->n ==
+BSIZE); chain(ret, pR.second); }
     if (i == 0){ k++;  }
   }
 
   fprintf(stderr, "nL = %d\n", nL);
   return ret;
 }
-/*
 
 int use_nb(Bucket *B, int P) {
   int F = -1, L = NBUCKETS, R = L+1, nL = L->n = B[R].n = 0;
@@ -229,7 +206,8 @@ int use_nbo(Bucket *B, int P) {
     int cnt[2] = { 0, B[R].n }, j = 0;
     int *arr[2] = { B[i].arr, B[R].arr };
     while (j < B[i].n){
-      // fprintf(stderr,"i = %d, j = %d/%d, R = %d, %d %d, %d\n",i,j,B[i].n,R,cnt[0],B[i].n,B[R].slack());
+      // fprintf(stderr,"i = %d, j = %d/%d, R = %d, %d %d,
+%d\n",i,j,B[i].n,R,cnt[0],B[i].n,B[R].slack());
       int n = min(B[i].n - j, B[R].slack()); assert(n > 0);
       int *src = B[i].arr + j; j += n;
       while (n--){
@@ -277,7 +255,8 @@ int use_cpyp4(Bucket *B, int P) {
   int F = NBUCKETS, R = F++, nL = B[R].n = 0;
   REP(i,NBUCKETS){
     for (int j=0; j<B[i].n; j+=4){
-      nL += (B[i].arr[j] < P) + (B[i].arr[j+1] < P) + (B[i].arr[j+2] < P) + (B[i].arr[j+3] < P);
+      nL += (B[i].arr[j] < P) + (B[i].arr[j+1] < P) + (B[i].arr[j+2] < P) +
+(B[i].arr[j+3] < P);
       B[F+i].arr[j] = B[i].arr[j];
       B[F+i].arr[j+1] = B[i].arr[j+1];
       B[F+i].arr[j+2] = B[i].arr[j+2];
@@ -291,8 +270,10 @@ int use_cpyp8(Bucket *B, int P) {
   int F = NBUCKETS, R = F++, nL = B[R].n = 0;
   REP(i,NBUCKETS){
     for (int j=0; j<B[i].n; j+=8){
-      nL += (B[i].arr[j] < P) + (B[i].arr[j+1] < P) + (B[i].arr[j+2] < P) + (B[i].arr[j+3] < P) +
-          (B[i].arr[j+4] < P) + (B[i].arr[j+5] < P) + (B[i].arr[j+6] < P) + (B[i].arr[j+7] < P);
+      nL += (B[i].arr[j] < P) + (B[i].arr[j+1] < P) + (B[i].arr[j+2] < P) +
+(B[i].arr[j+3] < P) +
+          (B[i].arr[j+4] < P) + (B[i].arr[j+5] < P) + (B[i].arr[j+6] < P) +
+(B[i].arr[j+7] < P);
       B[F+i].arr[j] = B[i].arr[j];
       B[F+i].arr[j+1] = B[i].arr[j+1];
       B[F+i].arr[j+2] = B[i].arr[j+2];
@@ -310,10 +291,14 @@ int use_cpyp16(Bucket *B, int P) {
   int F = NBUCKETS, R = F++, nL = B[R].n = 0;
   REP(i,NBUCKETS){
     for (int j=0; j<B[i].n; j+=16){
-      nL += (B[i].arr[j] < P) + (B[i].arr[j+1] < P) + (B[i].arr[j+2] < P) + (B[i].arr[j+3] < P) +
-          (B[i].arr[j+4] < P) + (B[i].arr[j+5] < P) + (B[i].arr[j+6] < P) + (B[i].arr[j+7] < P) +
-          (B[i].arr[j+8] < P) + (B[i].arr[j+9] < P) + (B[i].arr[j+10] < P) + (B[i].arr[j+11] < P) +
-          (B[i].arr[j+12] < P) + (B[i].arr[j+13] < P) + (B[i].arr[j+14] < P) + (B[i].arr[j+15] < P);
+      nL += (B[i].arr[j] < P) + (B[i].arr[j+1] < P) + (B[i].arr[j+2] < P) +
+(B[i].arr[j+3] < P) +
+          (B[i].arr[j+4] < P) + (B[i].arr[j+5] < P) + (B[i].arr[j+6] < P) +
+(B[i].arr[j+7] < P) +
+          (B[i].arr[j+8] < P) + (B[i].arr[j+9] < P) + (B[i].arr[j+10] < P) +
+(B[i].arr[j+11] < P) +
+          (B[i].arr[j+12] < P) + (B[i].arr[j+13] < P) + (B[i].arr[j+14] < P) +
+(B[i].arr[j+15] < P);
       B[F+i].arr[j] = B[i].arr[j];
       B[F+i].arr[j+1] = B[i].arr[j+1];
       B[F+i].arr[j+2] = B[i].arr[j+2];
@@ -340,10 +325,14 @@ int use_memo(Bucket *B, int P) {
   char amt[16] = { 0,1,1,2,1,2,2,3,1,2,2,3,2,3,3,4 };
   REP(i,NBUCKETS){
     for (int j=0; j<B[i].n; j+=16){
-      char c1 = ((B[i].arr[j] < P) << 3) | ((B[i].arr[j+1] < P) << 2) | ((B[i].arr[j+2] < P) << 1) | ((B[i].arr[j+3] < P) << 0);
-      char c2 = ((B[i].arr[j+4] < P) << 3) | ((B[i].arr[j+5] < P) << 2) | ((B[i].arr[j+6] < P) << 1) | ((B[i].arr[j+7] < P) << 0);
-      char c3 = ((B[i].arr[j+8] < P) << 3) | ((B[i].arr[j+9] < P) << 2) | ((B[i].arr[j+10] < P) << 1) | ((B[i].arr[j+11] < P) << 0);
-      char c4 = ((B[i].arr[j+12] < P) << 3) | ((B[i].arr[j+13] < P) << 2) | ((B[i].arr[j+14] < P) << 1) | ((B[i].arr[j+15] < P) << 0);
+      char c1 = ((B[i].arr[j] < P) << 3) | ((B[i].arr[j+1] < P) << 2) |
+((B[i].arr[j+2] < P) << 1) | ((B[i].arr[j+3] < P) << 0);
+      char c2 = ((B[i].arr[j+4] < P) << 3) | ((B[i].arr[j+5] < P) << 2) |
+((B[i].arr[j+6] < P) << 1) | ((B[i].arr[j+7] < P) << 0);
+      char c3 = ((B[i].arr[j+8] < P) << 3) | ((B[i].arr[j+9] < P) << 2) |
+((B[i].arr[j+10] < P) << 1) | ((B[i].arr[j+11] < P) << 0);
+      char c4 = ((B[i].arr[j+12] < P) << 3) | ((B[i].arr[j+13] < P) << 2) |
+((B[i].arr[j+14] < P) << 1) | ((B[i].arr[j+15] < P) << 0);
       nL += amt[c1] + amt[c2] + amt[c3] + amt[c4];
     }
   }
@@ -364,7 +353,8 @@ int use_cnt4(Bucket *B, int P) {
 }
 
 int use_cpy4(Bucket *B, int P) {
-  int nL = 0, *a[4] = { B[NBUCKETS].arr, B[NBUCKETS+1].arr, B[NBUCKETS+2].arr, B[NBUCKETS+3].arr};
+  int nL = 0, *a[4] = { B[NBUCKETS].arr, B[NBUCKETS+1].arr, B[NBUCKETS+2].arr,
+B[NBUCKETS+3].arr};
   REP(i,NBUCKETS){
     int n[4] = { 0 };
     for (int j=0; j<B[i].n; j+=4){
@@ -409,7 +399,7 @@ int use_nbswap(Bucket *B, int P) {
       }
       // nhi -= m;
       // nlo -= m;
-      
+
       if (nhi==0) L = -1;
       if (nlo==0) R = -1;
     } else if (L == -1){
@@ -487,8 +477,10 @@ int use_nbsortparnb(Bucket *B, int P) {
     int nlow = 0;
     REP(j,9) nlow += B[i].arr[rand()%B[i].n] < P;
     if (nlow < 1 || 9 <= nlow){
-      int pos = partition(B[i].arr, B[i].arr + B[i].n, bind2nd(less<int>(), P)) - B[i].arr;
-      if (pos*2 > B[i].n) L.push_back(make_pair(pos, i)); else R.push_back(make_pair(pos, i));
+      int pos = partition(B[i].arr, B[i].arr + B[i].n, bind2nd(less<int>(), P))
+- B[i].arr;
+      if (pos*2 > B[i].n) L.push_back(make_pair(pos, i)); else
+R.push_back(make_pair(pos, i));
     } else if (nlow >= 5){
       aL.push_back(make_pair(nlow,i));
     } else {
@@ -512,7 +504,7 @@ int use_nbsortparnb(Bucket *B, int P) {
     if (i<B[pL.second].n) L.push_back(pL); else nL += BSIZE;
     if (j>0) R.push_back(pR);
   }
-  
+
   // fprintf(stderr,"b");
   for (int k=0; k < L.size(); ){
     if (k+1 == L.size()){ aL.push_back(L.back()); break; }
@@ -614,8 +606,10 @@ int use_nbsortswap2(Bucket *B, int P) {
     int nlow = 0;
     REP(j,9) nlow += B[i].arr[rand()%B[i].n] < P;
     if (nlow < 1 || 9 <= nlow){
-      int pos = partition(B[i].arr, B[i].arr + B[i].n, bind2nd(less<int>(), P)) - B[i].arr;
-      if (pos*2 > B[i].n) L.push_back(make_pair(pos, i)); else R.push_back(make_pair(pos, i));
+      int pos = partition(B[i].arr, B[i].arr + B[i].n, bind2nd(less<int>(), P))
+- B[i].arr;
+      if (pos*2 > B[i].n) L.push_back(make_pair(pos, i)); else
+R.push_back(make_pair(pos, i));
     } else if (nlow >= 5){
       aL.push_back(make_pair(nlow,i));
     } else {
@@ -639,7 +633,7 @@ int use_nbsortswap2(Bucket *B, int P) {
     if (i<B[pL.second].n) L.push_back(pL); else nL += BSIZE;
     if (j>0) R.push_back(pR);
   }
-  
+
   // fprintf(stderr,"b");
   for (int k=0; k < L.size(); ){
     if (k+1 == L.size()){ aL.push_back(L.back()); break; }
@@ -741,8 +735,10 @@ int use_nbsortswap(Bucket *B, int P) {
     int nlow = 0;
     REP(j,9) nlow += B[i].arr[rand()%B[i].n] < P;
     if (nlow < 1 || 9 <= nlow){
-      int pos = partition(B[i].arr, B[i].arr + B[i].n, bind2nd(less<int>(), P)) - B[i].arr;
-      if (pos*2 > B[i].n) L.push_back(make_pair(pos, i)); else R.push_back(make_pair(pos, i));
+      int pos = partition(B[i].arr, B[i].arr + B[i].n, bind2nd(less<int>(), P))
+- B[i].arr;
+      if (pos*2 > B[i].n) L.push_back(make_pair(pos, i)); else
+R.push_back(make_pair(pos, i));
     } else if (nlow >= 5){
       aL.push_back(make_pair(nlow,i));
     } else {
@@ -765,7 +761,7 @@ int use_nbsortswap(Bucket *B, int P) {
     if (i<B[pL.second].n) L.push_back(pL); else nL += BSIZE;
     if (j>0) R.push_back(pR);
   }
-  
+
   for (int k=0; k < (int)L.size(); ){
     if (k+1 == (int)L.size()){ aL.push_back(L.back()); break; }
     pair<int,int> &pL = L[k], &pR = L.back();
@@ -884,8 +880,10 @@ int use_parnb(Bucket *B, int P) {
     int nlow = 0;
     REP(j,9) nlow += B[i].arr[rand()%B[i].n] < P;
     if (nlow < 1 || 9 <= nlow){
-      int pos = partition(B[i].arr, B[i].arr + B[i].n, bind2nd(less<int>(), P)) - B[i].arr;
-      if (pos*2 > B[i].n) L.push_back(make_pair(pos, i)); else R.push_back(make_pair(pos, i));
+      int pos = partition(B[i].arr, B[i].arr + B[i].n, bind2nd(less<int>(), P))
+- B[i].arr;
+      if (pos*2 > B[i].n) L.push_back(make_pair(pos, i)); else
+R.push_back(make_pair(pos, i));
     } else {
       nb.push_back(make_pair(nlow,i));
     }
@@ -906,7 +904,7 @@ int use_parnb(Bucket *B, int P) {
     if (i<B[pL.second].n) L.push_back(pL); else nL += BSIZE;
     if (j>0) R.push_back(pR);
   }
-  
+
   // fprintf(stderr,"b");
   for (int k=0; k < L.size(); ){
     if (k+1 == L.size()){ nL += L.back().first; break; }
@@ -939,8 +937,10 @@ int use_parnb(Bucket *B, int P) {
   for ( ; k+1 < (int)nb.size(); k+=2){
     int i = nb[k].second, j = nb[k+1].second;
     while (B[i].n && B[j].n){
-      if (L1==-1){ assert(F1!=-1); L1 = F1; F1 = -1; } else if (R1==-1){ assert(F1!=-1); R1 = F1; F1 = -1; }
-      if (L2==-1){ assert(F2!=-1); L2 = F2; F2 = -1; } else if (R2==-1){ assert(F2!=-1); R2 = F2; F2 = -1; }
+      if (L1==-1){ assert(F1!=-1); L1 = F1; F1 = -1; } else if (R1==-1){
+assert(F1!=-1); R1 = F1; F1 = -1; }
+      if (L2==-1){ assert(F2!=-1); L2 = F2; F2 = -1; } else if (R2==-1){
+assert(F2!=-1); R2 = F2; F2 = -1; }
       int n1 = min(B[i].n, min(B[L1].slack(), B[R1].slack())); assert(n1 > 0);
       int n2 = min(B[j].n, min(B[L2].slack(), B[R2].slack())); assert(n2 > 0);
       int n = min(n1,n2); assert(n > 0);
@@ -958,7 +958,7 @@ int use_parnb(Bucket *B, int P) {
       }
       B[L1].n = cnt1[0]; B[R1].n = cnt1[1];
       B[L2].n = cnt2[0]; B[R2].n = cnt2[1];
-      
+
       if (!B[i].n){ assert(F1==-1); F1 = i; }
       if (!B[j].n){ assert(F2==-1); F2 = j; }
       if (!B[L1].slack()) L1 = -1, nL += BSIZE;
@@ -1074,8 +1074,10 @@ int use_nbp(Bucket *B, int P) {
   B[L1].n = B[R1].n = B[L2].n = B[R2].n = 0;
   for (int i=0; i<NBUCKETS; i+=2){
     while (B[i].n && B[i+1].n){
-      if (L1==-1){ assert(F1!=-1); L1 = F1; F1 = -1; } else if (R1==-1){ assert(F1!=-1); R1 = F1; F1 = -1; }
-      if (L2==-1){ assert(F2!=-1); L2 = F2; F2 = -1; } else if (R2==-1){ assert(F2!=-1); R2 = F2; F2 = -1; }
+      if (L1==-1){ assert(F1!=-1); L1 = F1; F1 = -1; } else if (R1==-1){
+assert(F1!=-1); R1 = F1; F1 = -1; }
+      if (L2==-1){ assert(F2!=-1); L2 = F2; F2 = -1; } else if (R2==-1){
+assert(F2!=-1); R2 = F2; F2 = -1; }
       int n1 = min(B[i].n, min(B[L1].slack(), B[R1].slack())); assert(n1 > 0);
       int n2 = min(B[i+1].n, min(B[L2].slack(), B[R2].slack())); assert(n2 > 0);
       int n = min(n1,n2); assert(n > 0);
@@ -1093,7 +1095,7 @@ int use_nbp(Bucket *B, int P) {
       }
       B[L1].n = cnt1[0]; B[R1].n = cnt1[1];
       B[L2].n = cnt2[0]; B[R2].n = cnt2[1];
-      
+
       if (!B[i].n){ assert(F1==-1); F1 = i; }
       if (!B[i+1].n){ assert(F2==-1); F2 = i+1; }
       if (!B[L1].slack()) L1 = -1, nL += BSIZE;
@@ -1107,83 +1109,581 @@ int use_nbp(Bucket *B, int P) {
   return nL;
 }
 */
-const char **uw = update_workload;
 
-int main(int argc, char *argv[]) {
-  Update update(argv[1], 0);
-  update.load();
-  int N = update.size() / 2;
+#define BSIZE (1 << 12)
 
-  vector<int> samples;
-  int algo, ith, *arr = update.get_arr();
-  REP(i, 10000) samples.push_back(arr[rand() % N]);
-  sort(samples.begin(), samples.end());
+static long long* allocate_array(int sz);
 
-  sscanf(argv[2],"%d",&algo);
-  sscanf(argv[3],"%d",&ith);
-  Bucket *B = NULL, *T = NULL;
-  int NBUCKETS = 0;
+class Bucket {
+ public:
+  long long* arr;
+  int n;
 
-  double insert_time = time_it([&] {
-    int i = 0;
-    for (; i + BSIZE <= N; NBUCKETS++) {
-      Bucket *b = new Bucket();
-      REP(j, BSIZE) b->arr[b->n++] = arr[i++];
-      if (B) T->next = b; else B = T = b;
-      T = b;
+  Bucket(long long* a, int sz) : arr(a), n(sz) {}
+
+  long long first() const { return arr[0]; }
+
+  long long last() const { return arr[n - 1]; }
+
+  bool is_less_than(long long p) const {
+    for (int i = 0; i < n; i++) {
+      if (arr[i] >= p) {
+        return false;
+      }
     }
-    if (i < N) {
-      Bucket *b = new Bucket();
-      REP(j, N - i) b->arr[b->n++] = arr[i++];
-      if (B) T->next = b; else B = T = b;
-      T = b;
-      NBUCKETS++;
-    }
-  });
-
-  int P = samples[(ith * samples.size()) / 100];
-  pair<int, int> cs1 = count_lower(B, P);
-  Bucket *smaller = NULL;
-  double split_time = time_it([&] {
-    switch (algo) {
-      case 1 : smaller = hypothetical_partition(B, P); break;
-      case 2 : smaller = use_if(B, P); break;
-      case 3 : smaller = use_partition(B, P); break;
-      case 4 : smaller = use_partition_minimize_move(B, P); break;
-      /*
-      case 4 : smaller = use_nb(B, P); break;
-      case 5 : smaller = use_nbp(B, P); break;
-      case 6 : smaller = use_nbo(B, P); break;
-      case 8 : smaller = use_cnt4(B, P); break;
-      case 9 : smaller = use_cpy(B, P); break;
-      case 10 : smaller = use_cpyp2(B, P); break;
-      case 11 : smaller = use_cpyp4(B, P); break;
-      case 12 : smaller = use_cpyp8(B, P); break;
-      case 13 : smaller = use_cpyp16(B, P); break;
-      case 14 : smaller = use_memo(B, P); break;
-      case 15 : smaller = use_cpy4(B, P); break;
-      case 16 : smaller = use_noswap(B, P); break;
-      case 17 : smaller = use_nbswap(B, P); break;
-      case 18 : smaller = use_nbswap2(B, P); break;
-      case 19 : smaller = use_nbsortswap(B, P); break;
-      case 20 : smaller = use_nbsortswap2(B, P); break;
-      case 21 : smaller = use_partest(B, P); break;
-      case 23 : smaller = use_parnb(B, P); break;
-      */
-    }
-  });
-  int cnt = 0, sum = 0;
-  while (smaller) {
-    cnt += smaller->n;
-    // assert(smaller->n > 0 || !smaller->next);
-    while (smaller->n--) {
-      sum += smaller->arr[smaller->n];
-    }
-    smaller = smaller->next;
+    return true;
   }
-  fprintf(stderr, "%d == %d, %d == %d\n", cs1.first, cnt, cs1.second, sum);
-  assert(cs1.first == cnt);
-  assert(cs1.second == sum);
 
-  printf("%d,%d,%d,%d,%d,%.6lf,%.6lf,%d,%d\n", N, algo, BSIZE, NBUCKETS, ith, insert_time, split_time, cnt, sum);
+  bool is_at_least(long long p) const {
+    for (int i = 0; i < n; i++) {
+      if (arr[i] < p) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  long long csum() const {
+    long long ret = 0;
+    for (int i = 0; i < n; i++) {
+      ret += arr[i];
+    }
+    return ret;
+  }
+};
+
+class Chain {
+  vector<Bucket> buckets;
+  int slack_index;
+  int slack;
+
+ public:
+  Chain() : buckets(), slack_index(0), slack(0) {}
+
+  void append(Bucket b) {
+    slack += BSIZE - b.n;
+    buckets.push_back(b);
+  }
+
+  vector<Bucket>& get_buckets() { return buckets; }
+
+  int get_slack() const { return slack; }
+
+  void compact() {
+    sort(buckets.begin(), buckets.end(), [](const auto &a, const auto &b){
+      return a.n < b.n;
+    });
+    for (int i = 0; i + 1 < int(buckets.size()); ) {
+      Bucket &L = buckets[i];
+      Bucket &R = buckets.back();
+      int m = min(BSIZE - L.n, R.n);
+      memcpy(L.arr + L.n, R.arr + R.n - m, m * sizeof(long long));
+      L.n += m;
+      R.n -= m;
+      if (L.n == BSIZE) i++;
+      if (R.n == 0) buckets.pop_back();
+    }
+  }
+
+  pair<long long*, int> next_slack() {
+    while (slack_index < int(buckets.size())) {
+      Bucket& b = buckets[slack_index];
+      if (b.n < BSIZE) {
+        return make_pair(b.arr + b.n, BSIZE - b.n);
+      }
+      slack_index++;
+    }
+    Bucket b(allocate_array(BSIZE), 0);
+    append(b);
+    return make_pair(b.arr, BSIZE);
+  }
+
+  void consume_slack(int amt) {
+    assert(slack_index < int(buckets.size()));
+    Bucket& b = buckets[slack_index];
+    b.n += amt;
+    slack -= amt;
+    assert(b.n <= BSIZE);
+  }
+
+  bool is_less_than(long long p) const {
+    for (Bucket b : buckets) {
+      if (!b.is_less_than(p)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  bool is_at_least(long long p) const {
+    for (Bucket b : buckets) {
+      if (!b.is_at_least(p)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  int num_elements() const {
+    int num = 0;
+    for (Bucket b : buckets) {
+      num += b.n;
+    }
+    return num;
+  }
+
+  long long csum() const {
+    long long ret = 0;
+    for (Bucket b : buckets) {
+      ret += b.csum();
+    }
+    return ret;
+  }
+};
+
+static pair<Chain, Chain> std_partition(Chain& chain, long long p) {
+  Chain left_chain, right_chain;
+  for (Bucket b : chain.get_buckets()) {
+    int i =
+        int(partition(b.arr, b.arr + b.n, [p](auto const v) { return v < p; }) -
+            b.arr);
+    Bucket L(allocate_array(BSIZE), i);
+    Bucket R(allocate_array(BSIZE), b.n - i);
+    memcpy(L.arr, b.arr, L.n * sizeof(long long));
+    memcpy(R.arr, b.arr + i, R.n * sizeof(long long));
+    left_chain.append(L);
+    right_chain.append(R);
+  }
+  return make_pair(left_chain, right_chain);
+}
+
+static pair<Chain, Chain> nobranch_partition(Chain& chain, long long p) {
+  Chain left_chain, right_chain;
+  for (Bucket b : chain.get_buckets()) {
+    Bucket L(allocate_array(BSIZE), 0);
+    Bucket R(allocate_array(BSIZE), 0);
+
+    for (int i = 0; i < b.n; i++) {
+      int is_less = b.arr[i] < p;
+      L.arr[L.n] = b.arr[i];
+      L.n += is_less;
+      R.arr[R.n] = b.arr[i];
+      R.n += !is_less;
+    }
+
+    left_chain.append(L);
+    right_chain.append(R);
+  }
+  return make_pair(left_chain, right_chain);
+}
+
+static pair<Chain, Chain> nobranch_partition2(Chain& chain, long long p) {
+  Chain left_chain, right_chain;
+  for (Bucket b : chain.get_buckets()) {
+    int n_flipped = 0;
+    for (int i = 1; i < b.n && !n_flipped; i++) {
+      n_flipped += b.arr[i - 1] > b.arr[i];
+    }
+    if (n_flipped == 0) {
+      // is ascending.
+      if (b.last() < p) {
+        left_chain.append(b);
+        continue;
+      }
+      if (b.first() >= p) {
+        right_chain.append(b);
+        continue;
+      }
+    }
+
+    Bucket L(allocate_array(BSIZE), 0);
+    Bucket R(allocate_array(BSIZE), 0);
+
+    for (int i = 0; i < b.n; i++) {
+      int is_less = b.arr[i] < p;
+      L.arr[L.n] = b.arr[i];
+      L.n += is_less;
+      R.arr[R.n] = b.arr[i];
+      R.n += !is_less;
+    }
+
+    left_chain.append(L);
+    right_chain.append(R);
+  }
+  return make_pair(left_chain, right_chain);
+}
+
+static pair<Chain, Chain> nobranch_partition3(Chain& chain, long long p) {
+  Chain left_chain, right_chain;
+  for (Bucket b : chain.get_buckets()) {
+    int n_flipped = 0;
+    for (int i = 1; i < b.n && !n_flipped; i++) {
+      n_flipped += b.arr[i - 1] > b.arr[i];
+    }
+    if (n_flipped == 0) {
+      // is ascending.
+      if (b.last() < p) {
+        left_chain.append(b);
+        continue;
+      }
+      if (b.first() >= p) {
+        right_chain.append(b);
+        continue;
+      }
+    }
+
+    Bucket R(allocate_array(BSIZE), 0);
+
+    long long* x = b.arr;
+    long long* y = R.arr;
+    for (int i = 0; i < b.n; i++) {
+      int is_less = b.arr[i] < p;
+      *x = b.arr[i];
+      x += is_less;
+      *y = b.arr[i];
+      y += !is_less;
+    }
+    b.n = int(x - b.arr);
+    R.n = int(y - R.arr);
+
+    left_chain.append(b);
+    right_chain.append(R);
+  }
+  return make_pair(left_chain, right_chain);
+}
+
+static pair<Chain, Chain> nobranch_compact(Chain& chain, long long p) {
+  auto res = nobranch_partition3(chain, p);
+  res.first.compact();
+  res.second.compact();
+  return res;
+}
+
+static pair<Chain, Chain> nobranch_compact2(Chain& chain, long long p) {
+  Chain left_chain, right_chain;
+  Random rng(1234);
+  for (Bucket b : chain.get_buckets()) {
+    int n_flipped = 0;
+    for (int i = 1; i < b.n && !n_flipped; i++) {
+      n_flipped += b.arr[i - 1] > b.arr[i];
+    }
+    if (n_flipped == 0) {
+      // is ascending.
+      if (b.last() < p) {
+        left_chain.append(b);
+        continue;
+      }
+      if (b.first() >= p) {
+        right_chain.append(b);
+        continue;
+      }
+    }
+
+    int nhi = 0;
+    for (int i = 0; i < 11; i++) {
+      nhi += b.arr[rng.nextInt(b.n)] >= p;
+    }
+
+    // fprintf(stderr, "slack %d %d\n", left_chain.get_slack(),
+    //         right_chain.get_slack());
+    if (2 * nhi >= 11) {
+      // fprintf(stderr, "left\n");
+      long long* x = b.arr;
+      long long* z = b.arr;
+      while (z < b.arr + b.n) {
+        auto s = right_chain.next_slack();
+        int m = std::min(int(b.arr + b.n - z), s.second);
+        long long* y = s.first;
+        for (; m--; z++) {
+          int is_less = *z < p;
+          *x = *z;
+          x += is_less;
+          *y = *z;
+          y += !is_less;
+        }
+        right_chain.consume_slack(int(y - s.first));
+      }
+      b.n = int(x - b.arr);
+      left_chain.append(b);
+
+      assert_dbg(left_chain.is_less_than(p));
+      assert_dbg(right_chain.is_at_least(p));
+
+    } else {
+      // fprintf(stderr, "right\n");
+      long long* x = b.arr;
+      long long* z = b.arr;
+      while (z < b.arr + b.n) {
+        auto s = left_chain.next_slack();
+        int m = std::min(int(b.arr + b.n - z), s.second);
+        long long* y = s.first;
+        for (; m--; z++) {
+          int is_less = *z < p;
+          *x = *z;
+          x += !is_less;
+          *y = *z;
+          y += is_less;
+        }
+        left_chain.consume_slack(int(y - s.first));
+      } 
+      b.n = int(x - b.arr);
+      right_chain.append(b);
+
+      assert_dbg(left_chain.is_less_than(p));
+      assert_dbg(right_chain.is_at_least(p));
+    }
+  }
+  return make_pair(left_chain, right_chain);
+}
+
+static void swap_offsets(long long* first, long long* last, unsigned char* hi,
+                         unsigned char* lo, int num) {
+  if (num > 0) {
+    long long* l = first + hi[0];
+    long long* r = last - lo[0];
+    long long tmp(*l);
+    *l = *r;
+    for (int i = 1; i < num; ++i) {
+      l = first + hi[i];
+      *r = (*l);
+      r = last - lo[i];
+      *l = (*r);
+    }
+    *r = (tmp);
+  }
+}
+
+#define block_size 64
+
+long long* partition_right_branchless(long long* begin, long long* end,
+                                      long long pivot) {
+  long long* first = begin;
+  long long* last = end;
+  auto comp = std::less<long long>();
+  while (first < last && comp(*first, pivot)) first++;
+  while (first < last && !comp(*(last - 1), pivot)) last--;
+
+  // The branchless partitioning is derived from "BlockQuicksort: How Branch
+  // Mispredictions don’t affect Quicksort" by Stefan Edelkamp and Armin Weiss.
+  unsigned char hi[block_size];
+  unsigned char lo[block_size];
+  int nhi = 0, nlo = 0, ihi = 0, ilo = 0;
+
+  while (last - first > 2 * block_size) {
+    if (nhi == 0) {
+      ihi = 0;
+      long long* it = first;
+      for (unsigned char i = 0; i < block_size;) {
+        hi[nhi] = i++;
+        nhi += !comp(*it++, pivot);
+        hi[nhi] = i++;
+        nhi += !comp(*it++, pivot);
+        hi[nhi] = i++;
+        nhi += !comp(*it++, pivot);
+        hi[nhi] = i++;
+        nhi += !comp(*it++, pivot);
+        hi[nhi] = i++;
+        nhi += !comp(*it++, pivot);
+        hi[nhi] = i++;
+        nhi += !comp(*it++, pivot);
+        hi[nhi] = i++;
+        nhi += !comp(*it++, pivot);
+        hi[nhi] = i++;
+        nhi += !comp(*it++, pivot);
+      }
+    }
+    if (nlo == 0) {
+      ilo = 0;
+      long long* it = last;
+      for (unsigned char i = 0; i < block_size;) {
+        lo[nlo] = ++i;
+        nlo += comp(*--it, pivot);
+        lo[nlo] = ++i;
+        nlo += comp(*--it, pivot);
+        lo[nlo] = ++i;
+        nlo += comp(*--it, pivot);
+        lo[nlo] = ++i;
+        nlo += comp(*--it, pivot);
+        lo[nlo] = ++i;
+        nlo += comp(*--it, pivot);
+        lo[nlo] = ++i;
+        nlo += comp(*--it, pivot);
+        lo[nlo] = ++i;
+        nlo += comp(*--it, pivot);
+        lo[nlo] = ++i;
+        nlo += comp(*--it, pivot);
+      }
+    }
+
+    // Swap elements and update block sizes and first/last boundaries.
+    int num = std::min(nhi, nlo);
+    swap_offsets(first, last, hi + ihi, lo + ilo, num);
+    nhi -= num;
+    nlo -= num;
+    ihi += num;
+    ilo += num;
+    if (nhi == 0) first += block_size;
+    if (nlo == 0) last -= block_size;
+  }
+
+  int l_size = 0, r_size = 0;
+  int unknown_left = int((last - first) - ((nlo || nhi) ? block_size : 0));
+  if (nlo) {
+    // Handle leftover block by assigning the unknown elements to the other
+    // block.
+    l_size = unknown_left;
+    r_size = block_size;
+  } else if (nhi) {
+    l_size = block_size;
+    r_size = unknown_left;
+  } else {
+    // No leftover block, split the unknown elements in two blocks.
+    l_size = unknown_left / 2;
+    r_size = unknown_left - l_size;
+  }
+
+  // Fill offset buffers if needed.
+  if (unknown_left && !nhi) {
+    ihi = 0;
+    long long* it = first;
+    for (unsigned char i = 0; i < l_size;) {
+      hi[nhi] = i++;
+      nhi += !comp(*it++, pivot);
+    }
+  }
+  if (unknown_left && !nlo) {
+    ilo = 0;
+    long long* it = last;
+    for (unsigned char i = 0; i < r_size;) {
+      lo[nlo] = ++i;
+      nlo += comp(*--it, pivot);
+    }
+  }
+
+  int num = std::min(nhi, nlo);
+  swap_offsets(first, last, hi + ihi, lo + ilo, num);
+  nhi -= num;
+  nlo -= num;
+  ihi += num;
+  ilo += num;
+  if (nhi == 0) first += l_size;
+  if (nlo == 0) last -= r_size;
+
+  // We have now fully identified [first, last)'s proper position. Swap the last
+  // elements.
+  if (nhi) {
+    while (nhi--) std::iter_swap(first + hi[ihi + nhi], --last);
+    first = last;
+  }
+  if (nlo) {
+    while (nlo--) std::iter_swap(last - lo[ilo + nlo], first), ++first;
+    last = first;
+  }
+
+  // Put the pivot in the right place.
+  return first;
+}
+
+static pair<Chain, Chain> block_qsort_basic(Chain& chain, long long p) {
+  Chain left_chain, right_chain;
+  for (Bucket b : chain.get_buckets()) {
+    int i = int(partition_right_branchless(b.arr, b.arr + b.n, p) - b.arr);
+    Bucket L(allocate_array(BSIZE), i);
+    Bucket R(allocate_array(BSIZE), b.n - i);
+    memcpy(L.arr, b.arr, L.n * sizeof(long long));
+    memcpy(R.arr, b.arr + i, R.n * sizeof(long long));
+    left_chain.append(L);
+    right_chain.append(R);
+  }
+  return make_pair(left_chain, right_chain);
+}
+
+// TODO: optimize this
+static pair<Chain, Chain> block_qsort_opt(Chain& chain, long long p) {
+  Chain left_chain, right_chain;
+  for (Bucket b : chain.get_buckets()) {
+    int i = int(partition_right_branchless(b.arr, b.arr + b.n, p) - b.arr);
+    Bucket L(allocate_array(BSIZE), i);
+    Bucket R(allocate_array(BSIZE), b.n - i);
+    memcpy(L.arr, b.arr, L.n * sizeof(long long));
+    memcpy(R.arr, b.arr + i, R.n * sizeof(long long));
+    left_chain.append(L);
+    right_chain.append(R);
+  }
+  return make_pair(left_chain, right_chain);
+}
+
+#define MAXN (1 << 26)
+#define NBUCKETS (1 << 10)
+
+static long long arr[MAXN];
+static int arr_sz;
+
+static long long* allocate_array(int sz) {
+  arr_sz += sz;
+  return arr + arr_sz - sz;
+}
+
+static void varying_randomness(function<void(int)> cb) {
+  for (int percent_e3 = 100000, m = 1;;) {
+    percent_e3 = max(0, percent_e3);
+    cb(percent_e3);
+    if (percent_e3 <= 0) break;
+    percent_e3 -= m;
+    m *= 2;
+  }
+}
+
+static void run_test(const char* name,
+                     function<pair<Chain, Chain>(Chain&, long long)> algo) {
+  fprintf(stderr, "%20s: ", name);
+  Random rng(140384);
+  double total_time = 0;
+  long long chk = 0;
+  long long nleft = 0, nright = 0;
+  varying_randomness([&](int percent_e3) {
+    Chain chain;
+    arr_sz = 0;
+    for (int i = 0; i < NBUCKETS; i++) {
+      chain.append(Bucket(allocate_array(BSIZE), BSIZE));
+    }
+
+    percent_e3 = max(0, percent_e3);
+    for (int i = 0; i < arr_sz; i++) {
+      arr[i] = i;  // rng.nextLong();
+      if (rng.nextInt(100000) < 100000 - percent_e3) {
+        swap(arr[i], arr[rng.nextInt(i + 1)]);
+      }
+    }
+
+    long long p = arr_sz / 2;  // Roughly in the middle.
+    pair<Chain, Chain> res;
+    double split_time = time_it([&] { res = algo(chain, p); });
+    nleft += res.first.num_elements();
+    nright += res.second.num_elements();
+    chk = (chk * 13 + res.first.csum()) * 7 + res.second.csum();
+
+    fprintf(stderr, "%6.2lf", split_time * 1000);
+    total_time += split_time;
+  });
+
+  fprintf(stderr, " %10.3lf %5.2lf %20lld\n", total_time * 1000,
+          100.0 * nleft / (nleft + nright), chk);
+}
+
+int main(int argc, char* argv[]) {
+  memset(arr, 1, sizeof(long long) * MAXN);
+  fprintf(stderr, "%20s  ", "");
+  varying_randomness(
+      [](int percent_e3) { fprintf(stderr, "%6.2lf", percent_e3 / 1000.0); });
+  fprintf(stderr, " %10s ratio %20s\n", "total_time", "csum");
+
+  run_test("block_qsort_opt", block_qsort_opt);
+  run_test("std_partition", std_partition);
+  run_test("nobranch_partition", nobranch_partition);
+  run_test("nobranch_partition2", nobranch_partition2);
+  run_test("nobranch_partition3", nobranch_partition3);
+  run_test("nobranch_compact", nobranch_compact);
+  run_test("nobranch_compact2", nobranch_compact2);
+  run_test("block_qsort_basic", block_qsort_basic);
 }

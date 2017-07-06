@@ -50,6 +50,9 @@ ctree_sort: $(BDIR)/ctree_sort
 partition: $(BDIR)/partition
 	$(BDIR)/partition
 
+split: $(BDIR)/split
+	$(BDIR)/split
+
 
 all: \
 	$(ODIR)/art_best \
