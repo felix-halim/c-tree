@@ -1170,12 +1170,11 @@ class Chain {
   int get_slack() const { return slack; }
 
   void compact() {
-    sort(buckets.begin(), buckets.end(), [](const auto &a, const auto &b){
-      return a.n < b.n;
-    });
-    for (int i = 0; i + 1 < int(buckets.size()); ) {
-      Bucket &L = buckets[i];
-      Bucket &R = buckets.back();
+    sort(buckets.begin(), buckets.end(),
+         [](const auto& a, const auto& b) { return a.n < b.n; });
+    for (int i = 0; i + 1 < int(buckets.size());) {
+      Bucket& L = buckets[i];
+      Bucket& R = buckets.back();
       int m = min(BSIZE - L.n, R.n);
       memcpy(L.arr + L.n, R.arr + R.n - m, m * sizeof(long long));
       L.n += m;
@@ -1244,6 +1243,21 @@ class Chain {
 static pair<Chain, Chain> std_partition(Chain& chain, long long p) {
   Chain left_chain, right_chain;
   for (Bucket b : chain.get_buckets()) {
+    int n_flipped = 0;
+    for (int i = 1; i < b.n && !n_flipped; i++) {
+      n_flipped += b.arr[i - 1] > b.arr[i];
+    }
+    if (n_flipped == 0) {
+      // is ascending.
+      if (b.last() < p) {
+        left_chain.append(b);
+        continue;
+      }
+      if (b.first() >= p) {
+        right_chain.append(b);
+        continue;
+      }
+    }
     int i =
         int(partition(b.arr, b.arr + b.n, [p](auto const v) { return v < p; }) -
             b.arr);
@@ -1258,26 +1272,6 @@ static pair<Chain, Chain> std_partition(Chain& chain, long long p) {
 }
 
 static pair<Chain, Chain> nobranch_partition(Chain& chain, long long p) {
-  Chain left_chain, right_chain;
-  for (Bucket b : chain.get_buckets()) {
-    Bucket L(allocate_array(BSIZE), 0);
-    Bucket R(allocate_array(BSIZE), 0);
-
-    for (int i = 0; i < b.n; i++) {
-      int is_less = b.arr[i] < p;
-      L.arr[L.n] = b.arr[i];
-      L.n += is_less;
-      R.arr[R.n] = b.arr[i];
-      R.n += !is_less;
-    }
-
-    left_chain.append(L);
-    right_chain.append(R);
-  }
-  return make_pair(left_chain, right_chain);
-}
-
-static pair<Chain, Chain> nobranch_partition2(Chain& chain, long long p) {
   Chain left_chain, right_chain;
   for (Bucket b : chain.get_buckets()) {
     int n_flipped = 0;
@@ -1299,13 +1293,19 @@ static pair<Chain, Chain> nobranch_partition2(Chain& chain, long long p) {
     Bucket L(allocate_array(BSIZE), 0);
     Bucket R(allocate_array(BSIZE), 0);
 
-    for (int i = 0; i < b.n; i++) {
-      int is_less = b.arr[i] < p;
-      L.arr[L.n] = b.arr[i];
-      L.n += is_less;
-      R.arr[R.n] = b.arr[i];
-      R.n += !is_less;
+    long long* x = L.arr;
+    long long* y = R.arr;
+    long long* z = b.arr;
+
+    for (long long* end = b.arr + b.n; z < end; z++) {
+      int is_less = *z < p;
+      *x = *z;
+      x += is_less;
+      *y = *z;
+      y += !is_less;
     }
+    L.n = int(x - L.arr);
+    R.n = int(y - R.arr);
 
     left_chain.append(L);
     right_chain.append(R);
@@ -1313,7 +1313,7 @@ static pair<Chain, Chain> nobranch_partition2(Chain& chain, long long p) {
   return make_pair(left_chain, right_chain);
 }
 
-static pair<Chain, Chain> nobranch_partition3(Chain& chain, long long p) {
+static pair<Chain, Chain> nobranch_partition2(Chain& chain, long long p) {
   Chain left_chain, right_chain;
   for (Bucket b : chain.get_buckets()) {
     int n_flipped = 0;
@@ -1353,7 +1353,7 @@ static pair<Chain, Chain> nobranch_partition3(Chain& chain, long long p) {
 }
 
 static pair<Chain, Chain> nobranch_compact(Chain& chain, long long p) {
-  auto res = nobranch_partition3(chain, p);
+  auto res = nobranch_partition2(chain, p);
   res.first.compact();
   res.second.compact();
   return res;
@@ -1425,7 +1425,7 @@ static pair<Chain, Chain> nobranch_compact2(Chain& chain, long long p) {
           y += is_less;
         }
         left_chain.consume_slack(int(y - s.first));
-      } 
+      }
       b.n = int(x - b.arr);
       right_chain.append(b);
 
@@ -1587,6 +1587,21 @@ long long* partition_right_branchless(long long* begin, long long* end,
 static pair<Chain, Chain> block_qsort_basic(Chain& chain, long long p) {
   Chain left_chain, right_chain;
   for (Bucket b : chain.get_buckets()) {
+    int n_flipped = 0;
+    for (int i = 1; i < b.n && !n_flipped; i++) {
+      n_flipped += b.arr[i - 1] > b.arr[i];
+    }
+    if (n_flipped == 0) {
+      // is ascending.
+      if (b.last() < p) {
+        left_chain.append(b);
+        continue;
+      }
+      if (b.first() >= p) {
+        right_chain.append(b);
+        continue;
+      }
+    }
     int i = int(partition_right_branchless(b.arr, b.arr + b.n, p) - b.arr);
     Bucket L(allocate_array(BSIZE), i);
     Bucket R(allocate_array(BSIZE), b.n - i);
@@ -1602,13 +1617,22 @@ static pair<Chain, Chain> block_qsort_basic(Chain& chain, long long p) {
 static pair<Chain, Chain> block_qsort_opt(Chain& chain, long long p) {
   Chain left_chain, right_chain;
   for (Bucket b : chain.get_buckets()) {
-    int i = int(partition_right_branchless(b.arr, b.arr + b.n, p) - b.arr);
-    Bucket L(allocate_array(BSIZE), i);
-    Bucket R(allocate_array(BSIZE), b.n - i);
-    memcpy(L.arr, b.arr, L.n * sizeof(long long));
-    memcpy(R.arr, b.arr + i, R.n * sizeof(long long));
-    left_chain.append(L);
-    right_chain.append(R);
+    int n_flipped = 0;
+    for (int i = 1; i < b.n && !n_flipped; i++) {
+      n_flipped += b.arr[i - 1] > b.arr[i];
+    }
+    if (n_flipped == 0) {
+      // is ascending.
+      if (b.last() < p) {
+        left_chain.append(b);
+        continue;
+      }
+      if (b.first() >= p) {
+        right_chain.append(b);
+        continue;
+      }
+    }
+    partition_right_branchless(b.arr, b.arr + b.n, p);
   }
   return make_pair(left_chain, right_chain);
 }
@@ -1682,7 +1706,6 @@ int main(int argc, char* argv[]) {
   run_test("std_partition", std_partition);
   run_test("nobranch_partition", nobranch_partition);
   run_test("nobranch_partition2", nobranch_partition2);
-  run_test("nobranch_partition3", nobranch_partition3);
   run_test("nobranch_compact", nobranch_compact);
   run_test("nobranch_compact2", nobranch_compact2);
   run_test("block_qsort_basic", block_qsort_basic);

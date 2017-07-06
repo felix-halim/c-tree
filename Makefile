@@ -1,5 +1,5 @@
 CXX = clang++
-CXX_FLAGS = -std=c++1y \
+CXX_FLAGS = -std=c++1y -stdlib=libc++ \
 -Wfatal-errors -Wall -Wextra \
 -Wpedantic -Wconversion -Wshadow \
 -Wno-unused-parameter \
