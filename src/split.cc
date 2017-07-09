@@ -1125,6 +1125,23 @@ class Bucket {
 
   long long last() const { return arr[n - 1]; }
 
+  Bucket split(long long p) {
+    Bucket R(allocate_array(BSIZE), 0);
+    long long* x = arr;
+    long long* y = R.arr;
+    long long* z = arr;
+    for (int i = n; i--; z++) {
+      int is_less = *z < p;
+      *x = *z;
+      x += is_less;
+      *y = *z;
+      y += !is_less;
+    }
+    n = int(x - arr);
+    R.n = int(y - R.arr);
+    return R;
+  }
+
   bool is_less_than(long long p) const {
     for (int i = 0; i < n; i++) {
       if (arr[i] >= p) {
@@ -1331,23 +1348,8 @@ static pair<Chain, Chain> nobranch_partition2(Chain& chain, long long p) {
         continue;
       }
     }
-
-    Bucket R(allocate_array(BSIZE), 0);
-
-    long long* x = b.arr;
-    long long* y = R.arr;
-    for (int i = 0; i < b.n; i++) {
-      int is_less = b.arr[i] < p;
-      *x = b.arr[i];
-      x += is_less;
-      *y = b.arr[i];
-      y += !is_less;
-    }
-    b.n = int(x - b.arr);
-    R.n = int(y - R.arr);
-
+    right_chain.append(b.split(p));
     left_chain.append(b);
-    right_chain.append(R);
   }
   return make_pair(left_chain, right_chain);
 }
@@ -1613,26 +1615,163 @@ static pair<Chain, Chain> block_qsort_basic(Chain& chain, long long p) {
   return make_pair(left_chain, right_chain);
 }
 
-// TODO: optimize this
+static pair<int, int> partition_branchless(long long* L, int nL, long long* R,
+                                           int nR, long long pivot) {
+  // fprintf(stderr, "n = %d %d\n", nL, nR);
+  long long* first = L;
+  long long* last = R + nR;
+  auto comp = std::less<long long>();
+
+  // TODO: Unroll.
+  while (first < L + nL && comp(*first, pivot)) first++;
+  while (R < last && !comp(*(last - 1), pivot)) last--;
+
+  // The branchless partitioning is derived from "BlockQuicksort: How Branch
+  // Mispredictions don’t affect Quicksort" by Stefan Edelkamp and Armin Weiss.
+  unsigned char hi[block_size];
+  unsigned char lo[block_size];
+  int nhi = 0, nlo = 0, ihi = 0, ilo = 0;
+
+  while (first + block_size <= L + nL && last - block_size >= R) {
+    if (nhi == 0) {
+      ihi = 0;
+      long long* it = first;
+      for (unsigned char i = 0; i < block_size;) {
+        hi[nhi] = i++;
+        nhi += !comp(*it++, pivot);
+        hi[nhi] = i++;
+        nhi += !comp(*it++, pivot);
+        hi[nhi] = i++;
+        nhi += !comp(*it++, pivot);
+        hi[nhi] = i++;
+        nhi += !comp(*it++, pivot);
+        hi[nhi] = i++;
+        nhi += !comp(*it++, pivot);
+        hi[nhi] = i++;
+        nhi += !comp(*it++, pivot);
+        hi[nhi] = i++;
+        nhi += !comp(*it++, pivot);
+        hi[nhi] = i++;
+        nhi += !comp(*it++, pivot);
+      }
+    }
+    if (nlo == 0) {
+      ilo = 0;
+      long long* it = last;
+      for (unsigned char i = 0; i < block_size;) {
+        lo[nlo] = ++i;
+        nlo += comp(*--it, pivot);
+        lo[nlo] = ++i;
+        nlo += comp(*--it, pivot);
+        lo[nlo] = ++i;
+        nlo += comp(*--it, pivot);
+        lo[nlo] = ++i;
+        nlo += comp(*--it, pivot);
+        lo[nlo] = ++i;
+        nlo += comp(*--it, pivot);
+        lo[nlo] = ++i;
+        nlo += comp(*--it, pivot);
+        lo[nlo] = ++i;
+        nlo += comp(*--it, pivot);
+        lo[nlo] = ++i;
+        nlo += comp(*--it, pivot);
+      }
+    }
+
+    // Swap elements and update block sizes and first/last boundaries.
+    int num = std::min(nhi, nlo);
+    swap_offsets(first, last, hi + ihi, lo + ilo, num);
+    nhi -= num;
+    nlo -= num;
+    ihi += num;
+    ilo += num;
+    if (nhi == 0) first += block_size;
+    if (nlo == 0) last -= block_size;
+  }
+
+  int l_size = min(block_size, int(L + nL - first));
+  if (first < L + nL && !nhi) {
+    ihi = 0;
+    long long* it = first;
+    for (unsigned char i = 0; i < l_size;) {
+      hi[nhi] = i++;
+      nhi += !comp(*it++, pivot);
+    }
+  }
+
+  int r_size = min(block_size, int(last - R));
+  if (last > R && !nlo) {
+    ilo = 0;
+    long long* it = last;
+    for (unsigned char i = 0; i < r_size;) {
+      lo[nlo] = ++i;
+      nlo += comp(*--it, pivot);
+    }
+  }
+
+  // fprintf(stderr, "rem %d %d\n", l_size, r_size);
+  int num = std::min(nhi, nlo);
+  swap_offsets(first, last, hi + ihi, lo + ilo, num);
+  nhi -= num;
+  nlo -= num;
+  ihi += num;
+  ilo += num;
+  if (nhi == 0) first += l_size;
+  if (nlo == 0) last -= r_size;
+  assert(first <= L + nL);
+  assert(last >= R);
+
+  return make_pair(first - L, R + nR - last);
+}
+
 static pair<Chain, Chain> block_qsort_opt(Chain& chain, long long p) {
   Chain left_chain, right_chain;
-  for (Bucket b : chain.get_buckets()) {
-    int n_flipped = 0;
-    for (int i = 1; i < b.n && !n_flipped; i++) {
-      n_flipped += b.arr[i - 1] > b.arr[i];
-    }
-    if (n_flipped == 0) {
-      // is ascending.
-      if (b.last() < p) {
-        left_chain.append(b);
-        continue;
+  vector<Bucket>& buckets = chain.get_buckets();
+  int i = 0, j = int(buckets.size()) - 1;
+  Bucket* L = nullptr;
+  Bucket* R = nullptr;
+  int ihi = 0, ilo = 0;
+  while (i <= j) {
+    // fprintf(stderr, "%d %d\n", i, j);
+    if (L == nullptr) {
+      L = &buckets[i++];
+      ihi = 0;
+    } else if (R == nullptr) {
+      R = &buckets[j--];
+      ilo = 0;
+    } else {
+      auto m =
+          partition_branchless(L->arr + ihi, L->n - ihi, R->arr, R->n - ilo, p);
+      // fprintf(stderr, "m %d %d\n", m.first, m.second);
+      ihi += m.first;
+      assert(ihi <= L->n);
+      ilo += m.second;
+      assert(ilo <= R->n);
+      if (ihi == L->n) {
+        assert_dbg(left_chain.is_less_than(p));
+        left_chain.append(*L);
+        assert_dbg(left_chain.is_less_than(p));
+        L = nullptr;
       }
-      if (b.first() >= p) {
-        right_chain.append(b);
-        continue;
+      if (ilo == R->n) {
+        assert_dbg(right_chain.is_at_least(p));
+        right_chain.append(*R);
+        assert_dbg(right_chain.is_at_least(p));
+        R = nullptr;
       }
     }
-    partition_right_branchless(b.arr, b.arr + b.n, p);
+  }
+  if (L) {
+    right_chain.append(L->split(p));
+    assert_dbg(right_chain.is_at_least(p));
+    left_chain.append(*L);
+    assert_dbg(left_chain.is_less_than(p));
+  }
+  if (R) {
+    right_chain.append(R->split(p));
+    assert_dbg(right_chain.is_at_least(p));
+    left_chain.append(*R);
+    assert_dbg(left_chain.is_less_than(p));
   }
   return make_pair(left_chain, right_chain);
 }
