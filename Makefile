@@ -44,8 +44,8 @@ test:
 	make IN=$(IN) CHK=$(CHK) PROG=google/btree
 	make IN=$(IN) CHK=$(CHK) PROG=stx/btree
 
-ctree_sort: $(BDIR)/ctree_sort
-	$(BDIR)/ctree_sort
+test_sorts: $(BDIR)/experiments/test_sorts
+	$(BDIR)/experiments/test_sorts
 
 partition: $(BDIR)/partition
 	$(BDIR)/partition

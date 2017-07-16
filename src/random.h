@@ -1,3 +1,6 @@
+#ifndef RANDOM_H
+#define RANDOM_H
+
 // Extracted from java.util.Random
 class Random {
   static const long long multiplier = 0x5DEECE66DLL;
@@ -58,3 +61,5 @@ public:
     return (((long long)(next(26)) << 27) + next(27)) / (double)(1LL << 53);
   }
 };
+
+#endif

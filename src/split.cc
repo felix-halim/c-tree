@@ -1214,6 +1214,13 @@ class Chain {
     return make_pair(b.arr, BSIZE);
   }
 
+  Bucket& get_bucket_to_append() {
+    if (buckets.empty() || buckets.back().n * 2 > BSIZE) {
+      buckets.push_back(Bucket(allocate_array(BSIZE), 0));
+    }
+    return buckets.back();
+  }
+
   void consume_slack(int amt) {
     assert(slack_index < int(buckets.size()));
     Bucket& b = buckets[slack_index];
@@ -1351,6 +1358,55 @@ static pair<Chain, Chain> nobranch_partition2(Chain& chain, long long p) {
     right_chain.append(b.split(p));
     left_chain.append(b);
   }
+  return make_pair(left_chain, right_chain);
+}
+
+static pair<Chain, Chain> nobranch_with_slack(Chain& chain, long long p) {
+  // fprintf(stderr, "start %lu\n", chain.get_buckets().size());
+  Chain left_chain, right_chain;
+  vector<Bucket>& buckets = chain.get_buckets();
+  for (int nth = 0; nth < int(buckets.size()); nth++) {
+    Bucket& L = left_chain.get_bucket_to_append();
+    Bucket& R = right_chain.get_bucket_to_append();
+    Bucket& b = buckets[nth];
+
+    if (b.n == BSIZE) {
+      int n_flipped = 0;
+      for (int i = 1; i < b.n && !n_flipped; i++) {
+        n_flipped += b.arr[i - 1] > b.arr[i];
+      }
+      if (n_flipped == 0) {
+        // is ascending.
+        if (b.last() < p) {
+          left_chain.append(b);
+          continue;
+        }
+        if (b.first() >= p) {
+          right_chain.append(b);
+          continue;
+        }
+      }
+    }
+
+    long long* x = L.arr + L.n;
+    long long* y = R.arr + R.n;
+    long long* z = b.arr + b.n - 1;
+    int n = min(b.n, min(BSIZE - L.n, BSIZE - R.n));
+    for (int i = n; i--; z--) {
+      int is_less = *z < p;
+      *x = *z;
+      x += is_less;
+      *y = *z;
+      y += !is_less;
+    }
+    L.n = int(x - L.arr);
+    R.n = int(y - R.arr);
+    b.n -= n;
+
+    if (b.n > 0) nth--;
+  }
+  // fprintf(stderr, "end %lu %lu\n", left_chain.get_buckets().size(),
+  // right_chain.get_buckets().size());
   return make_pair(left_chain, right_chain);
 }
 
@@ -1841,6 +1897,7 @@ int main(int argc, char* argv[]) {
       [](int percent_e3) { fprintf(stderr, "%6.2lf", percent_e3 / 1000.0); });
   fprintf(stderr, " %10s ratio %20s\n", "total_time", "csum");
 
+  run_test("nobranch_with_slack", nobranch_with_slack);
   run_test("block_qsort_opt", block_qsort_opt);
   run_test("std_partition", std_partition);
   run_test("nobranch_partition", nobranch_partition);
