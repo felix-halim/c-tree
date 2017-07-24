@@ -1,7 +1,7 @@
 /*
 To run, go to the root folder and execute:
 
-make ctree_sort
+make test_sorts
 */
 
 #include <cassert>
@@ -12,10 +12,10 @@ make ctree_sort
 
 #include "../random.h"
 #include "../time_it.h"
+#include "ctree.h"
 #include "parallel_sort.h"
 #include "ska_sort.h"
 #include "vergesort.h"
-#include "ctree.h"
 
 #ifdef DBG
 #define MAXN (1 << 20)
@@ -29,7 +29,6 @@ static long long arr[MAXN];
 
 using namespace std;
 
-#define KNRM "\x1B[0m"
 #define KRED "\x1B[31m"
 #define KGRN "\x1B[32m"
 #define KYEL "\x1B[33m"
@@ -45,7 +44,7 @@ static void run(const char *name,
   fprintf(stderr, "%s (N = %d):\n", name, MAXN);
   Random random(140384);
   int p100 = 100000;
-  for (int p = p100; p > 0; p /= 2) {
+  for (int p = p100;; p /= 2) {
     int misplaced = 0;
     long long sorted_chk = 0;
     for (int i = 0; i < MAXN; i++) {
@@ -66,6 +65,9 @@ static void run(const char *name,
     fprintf(stderr, "%7.3lf%% sorted: %10.6lf s, rswaps = %8d%s\n", p / 1000.0,
             sort_time, misplaced,
             chk == sorted_chk ? "" : (" " KRED "[CHK Failed]" RESET));
+    if (p == 0) {
+      break;
+    }
   }
   fprintf(stderr, "\n");
 }
@@ -74,7 +76,7 @@ static void std_sort(long long a[], int n) { std::sort(a, a + n); }
 static void std_parallel_sort(long long a[], int n) { parallel_sort(a, n); }
 static void verge_sort(long long a[], int n) { vergesort::vergesort(a, a + n); }
 static void skasort(long long a[], int n) { ska_sort(a, a + n); }
-static void ctree_sort(long long a[], int n) { CTree<BSIZE>().sort(a, n); }
+static void ctree_sort(long long a[], int n) { ctreesort<BSIZE>(a, n); }
 
 int main() {
   run("ctree_sort", ctree_sort);
