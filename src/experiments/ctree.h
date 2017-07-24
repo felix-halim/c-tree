@@ -2,6 +2,7 @@
 #include <vector>
 
 #include "../random.h"
+#include "vergesort.h"
 
 #ifdef DBG
 #define assert_dbg(x) assert(x)
@@ -12,7 +13,7 @@
 static int nswap;
 static Random rng(140384);
 
-static const int tmp_max = 1 << 28;
+static const int tmp_max = 1 << 27;
 static long long *tmp;
 static std::vector<long long *> free_ptrs;
 static int tmp_size;
@@ -178,7 +179,7 @@ class Bucket {
   bool at_least_half_empty() const { return n * 2 <= BCAP; }
   long long get_random_pivot() const { return arr[rng.nextInt(n)]; }
 
-  void deallocate() { deallocate_elements(arr); }
+  void deallocate() const { deallocate_elements(arr); }
 
   bool is_sorted() {
     if (sorted == 2) {
@@ -193,26 +194,18 @@ class Bucket {
 
   void sort() {
     if (sorted == 1) return;
-    std::sort(arr, arr + n);
+    // std::sort(arr, arr + n);
+    vergesort::vergesort(arr, arr + n);
     sorted = 1;
   }
 
-  void moveToFromIdx(Bucket &to, int fromIdx) {
-    assert(arr != to.arr);
-    assert(n > fromIdx);
-    assert(to.n + n - fromIdx <= BCAP);
-
-    memcpy(to.arr + to.n, arr + fromIdx, (n - fromIdx) * sizeof(long long));
-    to.n += n - fromIdx;
-    n = fromIdx;
+  void copyTo(long long *target) const {
+    memcpy(target, arr, sizeof(long long) * n);
   }
-
-  void copyTo(long long *target) { memcpy(target, arr, sizeof(long long) * n); }
 
   void partition(int &ihi, Bucket *R, int &ilo, long long p) {
     int prev_nswap = nswap;
     auto m = partition_branchless(arr + ihi, n - ihi, R->arr, R->n - ilo, p);
-    // fprintf(stderr, "m %d %d\n", m.first, m.second);
     ihi += m.first;
     assert(ihi <= n);
     ilo += m.second;
@@ -241,7 +234,7 @@ class Bucket {
     return b;
   }
 
-  bool is_less_than(long long p) {
+  bool is_less_than(long long p) const {
     for (int i = 0; i < n; i++) {
       if (arr[i] >= p) {
         return false;
@@ -250,7 +243,7 @@ class Bucket {
     return true;
   }
 
-  bool is_at_least(long long p) {
+  bool is_at_least(long long p) const {
     for (int i = 0; i < n; i++) {
       if (arr[i] < p) {
         return false;
@@ -262,9 +255,9 @@ class Bucket {
 
 template <class T>
 class Chain {
- public:
   std::vector<T> buckets;
 
+ public:
   bool empty() const { return buckets.empty(); }
 
   int size() const { return int(buckets.size()); }
@@ -290,31 +283,15 @@ class Chain {
   }
 
   void append(T b) {
-    // trim_last();
-
     if (b.empty()) {
       b.deallocate();
       return;
     }
-
-    // if (!buckets.empty() && buckets.back().slack()) {
-    //   Bucket &tail = buckets.back();
-    // if (b.slack() < tail.slack()) {
-    //   swap(b, tail);
-    // }
-    // if (tail.slack()) {
-    //   b.moveToFromIdx(tail, b.size() - std::min(b.size(), tail.slack()));
-    // }
-    // if (b.empty()) {
-    //   deallocate(b.arr);
-    //   return;
-    // }
-    // }
-
+    trim_last();
     buckets.push_back(b);
   }
 
-  bool is_less_than(long long p) {
+  bool is_less_than(long long p) const {
     for (const auto &b : buckets) {
       if (!b.is_less_than(p)) {
         return false;
@@ -323,7 +300,7 @@ class Chain {
     return true;
   }
 
-  bool is_at_least(long long p) {
+  bool is_at_least(long long p) const {
     for (const auto &b : buckets) {
       if (!b.is_at_least(p)) {
         return false;
@@ -332,7 +309,7 @@ class Chain {
     return true;
   }
 
-  bool distinct() {
+  bool distinct() const {
     std::vector<long long> s;
     for (const auto &b : buckets) {
       s.push_back(b.arr[0]);
@@ -345,7 +322,7 @@ class Chain {
   }
 
   bool quick_split(T &b, long long p, Chain<T> &left_chain,
-                   Chain<T> &right_chain) {
+                   Chain<T> &right_chain) const {
     if (b.is_sorted()) {
       if (b.first() >= p) {
         right_chain.append(b);
@@ -368,24 +345,6 @@ class Chain {
       T &L = left_chain.get_bucket_to_append(new_bucket);
       T &R = right_chain.get_bucket_to_append(new_bucket);
       T &b = ref(nth);
-
-      // if (b.n == BCAP) {
-      //   int n_flipped = 0;
-      //   for (int i = 1; i < b.n && !n_flipped; i++) {
-      //     n_flipped += b.arr[i - 1] > b.arr[i];
-      //   }
-      //   if (n_flipped == 0) {
-      //     // is ascending.
-      //     if (b.last() < p) {
-      //       left_chain.append(b);
-      //       continue;
-      //     }
-      //     if (b.first() >= p) {
-      //       right_chain.append(b);
-      //       continue;
-      //     }
-      //   }
-      // }
 
       long long *x = L.arr + L.n;
       long long *y = R.arr + R.n;
@@ -419,20 +378,22 @@ class Chain {
     return std::make_pair(left_chain, right_chain);
   }
 
+  std::pair<Chain<T>, Chain<T>> split_chain_noop(std::function<T()> ignored) {
+    Chain<T> left_chain, right_chain;
+    for (int i = 0; i < size(); i++) {
+      T &b = ref(i);
+      if (left_chain.size() > right_chain.size()) {
+        right_chain.append(b);
+      } else {
+        left_chain.append(b);
+      }
+    }
+    return std::make_pair(left_chain, right_chain);
+  }
+
   std::pair<Chain<T>, Chain<T>> split_chain_nb(std::function<T()> new_bucket) {
     long long p = get_random_pivot();
-
     Chain<T> left_chain, right_chain;
-
-    // for (Bucket b : buckets) {
-    //   if (left_chain.buckets.size() > right_chain.buckets.size()) {
-    //     right_chain.append(b);
-    //   } else {
-    //     left_chain.append(b);
-    //   }
-    // }
-    // return make_pair(left_chain, right_chain);
-
     int i = 0, j = size() - 1;
     T *L = nullptr;
     T *R = nullptr;
@@ -485,11 +446,6 @@ class Chain {
 };
 
 template <int BCAP>
-static Bucket<BCAP> new_bucket() {
-  return Bucket<BCAP>(allocate_elements(BCAP), 0);
-}
-
-template <int BCAP>
 static void ctreesort(long long arr[], int N) {
   Chain<Bucket<BCAP>> c;
 
@@ -509,7 +465,7 @@ static void ctreesort(long long arr[], int N) {
   });
 
   nswap = 0;
-  size_t csize = c.buckets.size();
+  size_t csize = c.size();
 
   assert_dbg(c.distinct());
 
@@ -519,58 +475,29 @@ static void ctreesort(long long arr[], int N) {
     c = stk.back();
     stk.pop_back();
 
-    // fprintf(stderr, "split\n");
-    // for (int i = 1; i + 1 < int(c.buckets.size()); i++) {
-    //   if (c.buckets[i].size() != BCAP)
-    //     fprintf(stderr, "i = %d, %lu, %lu, %lu, sz = %d\n", i,
-    //     c.buckets[i].size()
-    //       , c.buckets[0].size(), c.buckets.back().size(),
-    //       c.buckets.size());
-    // }
-
     // fprintf(stderr, "Stack = %lu\n", stk.size());
-    if (c.buckets.size() == 1) {
-      Bucket<BCAP> b = c.buckets[0];
-      b.sort();
-      b.copyTo(arr + N - b.size());
-
-      // fprintf(stderr, "block %d\n", b.n);
-      // for (int i = b.n - 1; i >= 0; i--) {
-      //   int j = N - b.n + i;
-      //   if (arr[j] != j) {
-      //     fprintf(stderr, "arr[%d] = %lld, %lld\n", j, arr[j], b.arr[i]);
-      //     assert(arr[j] == j);
-      //   }
-      // }
-
-      N -= b.size();
-      b.deallocate();
-      continue;
-    }
-
-    if (c.buckets.size() == 2 &&
-        c.buckets[0].size() + c.buckets[1].size() < BCAP) {
+    if (c.size() <= 3) {
       int R = N;
-      c.buckets[0].copyTo(arr + N - c.buckets[0].size());
-      N -= c.buckets[0].size();
-      c.buckets[0].deallocate();
-      c.buckets[1].copyTo(arr + N - c.buckets[1].size());
-      N -= c.buckets[1].size();
-      c.buckets[1].deallocate();
-      std::sort(arr + N, arr + R);
+      for (int i = c.size() - 1; i >= 0; i--) {
+        auto &b = c.ref(i);
+        N -= b.size();
+        b.copyTo(arr + N);
+        b.deallocate();
+      }
+      vergesort::vergesort(arr + N, arr + R);
       continue;
     }
 
     auto p = c.split_chain_nb(
         []() { return Bucket<BCAP>(allocate_elements(BCAP), 0); });
-    if (!p.first.buckets.empty()) {
+    if (p.first.size()) {
       assert_dbg(p.first.distinct());
-      assert(!p.first.buckets[0].empty());
+      assert(!p.first.ref(0).empty());
       stk.push_back(p.first);
     }
-    if (!p.second.buckets.empty()) {
+    if (p.second.size()) {
       assert_dbg(p.second.distinct());
-      assert(!p.second.buckets[0].empty());
+      assert(!p.second.ref(0).empty());
       stk.push_back(p.second);
     }
   }
