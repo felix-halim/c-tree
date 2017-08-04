@@ -1,7 +1,7 @@
 #include <algorithm>
 #include <thread>
 
-void parallel_sort(long long arr[], int N) {
+static void parallel_sort(long long arr[], int N) {
   int q = N / 4;
   long long *q0 = arr;
   long long *q1 = arr + q;
@@ -26,7 +26,7 @@ void parallel_sort(long long arr[], int N) {
   std::inplace_merge(q0, q2, q4);
 }
 
-void parallel_sort8(long long arr[], int N) {
+static void parallel_sort8(long long arr[], int N) {
   int q = N / 8;
   long long *q0 = arr;
   long long *q1 = arr + q;

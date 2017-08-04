@@ -176,7 +176,6 @@ class Bucket {
   int slack() const { return BCAP - n; }
   long long first() const { return arr[0]; }
   long long last() const { return arr[n - 1]; }
-  bool at_least_half_empty() const { return n * 2 <= BCAP; }
   long long get_random_pivot() const { return arr[rng.nextInt(n)]; }
 
   void deallocate() const { deallocate_elements(arr); }
@@ -234,6 +233,23 @@ class Bucket {
     return b;
   }
 
+  void split(int &k, long long p, Bucket &L, Bucket &R) {
+    long long *x = L.arr + L.n;
+    long long *y = R.arr + R.n;
+    long long *z = arr + k;
+    int m = std::min(n - k, std::min(L.capacity() - L.n, R.capacity() - R.n));
+    k += m;
+    for (; m--; z++) {
+      int is_less = *z < p;
+      *x = *z;
+      x += is_less;
+      *y = *z;
+      y += !is_less;
+    }
+    L.n = int(x - L.arr);
+    R.n = int(y - R.arr);
+  }
+
   bool is_less_than(long long p) const {
     for (int i = 0; i < n; i++) {
       if (arr[i] >= p) {
@@ -256,14 +272,28 @@ class Bucket {
 template <class T>
 class Chain {
   std::vector<T> buckets;
+  int num_elements;
 
  public:
+  Chain() : num_elements(0) {}
+
   bool empty() const { return buckets.empty(); }
 
-  int size() const { return int(buckets.size()); }
+  int length() const { return int(buckets.size()); }
 
+  int size() const {
+    return num_elements + (buckets.empty() ? 0 : buckets.back().size());
+  }
+
+  // Median of 9 or 3.
   long long get_random_pivot() const {
-    return buckets[rng.nextInt(size())].get_random_pivot();
+    std::vector<long long> arr;
+    int n = length() > 3 ? 9 : 3;
+    for (int i = 0; i < n; i++) {
+      arr.push_back(buckets[rng.nextInt(length())].get_random_pivot());
+    }
+    std::sort(arr.begin(), arr.end());
+    return arr[arr.size() / 2];
   }
 
   void trim_last() {
@@ -276,10 +306,23 @@ class Chain {
   T &ref(int i) { return buckets[i]; }
 
   T &get_bucket_to_append(std::function<T()> new_bucket) {
-    if (buckets.empty() || buckets.back().at_least_half_empty()) {
+    if (buckets.empty() || !buckets.back().slack()) {
       buckets.push_back(new_bucket());
     }
     return buckets.back();
+  }
+
+  void split(T *b, long long p, Chain &left_chain, Chain &right_chain,
+             std::function<T()> new_bucket) {
+    for (int k = 0; k < b->size();) {
+      T &L = left_chain.get_bucket_to_append(new_bucket);
+      T &R = right_chain.get_bucket_to_append(new_bucket);
+      b->split(k, p, L, R);
+    }
+    assert_dbg(left_chain.is_less_than(p));
+    assert_dbg(right_chain.is_at_least(p));
+    left_chain.trim_last();
+    right_chain.trim_last();
   }
 
   void append(T b) {
@@ -287,7 +330,9 @@ class Chain {
       b.deallocate();
       return;
     }
-    trim_last();
+    if (!buckets.empty()) {
+      num_elements += buckets.back().size();
+    }
     buckets.push_back(b);
   }
 
@@ -336,53 +381,11 @@ class Chain {
     return false;
   }
 
-  std::pair<Chain<T>, Chain<T>> split_chain(std::function<T()> new_bucket) {
-    assert(!empty());
-    long long p = get_random_pivot();
-
-    Chain<T> left_chain, right_chain;
-    for (int nth = 0, k = 0; nth < size(); nth++) {
-      T &L = left_chain.get_bucket_to_append(new_bucket);
-      T &R = right_chain.get_bucket_to_append(new_bucket);
-      T &b = ref(nth);
-
-      long long *x = L.arr + L.n;
-      long long *y = R.arr + R.n;
-      long long *z = b.arr + k;
-      int n =
-          std::min(b.n - k, std::min(L.capacity() - L.n, R.capacity() - R.n));
-      k += n;
-      for (int j = n; j--; z++) {
-        int is_less = *z < p;
-        *x = *z;
-        x += is_less;
-        *y = *z;
-        y += !is_less;
-      }
-      L.n = int(x - L.arr);
-      R.n = int(y - R.arr);
-
-      if (k < b.n) {
-        nth--;
-      } else {
-        b.deallocate();
-        k = 0;
-      }
-    }
-
-    left_chain.trim_last();
-    right_chain.trim_last();
-
-    // fprintf(stderr, "%lu -> %lu %lu\n", buckets.size(),
-    // left_chain.buckets.size(), right_chain.buckets.size());
-    return std::make_pair(left_chain, right_chain);
-  }
-
   std::pair<Chain<T>, Chain<T>> split_chain_noop(std::function<T()> ignored) {
     Chain<T> left_chain, right_chain;
-    for (int i = 0; i < size(); i++) {
+    for (int i = 0; i < length(); i++) {
       T &b = ref(i);
-      if (left_chain.size() > right_chain.size()) {
+      if (left_chain.length() > right_chain.length()) {
         right_chain.append(b);
       } else {
         left_chain.append(b);
@@ -391,28 +394,13 @@ class Chain {
     return std::make_pair(left_chain, right_chain);
   }
 
-  std::pair<Chain<T>, Chain<T>> split_chain_nb(std::function<T()> new_bucket) {
+  std::pair<Chain<T>, Chain<T>> split_chain(std::function<T()> new_bucket) {
     long long p = get_random_pivot();
     Chain<T> left_chain, right_chain;
-    int i = 0, j = size() - 1;
-    T *L = nullptr;
-    T *R = nullptr;
-    int ihi = 0, ilo = 0;
-    while (i <= j) {
+    T *L = nullptr, *R = nullptr;
+    for (int i = 0, j = length() - 1, ihi = 0, ilo = 0;;) {
       // fprintf(stderr, "%d %d\n", i, j);
-      if (L == nullptr) {
-        L = &ref(i++);
-        ihi = 0;
-        if (quick_split(*L, p, left_chain, right_chain)) {
-          L = nullptr;
-        }
-      } else if (R == nullptr) {
-        R = &ref(j--);
-        ilo = 0;
-        if (quick_split(*R, p, left_chain, right_chain)) {
-          R = nullptr;
-        }
-      } else {
+      if (L && R) {
         L->partition(ihi, R, ilo, p);
         if (ihi == L->size()) {
           assert_dbg(left_chain.is_less_than(p));
@@ -426,19 +414,29 @@ class Chain {
           assert_dbg(right_chain.is_at_least(p));
           R = nullptr;
         }
+      } else if (L == nullptr && i <= j) {
+        L = &ref(i++);
+        ihi = 0;
+        if (quick_split(*L, p, left_chain, right_chain)) {
+          L = nullptr;
+        }
+      } else if (R == nullptr && i <= j) {
+        R = &ref(j--);
+        ilo = 0;
+        if (quick_split(*R, p, left_chain, right_chain)) {
+          R = nullptr;
+        }
+      } else {
+        break;
       }
     }
     if (L) {
-      right_chain.append(L->split(p));
-      assert_dbg(right_chain.is_at_least(p));
-      left_chain.append(*L);
-      assert_dbg(left_chain.is_less_than(p));
+      assert(!R);
+      split(L, p, left_chain, right_chain, new_bucket);
     }
     if (R) {
-      right_chain.append(R->split(p));
-      assert_dbg(right_chain.is_at_least(p));
-      left_chain.append(*R);
-      assert_dbg(left_chain.is_less_than(p));
+      assert(!L);
+      split(R, p, left_chain, right_chain, new_bucket);
     }
     std::reverse(right_chain.buckets.begin(), right_chain.buckets.end());
     return std::make_pair(left_chain, right_chain);
@@ -465,7 +463,7 @@ static void ctreesort(long long arr[], int N) {
   });
 
   nswap = 0;
-  size_t csize = c.size();
+  size_t csize = c.length();
 
   assert_dbg(c.distinct());
 
@@ -476,9 +474,9 @@ static void ctreesort(long long arr[], int N) {
     stk.pop_back();
 
     // fprintf(stderr, "Stack = %lu\n", stk.size());
-    if (c.size() <= 3) {
+    if (c.size() <= 3 * BCAP) {
       int R = N;
-      for (int i = c.size() - 1; i >= 0; i--) {
+      for (int i = c.length() - 1; i >= 0; i--) {
         auto &b = c.ref(i);
         N -= b.size();
         b.copyTo(arr + N);
@@ -488,14 +486,14 @@ static void ctreesort(long long arr[], int N) {
       continue;
     }
 
-    auto p = c.split_chain_nb(
+    auto p = c.split_chain(
         []() { return Bucket<BCAP>(allocate_elements(BCAP), 0); });
-    if (p.first.size()) {
+    if (p.first.length()) {
       assert_dbg(p.first.distinct());
       assert(!p.first.ref(0).empty());
       stk.push_back(p.first);
     }
-    if (p.second.size()) {
+    if (p.second.length()) {
       assert_dbg(p.second.distinct());
       assert(!p.second.ref(0).empty());
       stk.push_back(p.second);

@@ -13,7 +13,7 @@ make test_sorts
 #include "../random.h"
 #include "../time_it.h"
 #include "ctree.h"
-#include "parallel_sort.h"
+// #include "parallel_sort.h"
 #include "ska_sort.h"
 #include "vergesort.h"
 
@@ -73,7 +73,6 @@ static void run(const char *name,
 }
 
 static void std_sort(long long a[], int n) { std::sort(a, a + n); }
-static void std_parallel_sort(long long a[], int n) { parallel_sort(a, n); }
 static void verge_sort(long long a[], int n) { vergesort::vergesort(a, a + n); }
 static void skasort(long long a[], int n) { ska_sort(a, a + n); }
 static void ctree_sort(long long a[], int n) { ctreesort<BSIZE>(a, n); }
@@ -81,7 +80,7 @@ static void ctree_sort(long long a[], int n) { ctreesort<BSIZE>(a, n); }
 int main() {
   run("ctree_sort", ctree_sort);
   run("std::sort", std_sort);
-  run("std::parallel_sort", std_parallel_sort);
+  // run("std::parallel_sort", parallel_sort);
   run("vergesort", verge_sort);
   run("ska_sort", skasort);
 }
