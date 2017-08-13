@@ -62,8 +62,8 @@ static void run(const char *name,
     for (int i = 0; i < MAXN; i++) {
       chk = chk * 13 + arr[i];
     }
-    fprintf(stderr, "%7.3lf%% sorted: %10.6lf s, rswaps = %8d%s\n", p / 1000.0,
-            sort_time, misplaced,
+    fprintf(stderr, "%7.3lf%% sorted: %10.6lf s, rswaps = %8d%s\n",
+            (p100 - p) / 1000.0, sort_time, misplaced,
             chk == sorted_chk ? "" : (" " KRED "[CHK Failed]" RESET));
     if (p == 0) {
       break;

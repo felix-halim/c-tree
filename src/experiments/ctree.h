@@ -161,19 +161,28 @@ static std::pair<int, int> partition_branchless(long long *L, int nL,
   return std::make_pair(first - L, R + nR - last);
 }
 
-template <int BCAP>
+static bool is_sorted(long long *arr, int n) {
+  for (int i = 1; i < n; i++) {
+    if (arr[i - 1] > arr[i]) {
+      return false;
+    }
+  }
+  return true;
+}
+
 class Bucket {
   long long *arr;
-  int n;
+  short n;
+  short cap;
   int sorted;  // 0: no, 1: yes, 2: unknown
 
  public:
-  Bucket(long long *a, int sz) : arr(a), n(sz), sorted(2) { assert(n <= BCAP); }
+  Bucket(long long *a, short sz, short c) : arr(a), n(sz), cap(c), sorted(2) {}
 
-  int capacity() const { return BCAP; }
+  int capacity() const { return cap; }
   int size() const { return n; }
-  bool empty() const { return n == 0; }
-  int slack() const { return BCAP - n; }
+  bool empty() const { return size() == 0; }
+  int slack() const { return capacity() - size(); }
   long long first() const { return arr[0]; }
   long long last() const { return arr[n - 1]; }
   long long get_random_pivot() const { return arr[rng.nextInt(n)]; }
@@ -182,11 +191,7 @@ class Bucket {
 
   bool is_sorted() {
     if (sorted == 2) {
-      int flipped = 0;
-      for (int i = 1; i < n && !flipped; i++) {
-        flipped = arr[i - 1] > arr[i];
-      }
-      sorted = !flipped;
+      sorted = ::is_sorted(arr, n);
     }
     return sorted;
   }
@@ -214,25 +219,6 @@ class Bucket {
     }
   }
 
-  // Returns a new bucket containing elements >= p from this bucket preserving
-  // its order. Elements >= p is stably removed from this bucket.
-  Bucket split(long long p) {
-    assert(n > 0 && n <= BCAP);
-    Bucket b(allocate_elements(BCAP), 0);
-    long long *a = arr;
-    long long *x = arr;
-    long long *y = b.arr;
-    for (int i = n; i--;) {
-      int is_less = *a < p;
-      *x = *y = *a++;
-      x += is_less;
-      y += !is_less;
-    }
-    n = int(x - arr);
-    b.n = int(y - b.arr);
-    return b;
-  }
-
   void split(int &k, long long p, Bucket &L, Bucket &R) {
     long long *x = L.arr + L.n;
     long long *y = R.arr + R.n;
@@ -246,8 +232,18 @@ class Bucket {
       *y = *z;
       y += !is_less;
     }
-    L.n = int(x - L.arr);
-    R.n = int(y - R.arr);
+    L.n = short(x - L.arr);
+    R.n = short(y - R.arr);
+  }
+
+  Bucket partition_right(long long p) {
+    short pos = short(
+        std::partition(arr, arr + n, [p](long long a) { return a < p; }) - arr);
+    Bucket right(arr + pos, n - pos, cap - pos);
+    n = pos;
+    cap = pos;
+    sorted = 2;
+    return right;
   }
 
   bool is_less_than(long long p) const {
@@ -323,6 +319,14 @@ class Chain {
     assert_dbg(right_chain.is_at_least(p));
     left_chain.trim_last();
     right_chain.trim_last();
+  }
+
+  void split2(T *b, long long p, Chain &left_chain, Chain &right_chain,
+              std::function<T()> new_bucket) {
+    right_chain.append(b->partition_right(p));
+    left_chain.append(*b);
+    assert_dbg(left_chain.is_less_than(p));
+    assert_dbg(right_chain.is_at_least(p));
   }
 
   void append(T b) {
@@ -445,7 +449,7 @@ class Chain {
 
 template <int BCAP>
 static void ctreesort(long long arr[], int N) {
-  Chain<Bucket<BCAP>> c;
+  Chain<Bucket> c;
 
   double it = time_it([&]() {
     if (!tmp) {
@@ -458,7 +462,7 @@ static void ctreesort(long long arr[], int N) {
       int sz = std::min(BCAP, N - i);
       long long *a = allocate_elements(BCAP);
       memcpy(a, arr + i, sz * sizeof(long long));
-      c.append(Bucket<BCAP>(a, sz));
+      c.append(Bucket(a, short(sz), BCAP));
     }
   });
 
@@ -467,14 +471,14 @@ static void ctreesort(long long arr[], int N) {
 
   assert_dbg(c.distinct());
 
-  std::vector<Chain<Bucket<BCAP>>> stk;
+  std::vector<Chain<Bucket>> stk;
   stk.push_back(c);
   while (stk.size()) {
     c = stk.back();
     stk.pop_back();
 
     // fprintf(stderr, "Stack = %lu\n", stk.size());
-    if (c.size() <= 3 * BCAP) {
+    if (c.size() <= BCAP) {
       int R = N;
       for (int i = c.length() - 1; i >= 0; i--) {
         auto &b = c.ref(i);
@@ -482,12 +486,29 @@ static void ctreesort(long long arr[], int N) {
         b.copyTo(arr + N);
         b.deallocate();
       }
-      vergesort::vergesort(arr + N, arr + R);
+      if (is_sorted(arr + N, R - N)) {
+        continue;
+      }
+      // Use std::sort if its 90% sorted
+      bool ok = false;
+      // if (R - N > 100) {
+      //   int gap = (R - N) / 10;
+      //   for (int i = 1; i < 10; i++) {
+      //     if (arr[N + (i - 1) * gap] > arr[N + i * gap]) {
+      //       ok = false;
+      //     }
+      //   }
+      // }
+      if (ok) {
+        std::sort(arr + N, arr + R);
+      } else {
+        vergesort::vergesort(arr + N, arr + R);
+      }
       continue;
     }
 
     auto p = c.split_chain(
-        []() { return Bucket<BCAP>(allocate_elements(BCAP), 0); });
+        []() { return Bucket(allocate_elements(BCAP), 0, BCAP); });
     if (p.first.length()) {
       assert_dbg(p.first.distinct());
       assert(!p.first.ref(0).empty());
