@@ -1,6 +1,8 @@
 #ifndef RANDOM_H
 #define RANDOM_H
 
+#include <cassert>
+
 // Extracted from java.util.Random
 class Random {
   static const long long multiplier = 0x5DEECE66DLL;

@@ -2,6 +2,7 @@
 #include <vector>
 
 #include "../random.h"
+#include "../time_it.h"
 #include "vergesort.h"
 
 #ifdef DBG
@@ -522,6 +523,6 @@ static void ctreesort(long long arr[], int N) {
   }
   assert(N == 0);
 
-  fprintf(stderr, "BCAP = %d, chains = %lu, in %.3lf, nswap = %9d; ", BCAP,
-          csize, it, nswap);
+  // fprintf(stderr, "BCAP = %d, chains = %lu, in %.3lf, nswap = %9d; ", BCAP,
+  //         csize, it, nswap);
 }

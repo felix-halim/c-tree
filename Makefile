@@ -1,5 +1,5 @@
 CXX = clang++
-CXX_FLAGS = -std=c++1y \
+CXX_FLAGS = -std=c++14 -Isrc \
 -Wfatal-errors -Wall -Wextra \
 -Wpedantic -Wconversion -Wshadow \
 -Wno-unused-parameter \
@@ -8,7 +8,7 @@ CXX_FLAGS = -std=c++1y \
 ifeq ($(DBG),true)
 	CXX_FLAGS += -O1 -g -fsanitize=address -fno-omit-frame-pointer -DDBG
 else
-	CXX_FLAGS += -O2 # -DNDEBUG
+	CXX_FLAGS += -O3 # -DNDEBUG
 endif
 
 BDIR = ./build
@@ -25,6 +25,11 @@ $(ODIR)/$(IN)/$(PROG): \
 	$(BDIR)/input_generator/$(IN) | $(BDIR)/data_structures/$(PROG) $(CHK) > $@
 	tail $@
 
+# Install google benchmark first: https://github.com/google/benchmark
+$(BDIR)/benchmarks/% : $(BDIR)/src/benchmarks/%.o
+	@mkdir -p $(@D)
+	$(CXX) $(CXX_FLAGS) -lbenchmark $^ -o $@
+
 $(BDIR)/% : $(BDIR)/src/%.o
 	@mkdir -p $(@D)
 	$(CXX) $(CXX_FLAGS) $^ -o $@
@@ -34,6 +39,9 @@ $(BDIR)/% : $(BDIR)/src/%.o
 $(BDIR)/%.o : %.cc
 	@mkdir -p $(@D)
 	$(CXX) $(CXX_FLAGS) -MMD -c $< -o $@
+
+bench: $(BDIR)/benchmarks/insert
+	$(BDIR)/benchmarks/insert
 
 # Used for Travis CI
 test:
